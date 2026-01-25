@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'sign_in_event.dart';
 import 'sign_in_state.dart';
 
-/// BLoC ของหน้า Sign in (Front-end เท่านั้น)
+/// BLoC ของหน้า Sign in
 class SignInBloc extends Bloc<SignInEvent, SignInState> {
   SignInBloc() : super(const SignInState()) {
     // กรอก Email/Username

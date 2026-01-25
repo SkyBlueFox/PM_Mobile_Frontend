@@ -30,7 +30,7 @@ class _SignInView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 2) พื้นหลัง (ตาม mock)
+      // 2) พื้นหลัง
       body: AuthBackground(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 26),
@@ -128,7 +128,7 @@ class _SignInView extends StatelessWidget {
                         ),
                         onPressed: st.isValid
                             ? () {
-                                // mock action (ยังไม่ต่อ backend)
+                                // mock action
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Sign in (mock)')),
                                 );
@@ -171,7 +171,7 @@ class _SignInView extends StatelessWidget {
 
                 const Spacer(),
 
-                // 11) ข้อความด้านล่าง (ยังไม่ลิงก์ไปหน้า Sign up)
+                // 11) ข้อความด้านล่าง
                 const Padding(
                   padding: EdgeInsets.only(bottom: 20),
                   child: Text(

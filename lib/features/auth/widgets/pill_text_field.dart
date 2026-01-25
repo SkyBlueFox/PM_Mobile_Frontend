@@ -1,7 +1,6 @@
-// lib/features/auth/widgets/pill_text_field.dart
 import 'package:flutter/material.dart';
 
-/// TextField ทรงแคปซูล + เงา + border ตอน highlight
+/// TextField ทรงแคปซูล
 class PillTextField extends StatelessWidget {
   final String hint;
   final bool highlighted;

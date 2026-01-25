@@ -1,8 +1,7 @@
-// lib/features/auth/widgets/google_button.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-/// ปุ่ม Google แบบ pill (ไม่ใช้ asset)
+/// ปุ่ม Google แบบ pill 
 class GoogleButton extends StatelessWidget {
   final VoidCallback? onPressed;
   const GoogleButton({super.key, this.onPressed});

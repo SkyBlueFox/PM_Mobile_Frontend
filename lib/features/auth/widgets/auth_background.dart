@@ -1,7 +1,6 @@
-// lib/features/auth/widgets/auth_background.dart
 import 'package:flutter/material.dart';
 
-/// Background แบบใน mock (ขาว + เงาฟุ้งรอบ ๆ)
+/// Background
 class AuthBackground extends StatelessWidget {
   final Widget child;
   const AuthBackground({super.key, required this.child});
@@ -18,7 +17,7 @@ class AuthBackground extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // vignette ทำให้ขอบมืดนิด ๆ
+          // vignette 
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
