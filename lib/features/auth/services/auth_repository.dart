@@ -20,18 +20,18 @@ class AuthRepository {
         _storage = storage;
 
   /// สำเร็จจะ return token และเซฟลง secure storage แล้ว
-  Future<String> signIn({
+  Future<String>  signIn({
     required String username,
     required String password,
   }) async {
     try {
       final token = await _api.signIn(
-        username: username,
-        password: password,
+        username,password,
       );
 
-      await _storage.saveAccessToken(token);
-      return token;
+      await _storage.saveAccessToken(token['token']);
+      print("read token: ${await _storage.readAccessToken()}");
+      return token['token'];
     } on AuthApiException catch (e) {
       throw AuthFailure(e.message);
     } catch (_) {

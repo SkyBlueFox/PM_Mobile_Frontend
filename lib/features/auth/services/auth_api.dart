@@ -12,51 +12,38 @@ class AuthApiException implements Exception {
 
 class AuthApi {
   final String baseUrl;
-  final http.Client _client;
 
   AuthApi({
     required this.baseUrl,
-    http.Client? client,
-  }) : _client = client ?? http.Client();
+  });
 
-  Future<String> signIn({
-    required String username,
-    required String password,
-  }) async {
-    final uri = Uri.parse('$baseUrl/auth/signin');
-
-    final res = await _client.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
+  Future<Map<String, dynamic>> signIn(
+  String username,
+  String password,
+) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/login'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: jsonEncode({
         'username': username,
         'password': password,
       }),
     );
 
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      // พยายามดึง message จาก backend ถ้ามี
-      try {
-        final decoded = jsonDecode(res.body);
-        final msg = (decoded is Map && decoded['message'] is String)
-            ? decoded['message'] as String
-            : 'Sign in failed';
-        throw AuthApiException(msg, statusCode: res.statusCode);
-      } catch (_) {
-        throw AuthApiException('Sign in failed', statusCode: res.statusCode);
-      }
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return data; // e.g. { "token": "..." }
+    } else {
+      throw Exception(
+        'Failed to login. Status Code: ${response.statusCode}',
+      );
     }
-
-    final decoded = jsonDecode(res.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw AuthApiException('Invalid response format', statusCode: res.statusCode);
-    }
-
-    final token = decoded['token'];
-    if (token is! String || token.isEmpty) {
-      throw AuthApiException('Token not found in response', statusCode: res.statusCode);
-    }
-
-    return token;
+  } catch (e) {
+    print('Error posting login: $e'); // Debug
+    rethrow;
   }
+}
 }

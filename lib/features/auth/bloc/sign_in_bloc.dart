@@ -69,16 +69,18 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
     ));
 
     try {
-      await _authRepository.signIn(
+      final token = await _authRepository.signIn(
         username: state.username.trim(),
         password: state.password,
       );
-      emit(state.copyWith(isSubmitting: false, didSucceed: true));
+      emit(state.copyWith(isSubmitting: false, didSucceed: true, formError: 'Succeed token="$token"'));
     } catch (err) {
       emit(state.copyWith(
         isSubmitting: false,
         didSucceed: false,
-        formError: 'Invalid username/email or password',
+        formError: 'Login failed\n'
+        'username="${state.username}"\n'
+        'password=${state.password}',
       ));
     }
   }

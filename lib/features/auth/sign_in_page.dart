@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pm_mobile_frontend/features/auth/services/auth_api.dart';
 import 'package:pm_mobile_frontend/features/auth/services/auth_repository.dart';
 import 'package:pm_mobile_frontend/features/auth/services/token_storage.dart';
@@ -23,7 +24,9 @@ class SignInPage extends StatelessWidget {
     return BlocProvider(
       create: (_) => SignInBloc(
         authRepository: AuthRepository(
-          api: AuthApi(baseUrl: 'https://YOUR_BACKEND_BASE_URL'), // TODO: เปลี่ยน
+          api: AuthApi( 
+            baseUrl: dotenv.get('BACKEND_API_URL'),
+          ),
           storage: const TokenStorage(),
         ),
       ),
