@@ -27,3 +27,8 @@ class SignInPasswordChanged extends SignInEvent {
 class SignInTogglePassword extends SignInEvent {
   const SignInTogglePassword();
 }
+
+class SignInSubmitted extends SignInEvent {
+  const SignInSubmitted();
+}
+

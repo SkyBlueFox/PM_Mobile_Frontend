@@ -2,32 +2,46 @@ import 'package:equatable/equatable.dart';
 
 /// State ของหน้า Sign in
 class SignInState extends Equatable {
-  final String emailOrUsername;
+  final String username;
   final String password;
   final bool obscurePassword;
   final bool isValid;
 
+  final bool isSubmitting;
+  final String? errorMessage;
+  final bool didSucceed;
+
   const SignInState({
-    this.emailOrUsername = '',
+    this.username = '',
     this.password = '',
     this.obscurePassword = true,
     this.isValid = false,
+    this.isSubmitting = false,
+    this.errorMessage,
+    this.didSucceed = false,
   });
 
   SignInState copyWith({
-    String? emailOrUsername,
+    String? username,
     String? password,
     bool? obscurePassword,
     bool? isValid,
+    bool? isSubmitting,
+    String? errorMessage,
+    bool? didSucceed,
   }) {
     return SignInState(
-      emailOrUsername: emailOrUsername ?? this.emailOrUsername,
+      username: username ?? this.username,
       password: password ?? this.password,
       obscurePassword: obscurePassword ?? this.obscurePassword,
       isValid: isValid ?? this.isValid,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      errorMessage: errorMessage,
+      didSucceed: didSucceed ?? this.didSucceed,
     );
   }
 
   @override
-  List<Object?> get props => [emailOrUsername, password, obscurePassword, isValid];
+  List<Object?> get props =>
+      [username, password, obscurePassword, isValid, isSubmitting, errorMessage];
 }

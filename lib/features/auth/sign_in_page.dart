@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pm_mobile_frontend/features/auth/services/auth_api.dart';
+import 'package:pm_mobile_frontend/features/auth/services/auth_repository.dart';
+import 'package:pm_mobile_frontend/features/auth/services/token_storage.dart';
 
 import 'bloc/sign_in_bloc.dart';
 import 'bloc/sign_in_event.dart';
@@ -17,8 +20,14 @@ class SignInPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 1) ครอบหน้าไว้ด้วย BlocProvider
-    return BlocProvider(
-      create: (_) => SignInBloc(),
+    return 
+    BlocProvider(
+      create: (_) => SignInBloc(
+        authRepository: AuthRepository(
+          api: AuthApi(baseUrl: 'https://YOUR_BACKEND_BASE_URL'), //TODO: เปลี่ยนตรงนี้
+          storage: const TokenStorage(),
+        ),
+      ),
       child: const _SignInView(),
     );
   }
@@ -29,8 +38,26 @@ class _SignInView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // 2) พื้นหลัง
+    return BlocListener<SignInBloc, SignInState>(
+      listenWhen: (prev, curr) =>
+          prev.errorMessage != curr.errorMessage ||
+          prev.didSucceed != curr.didSucceed,
+      listener: (context, st) {
+        // show error
+        final msg = st.errorMessage;
+        if (msg != null && msg.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg)),
+          );
+        }
+
+        // navigate when success
+        if (st.didSucceed) {
+          // TODO: เปลี่ยนเป็นหน้า home ของคุณ
+          // Navigator.of(context).pushReplacementNamed('/home');
+        }
+      },
+      child: Scaffold(
       body: AuthBackground(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 26),
@@ -113,7 +140,8 @@ class _SignInView extends StatelessWidget {
 
                 // 8) Sign in button (เปิดเมื่อ valid)
                 BlocBuilder<SignInBloc, SignInState>(
-                  buildWhen: (p, c) => p.isValid != c.isValid,
+                  buildWhen: (p, c) =>
+                      p.isValid != c.isValid || p.isSubmitting != c.isSubmitting,
                   builder: (context, st) {
                     return SizedBox(
                       height: 56,
@@ -126,22 +154,27 @@ class _SignInView extends StatelessWidget {
                           elevation: 10,
                           shadowColor: const Color(0x33000000),
                         ),
-                        onPressed: st.isValid
-                            ? () {
-                                // mock action
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Sign in (mock)')),
-                                );
-                              }
+                        onPressed: (st.isValid && !st.isSubmitting)
+                            ? () => context.read<SignInBloc>().add(const SignInSubmitted())
                             : null,
-                        child: const Text(
-                          'Sign in',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                        ),
+                        child: st.isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Sign in',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
                       ),
                     );
                   },
                 ),
+
 
                 const SizedBox(height: 22),
 
@@ -184,6 +217,7 @@ class _SignInView extends StatelessWidget {
           ),
         ),
       ),
+     )
     );
   }
 }
