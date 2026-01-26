@@ -1,47 +1,78 @@
 import 'package:equatable/equatable.dart';
 
-/// State ของหน้า Sign in
 class SignInState extends Equatable {
-  final String username;
+  final String username; // email/username
   final String password;
+
   final bool obscurePassword;
-  final bool isValid;
+
+  // ใช้คุมการโชว์ error (แดง)
+  final bool usernameTouched;
+  final bool passwordTouched;
+  final bool attemptedSubmit;
 
   final bool isSubmitting;
-  final String? errorMessage;
   final bool didSucceed;
+
+  // error แยกตามช่อง + error รวมจาก API
+  final String? usernameError;
+  final String? passwordError;
+  final String? formError;
 
   const SignInState({
     this.username = '',
     this.password = '',
     this.obscurePassword = true,
-    this.isValid = false,
+    this.usernameTouched = false,
+    this.passwordTouched = false,
+    this.attemptedSubmit = false,
     this.isSubmitting = false,
-    this.errorMessage,
     this.didSucceed = false,
+    this.usernameError,
+    this.passwordError,
+    this.formError,
   });
 
   SignInState copyWith({
     String? username,
     String? password,
     bool? obscurePassword,
-    bool? isValid,
+    bool? usernameTouched,
+    bool? passwordTouched,
+    bool? attemptedSubmit,
     bool? isSubmitting,
-    String? errorMessage,
     bool? didSucceed,
+    String? usernameError,
+    String? passwordError,
+    String? formError,
   }) {
     return SignInState(
       username: username ?? this.username,
       password: password ?? this.password,
       obscurePassword: obscurePassword ?? this.obscurePassword,
-      isValid: isValid ?? this.isValid,
+      usernameTouched: usernameTouched ?? this.usernameTouched,
+      passwordTouched: passwordTouched ?? this.passwordTouched,
+      attemptedSubmit: attemptedSubmit ?? this.attemptedSubmit,
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      errorMessage: errorMessage,
       didSucceed: didSucceed ?? this.didSucceed,
+      usernameError: usernameError,
+      passwordError: passwordError,
+      formError: formError,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [username, password, obscurePassword, isValid, isSubmitting, errorMessage];
+  List<Object?> get props => [
+        username,
+        password,
+        obscurePassword,
+        usernameTouched,
+        passwordTouched,
+        attemptedSubmit,
+        isSubmitting,
+        didSucceed,
+        usernameError,
+        passwordError,
+        formError,
+      ];
 }
