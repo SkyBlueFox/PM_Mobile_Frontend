@@ -78,9 +78,7 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
       emit(state.copyWith(
         isSubmitting: false,
         didSucceed: false,
-        formError: 'Login failed\n'
-        'username="${state.username}"\n'
-        'password=${state.password}',
+        formError: 'Login failed: ${err.toString()}',
       ));
     }
   }

@@ -30,7 +30,6 @@ class AuthRepository {
       );
 
       await _storage.saveAccessToken(token['token']);
-      print("read token: ${await _storage.readAccessToken()}");
       return token['token'];
     } on AuthApiException catch (e) {
       throw AuthFailure(e.message);

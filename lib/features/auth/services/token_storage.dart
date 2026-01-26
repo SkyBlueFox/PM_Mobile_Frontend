@@ -10,7 +10,6 @@ class TokenStorage {
 
   Future<void> saveAccessToken(String token) async {
     await _storage.write(key: _kAccessTokenKey, value: token);
-    print(  'TokenStorage: saved access token="$token"');
   }
 
   Future<String?> readAccessToken() async {
