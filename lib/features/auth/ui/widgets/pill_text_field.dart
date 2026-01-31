@@ -97,10 +97,11 @@ class _PillTextFieldState extends State<PillTextField> {
             keyboardType: widget.keyboardType,
             onChanged: widget.onChanged,
             obscureText: widget.obscureText,
+            textAlignVertical: TextAlignVertical.center,
             decoration: InputDecoration(
               hintText: widget.hint,
               border: InputBorder.none,
-              isCollapsed: true,
+              isCollapsed: false,
               suffixIcon: widget.suffix == null
                   ? null
                   : Padding(

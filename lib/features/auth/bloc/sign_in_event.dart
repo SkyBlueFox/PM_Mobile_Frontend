@@ -32,3 +32,6 @@ class SignInSubmitted extends SignInEvent {
   const SignInSubmitted();
 }
 
+class SignInGooglePressed extends SignInEvent {
+  const SignInGooglePressed();
+}

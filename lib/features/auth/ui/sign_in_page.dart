@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:pm_mobile_frontend/features/auth/services/auth_api.dart';
-import 'package:pm_mobile_frontend/features/auth/services/auth_repository.dart';
-import 'package:pm_mobile_frontend/features/auth/services/token_storage.dart';
 
-import 'bloc/sign_in_bloc.dart';
-import 'bloc/sign_in_event.dart';
-import 'bloc/sign_in_state.dart';
+import '../bloc/sign_in_bloc.dart';
+import '../bloc/sign_in_event.dart';
+import '../bloc/sign_in_state.dart';
+
+import '../data/auth_repository.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
 
 import 'widgets/auth_background.dart';
 import 'widgets/pill_text_field.dart';
-
 
 class SignInPage extends StatelessWidget {
   const SignInPage({super.key});
@@ -22,13 +21,9 @@ class SignInPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => SignInBloc(
-        authRepository: AuthRepository(
-          api: AuthApi( 
-            baseUrl: dotenv.get('BACKEND_API_URL'),
-          ),
-          storage: const TokenStorage(),
-        ),
+      create: (ctx) => SignInBloc(
+        authRepository: ctx.read<AuthRepository>(), // ✅ ใช้ repo จาก main.dart
+        authBloc: ctx.read<AuthBloc>(),             // ✅ ส่งให้ bloc เพื่อ dispatch AuthLoggedIn
       ),
       child: const _SignInView(),
     );
@@ -40,11 +35,14 @@ class _SignInView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ ไม่ต้อง navigate ไป Home แล้ว เพราะ AuthGate จะสลับให้เอง
     return BlocListener<SignInBloc, SignInState>(
       listenWhen: (p, c) => p.didSucceed != c.didSucceed,
       listener: (context, st) {
         if (st.didSucceed) {
-          // TODO: navigate home
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Signed in')),
+          );
         }
       },
       child: Scaffold(
@@ -78,7 +76,7 @@ class _SignInView extends StatelessWidget {
 
                   const SizedBox(height: 34),
 
-                  // Username: กรอบน้ำเงินเมื่อ focus
+                  // Username
                   BlocBuilder<SignInBloc, SignInState>(
                     buildWhen: (p, c) =>
                         p.usernameTouched != c.usernameTouched ||
@@ -99,7 +97,7 @@ class _SignInView extends StatelessWidget {
 
                   const SizedBox(height: 14),
 
-                  // Password: กรอบน้ำเงิน “ตาลงมา” เมื่อ focus + เปลี่ยนไอคอนเป็นรูปตา
+                  // Password
                   BlocBuilder<SignInBloc, SignInState>(
                     buildWhen: (p, c) =>
                         p.obscurePassword != c.obscurePassword ||
@@ -139,7 +137,7 @@ class _SignInView extends StatelessWidget {
 
                   const SizedBox(height: 10),
 
-                  // ปุ่ม Sign in + error รวม (แดงใต้ปุ่ม)
+                  // Sign in button + form error
                   BlocBuilder<SignInBloc, SignInState>(
                     buildWhen: (p, c) =>
                         p.isSubmitting != c.isSubmitting || p.formError != c.formError,
@@ -195,7 +193,40 @@ class _SignInView extends StatelessWidget {
                     },
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 18),
+                  // divider "or"
+                  Row(
+                    children: const [
+                      Expanded(child: Divider(color: Color(0xFFBDBDBD), thickness: 1)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('or', style: TextStyle(color: Color(0xFF7A7A7A))),
+                      ),
+                      Expanded(child: Divider(color: Color(0xFFBDBDBD), thickness: 1)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Google button
+                  SizedBox(
+                    height: 56,
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        shape: const StadiumBorder(),
+                        side: const BorderSide(color: Color(0xFFE0E0E0)),
+                        backgroundColor: Colors.white,
+                      ),
+                      onPressed: () => context.read<SignInBloc>().add(const SignInGooglePressed()),
+                      icon: const Icon(Icons.g_mobiledata_rounded, size: 28), // placeholder icon
+                      label: const Text(
+                        'Continue with Google',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87),
+                      ),
+                    ),
+                  ),
+
                 ],
               ),
             ),

@@ -38,6 +38,11 @@ class AuthRepository {
     }
   }
 
+  Future<String> signInWithGoogle() async {
+    // TODO: implement จริงด้วย google_sign_in + backend exchange token
+    throw UnimplementedError('signInWithGoogle not implemented yet');
+  }
+
   Future<String?> getSavedToken() => _storage.readAccessToken();
 
   Future<void> signOut() => _storage.clearAccessToken();

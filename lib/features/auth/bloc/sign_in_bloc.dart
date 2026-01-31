@@ -1,20 +1,27 @@
-// lib/features/auth/bloc/sign_in_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../services/auth_repository.dart';
+import '../data/auth_repository.dart';
+import 'auth_bloc.dart';
+import 'auth_event.dart';
+
 import 'sign_in_event.dart';
 import 'sign_in_state.dart';
 
 class SignInBloc extends Bloc<SignInEvent, SignInState> {
   final AuthRepository _authRepository;
+  final AuthBloc _authBloc;
 
-  SignInBloc({required AuthRepository authRepository})
-      : _authRepository = authRepository,
+  SignInBloc({
+    required AuthRepository authRepository,
+    required AuthBloc authBloc,
+  })  : _authRepository = authRepository,
+        _authBloc = authBloc,
         super(const SignInState()) {
     on<SignInEmailChanged>(_onEmailChanged);
     on<SignInPasswordChanged>(_onPasswordChanged);
     on<SignInTogglePassword>(_onTogglePassword);
     on<SignInSubmitted>(_onSubmitted);
+    on<SignInGooglePressed>(_onGooglePressed);
   }
 
   void _onEmailChanged(SignInEmailChanged e, Emitter<SignInState> emit) {
@@ -25,6 +32,8 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
       usernameError: v.usernameError,
       passwordError: v.passwordError,
       formError: null,
+
+      // ไม่ต้องใช้เพื่อ navigate แล้ว (AuthGate ทำให้)
       didSucceed: false,
     ));
   }
@@ -73,12 +82,45 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
         username: state.username.trim(),
         password: state.password,
       );
-      emit(state.copyWith(isSubmitting: false, didSucceed: true, formError: 'Succeed token="$token"'));
+
+      // ✅ จุดสำคัญ: แจ้ง AuthBloc ว่า login แล้ว
+      _authBloc.add(AuthLoggedIn(token));
+
+      emit(state.copyWith(
+        isSubmitting: false,
+        didSucceed: true, // optional: ไว้ debug/snackbar ได้
+        formError: null,
+      ));
     } catch (err) {
       emit(state.copyWith(
         isSubmitting: false,
         didSucceed: false,
-        formError: 'Login failed: ${err.toString()}',
+        formError: 'Login failed',
+      ));
+    }
+  }
+
+  Future<void> _onGooglePressed(
+    SignInGooglePressed e,
+    Emitter<SignInState> emit,
+  ) async {
+    if (state.isSubmitting) return;
+
+    emit(state.copyWith(
+      isSubmitting: true,
+      formError: null,
+      didSucceed: false,
+    ));
+
+    try {
+      final token = await _authRepository.signInWithGoogle(); // ✅ คุณจะเพิ่มเมธอดนี้ใน repo
+      _authBloc.add(AuthLoggedIn(token));
+      emit(state.copyWith(isSubmitting: false, didSucceed: true));
+    } catch (err) {
+      emit(state.copyWith(
+        isSubmitting: false,
+        didSucceed: false,
+        formError: 'Google sign-in failed',
       ));
     }
   }
@@ -93,11 +135,8 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
 
     if (password.isEmpty) {
       pErr = 'Please enter password';
-    } else {
-
-      if (password.length < 6) {
-        pErr = 'Password is invalid';
-      }
+    } else if (password.length < 6) {
+      pErr = 'Password is invalid';
     }
 
     final ok = (uErr == null) && (pErr == null);
