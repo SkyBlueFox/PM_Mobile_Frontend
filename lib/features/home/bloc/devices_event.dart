@@ -1,5 +1,3 @@
-import '../models/device.dart';
-
 sealed class DeviceEvent {
   const DeviceEvent();
 }
@@ -8,30 +6,23 @@ class DevicesStarted extends DeviceEvent {
   const DevicesStarted();
 }
 
-class DevicesTabChanged extends DeviceEvent {
-  final RoomType tab;
-  const DevicesTabChanged(this.tab);
-}
-
+/// select a room (null = All)
 class DevicesRoomChanged extends DeviceEvent {
-  final RoomType room;
-  const DevicesRoomChanged(this.room);
+  final int? roomId;
+  const DevicesRoomChanged(this.roomId);
 }
 
-/// toggle on/off
-class DeviceToggled extends DeviceEvent {
-  final String deviceId;
-  const DeviceToggled(this.deviceId);
+class WidgetToggled extends DeviceEvent {
+  final int widgetId;
+  const WidgetToggled(this.widgetId);
 }
 
-/// set value (brightness/speed/etc.)
-class DeviceValueChanged extends DeviceEvent {
-  final String deviceId;
+class WidgetValueChanged extends DeviceEvent {
+  final int widgetId;
   final double value;
-  const DeviceValueChanged(this.deviceId, this.value);
+  const WidgetValueChanged(this.widgetId, this.value);
 }
 
-/// toggle ทุกตัวที่อยู่ใน filter ปัจจุบัน (หรือจะทำเป็นทั้งห้องก็ได้)
 class DevicesAllToggled extends DeviceEvent {
   final bool turnOn;
   const DevicesAllToggled(this.turnOn);

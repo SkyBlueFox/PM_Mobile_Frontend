@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pm_mobile_frontend/features/home/models/device.dart';
+import 'package:pm_mobile_frontend/features/home/ui/widgets/top_tabs.dart';
 
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../bloc/devices_bloc.dart';
 import '../bloc/devices_event.dart';
 import '../bloc/devices_state.dart';
-import 'widgets/device_card.dart';
-import 'widgets/room_section.dart';
-import 'widgets/top_tabs.dart';
+import 'widgets/widget_card.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -44,7 +42,6 @@ class _HomeView extends StatelessWidget {
                   const SizedBox(width: 10),
                   const Text('บ้านเกม 1', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                   const Spacer(),
-
                   IconButton(
                     tooltip: 'Logout',
                     icon: const Icon(Icons.logout_rounded, color: Colors.black45),
@@ -54,13 +51,19 @@ class _HomeView extends StatelessWidget {
               ),
 
               const SizedBox(height: 12),
-
-              BlocBuilder<DevicesBloc, DevicesState>(
-                buildWhen: (p, c) => p.selectedTab != c.selectedTab,
+              
+                            BlocBuilder<DevicesBloc, DevicesState>(
+                buildWhen: (p, c) =>
+                    p.selectedRoomId != c.selectedRoomId ||
+                    p.rooms != c.rooms ||
+                    p.devices != c.devices ||
+                    p.deviceRoomId != c.deviceRoomId,
                 builder: (context, st) {
                   return TopTab(
-                    selected: st.selectedTab,
-                    onChanged: (tab) => context.read<DevicesBloc>().add(DevicesTabChanged(tab)),
+                    rooms: st.rooms,
+                    selectedRoomId: st.selectedRoomId,
+                    onChanged: (roomId) =>
+                        context.read<DevicesBloc>().add(DevicesRoomChanged(roomId)),
                   );
                 },
               ),
@@ -79,8 +82,8 @@ class _HomeView extends StatelessWidget {
                   ),
                 ),
                 padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: const [
+                child: const Row(
+                  children: [
                     Expanded(
                       child: Text(
                         '23°C\nจตุจักร, กรุงเทพฯ',
@@ -92,22 +95,6 @@ class _HomeView extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 14),
-
-              BlocBuilder<DevicesBloc, DevicesState>(
-                buildWhen: (p, c) =>
-                    p.selectedRoom != c.selectedRoom ||
-                    p.selectedTab != c.selectedTab ||
-                    p.devices != c.devices,
-                builder: (context, st) {
-                  return RoomSection(
-                    selectedRoom: st.selectedRoom,
-                    deviceCount: st.deviceCount,
-                    onRoomChanged: (r) => context.read<DevicesBloc>().add(DevicesRoomChanged(r)),
-                  );
-                },
-              ),
-
               const SizedBox(height: 12),
 
               Expanded(
@@ -116,11 +103,11 @@ class _HomeView extends StatelessWidget {
                     if (st.isLoading) return const Center(child: CircularProgressIndicator());
                     if (st.error != null) return Center(child: Text(st.error!));
 
-                    final devices = st.visibleDevices;
-                    if (devices.isEmpty) return const Center(child: Text('ไม่มีอุปกรณ์ไฟในห้องนี้'));
+                    final widgets = st.visibleWidgets;
+                    if (widgets.isEmpty) return const Center(child: Text('ไม่มีอุปกรณ์ในห้องนี้'));
 
                     return GridView.builder(
-                      itemCount: devices.length,
+                      itemCount: widgets.length,
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         crossAxisSpacing: 14,
@@ -128,17 +115,13 @@ class _HomeView extends StatelessWidget {
                         childAspectRatio: 1.0,
                       ),
                       itemBuilder: (context, i) {
-                        final d = devices[i];
-                        return DeviceCard(
-                          device: d,
-                          onToggle: d is Toggleable
-                              ? () => context.read<DevicesBloc>().add(DeviceToggled(d.id))
-                              : null,
-                          onValueChanged: (d is Quantifiable)
-                              ? (v) => context.read<DevicesBloc>().add(DeviceValueChanged(d.id, v))
-                              : null,
-                        );
+                        final w = widgets[i];
 
+                        return WidgetCard(
+                          widgetData: w,
+                          onToggle: (widgetId) => context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
+                          onValue: (widgetId, v) => context.read<DevicesBloc>().add(WidgetValueChanged(widgetId, v)),
+                        );
                       },
                     );
                   },

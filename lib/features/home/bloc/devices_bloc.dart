@@ -1,18 +1,19 @@
+// devices_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pm_mobile_frontend/features/home/models/speaker_device.dart';
 
 import '../models/device.dart';
-import '../models/light_device.dart';
+import '../models/device_widget.dart';
+import '../models/capability.dart';
+import '../models/room.dart';
 import 'devices_event.dart';
 import 'devices_state.dart';
 
 class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
   DevicesBloc() : super(const DevicesState()) {
     on<DevicesStarted>(_onStarted);
-    on<DevicesTabChanged>(_onTabChanged);
     on<DevicesRoomChanged>(_onRoomChanged);
-    on<DeviceToggled>(_onToggled);
-    on<DeviceValueChanged>(_onValueChanged);
+    on<WidgetToggled>(_onWidgetToggled);
+    on<WidgetValueChanged>(_onWidgetValueChanged);
     on<DevicesAllToggled>(_onAllToggled);
   }
 
@@ -20,81 +21,138 @@ class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
-      // ✅ ตอนนี้ mock เป็นไฟก่อน แต่ type เป็น Device ได้แล้ว
+      // MOCK: devices from /devices
       final devices = <Device>[
-        const LightDevice(id: 'l1', name: 'หลอดไฟ 1', room: RoomType.bedroom, isOn: true),
-        const LightDevice(id: 'l2', name: 'หลอดไฟ 2', room: RoomType.bedroom, isOn: false),
-        const SpeakerDevice(id: 's3', name: 'ลำโพง 1', room: RoomType.bedroom, isOn: true, value: 100),
-        const SpeakerDevice(id: 's4', name: 'ลำโพง 2', room: RoomType.living,  isOn: false, value: 50),
+        const Device(id: 66, name: 'light-01', type: 'light'),
+        const Device(id: 67, name: 'light-02', type: 'light'),
+        const Device(id: 70, name: 'speaker-01', type: 'speaker'),
       ];
 
-      emit(state.copyWith(isLoading: false, devices: devices, error: null));
+      // MOCK: widgets from /widgets
+      final widgets = <DeviceWidget>[
+        DeviceWidget(
+          widgetId: 1,
+          device: const Device(id: 66, name: 'light-01', type: 'light'),
+          capability: const Capability(id: 1, type: CapabilityType.toggle),
+          status: 'include',
+          order: 1,
+          value: 1,
+        ),
+        DeviceWidget(
+          widgetId: 2,
+          device: const Device(id: 67, name: 'light-02', type: 'light'),
+          capability: const Capability(id: 1, type: CapabilityType.toggle),
+          status: 'include',
+          order: 1,
+          value: 0,
+        ),
+        DeviceWidget(
+          widgetId: 3,
+          device: const Device(id: 70, name: 'speaker-01', type: 'speaker'),
+          capability: const Capability(id: 1, type: CapabilityType.toggle),
+          status: 'include',
+          order: 1,
+          value: 1,
+        ),
+        DeviceWidget(
+          widgetId: 4,
+          device: const Device(id: 70, name: 'speaker-01', type: 'speaker'),
+          capability: const Capability(id: 2, type: CapabilityType.adjust),
+          status: 'include',
+          order: 2,
+          value: 30,
+        ),
+      ];
+
+      // MOCK: rooms from /rooms
+      final rooms = <Room>[
+        const Room(id: 1, name: 'ห้องนอน'),
+        const Room(id: 2, name: 'ห้องนั่งเล่น'),
+      ];
+
+      // MOCK: mapping from room API (device_id -> room_id)
+      final deviceRoomId = <int, int>{
+        66: 1,
+        67: 1,
+        68: 2,
+        70: 1,
+      };
+
+      final devicesWithWidgets = _attachWidgetsToDevices(devices, widgets);
+
+      emit(state.copyWith(
+        isLoading: false,
+        devices: devicesWithWidgets,
+        widgets: widgets,
+        rooms: rooms,
+        deviceRoomId: deviceRoomId,
+        selectedRoomId: null, // default = All
+        error: null,
+      ));
     } catch (_) {
       emit(state.copyWith(isLoading: false, error: 'โหลดข้อมูลไม่สำเร็จ'));
     }
   }
 
-  void _onTabChanged(DevicesTabChanged event, Emitter<DevicesState> emit) {
-    emit(state.copyWith(selectedTab: event.tab));
-  }
-
   void _onRoomChanged(DevicesRoomChanged event, Emitter<DevicesState> emit) {
-    emit(state.copyWith(selectedRoom: event.room));
+    if (event.roomId == null) {
+      emit(state.copyWith(selectedRoomId: null, selectedRoomIdSet: true));
+    } else {
+      emit(state.copyWith(selectedRoomId: event.roomId, selectedRoomIdSet: true));
+    }
   }
 
-  void _onToggled(DeviceToggled event, Emitter<DevicesState> emit) {
-    final idx = state.devices.indexWhere((d) => d.id == event.deviceId);
-    if (idx < 0) return;
+  void _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) {
+    final updatedWidgets = state.widgets.map((w) {
+      if (w.widgetId != event.widgetId) return w;
+      if (w.capability.type != CapabilityType.toggle) return w;
 
-    final current = state.devices[idx];
-    if (current is! Toggleable) return;
+      final newValue = w.value >= 1 ? 0.0 : 1.0;
+      return w.copyWith(value: newValue);
+    }).toList();
 
-    final updated = [...state.devices];
-
-    if (current is LightDevice) {
-      updated[idx] = current.copyWith(isOn: !current.isOn);
-    } else if (current is SpeakerDevice) {
-      updated[idx] = current.copyWith(isOn: !current.isOn);
-    } else {
-      return;
-    }
-
-    emit(state.copyWith(devices: updated));
+    emit(state.copyWith(widgets: updatedWidgets));
   }
 
-  void _onValueChanged(DeviceValueChanged event, Emitter<DevicesState> emit) {
-    final idx = state.devices.indexWhere((d) => d.id == event.deviceId);
-    if (idx < 0) return;
+  void _onWidgetValueChanged(WidgetValueChanged event, Emitter<DevicesState> emit) {
+    final updatedWidgets = state.widgets.map((w) {
+      if (w.widgetId != event.widgetId) return w;
+      if (w.capability.type != CapabilityType.adjust) return w;
 
-    final device = state.devices[idx];
-    if (device is! Quantifiable) return;
+      return w.copyWith(value: event.value);
+    }).toList();
 
-    final q = device as Quantifiable;
-    final clamped = event.value.clamp(q.minValue, q.maxValue).toDouble();
-
-    final updated = [...state.devices];
-
-    if (device is SpeakerDevice) {
-      updated[idx] = device.copyWith(value: clamped);
-    } else {
-      // LightDevice ตอนนี้เป็น toggle-only แล้ว จึงไม่ต้อง handle value
-      // ถ้าคุณมี device แบบอื่นที่มี value ให้เพิ่ม else-if ที่นี่
-      return;
-    }
-
-    emit(state.copyWith(devices: updated));
+    emit(state.copyWith(widgets: updatedWidgets));
   }
 
   void _onAllToggled(DevicesAllToggled event, Emitter<DevicesState> emit) {
-    // toggle เฉพาะตัวที่ "มองเห็นอยู่" (ตาม filter)
-    final visibleIds = state.visibleDevices.map((d) => d.id).toSet();
+    final rid = state.selectedRoomId;
+    final turnOnValue = event.turnOn ? 1.0 : 0.0;
 
-    final updated = state.devices.map((d) {
-      if (!visibleIds.contains(d.id)) return d;
-      if (d is LightDevice) return d.copyWith(isOn: event.turnOn);
-      return d;
+    final updatedWidgets = state.widgets.map((w) {
+      // only affect widgets whose device is in current visible room
+      final inRoom = rid == null || state.deviceRoomId[w.device.id] == rid;
+      if (!inRoom) return w;
+
+      if (w.capability.type != CapabilityType.toggle) return w;
+      return w.copyWith(value: turnOnValue);
     }).toList();
 
-    emit(state.copyWith(devices: updated));
+    emit(state.copyWith(widgets: updatedWidgets));
+  }
+
+  List<Device> _attachWidgetsToDevices(List<Device> devices, List<DeviceWidget> widgets) {
+    final byDeviceId = <int, List<DeviceWidget>>{};
+
+    for (final w in widgets) {
+      final did = w.device.id;
+      byDeviceId.putIfAbsent(did, () => []).add(w);
+    }
+
+    return devices.map((d) {
+      final ws = byDeviceId[d.id] ?? const <DeviceWidget>[];
+      final sorted = [...ws]..sort((a, b) => a.order.compareTo(b.order));
+      return d.copyWith(widgets: sorted);
+    }).toList();
   }
 }

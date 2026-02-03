@@ -1,35 +1,58 @@
-enum RoomType { all, bedroom, living }
+import 'device_widget.dart';
 
-String roomLabel(RoomType t) {
-  switch (t) {
-    case RoomType.all:
-      return 'ทั้งหมด';
-    case RoomType.bedroom:
-      return 'ห้องนอน';
-    case RoomType.living:
-      return 'ห้องนั่งเล่น';
-  }
-}
-
-abstract class Device {
-  final String id;
+class Device {
+  final int id;
   final String name;
-  final RoomType room;
+  final String type;
+
+  /// UI state only (widgets from /widgets endpoint)
+  final List<DeviceWidget> widgets;
 
   const Device({
     required this.id,
     required this.name,
-    required this.room,
+    required this.type,
+    this.widgets = const [],
   });
+
+  Device copyWith({
+    int? id,
+    String? name,
+    String? type,
+    List<DeviceWidget>? widgets,
+  }) {
+    return Device(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      widgets: widgets ?? this.widgets,
+    );
+  }
+
+  factory Device.fromJson(Map<String, dynamic> json) {
+    return Device(
+      id: json['device_id'] as int,
+      name: json['device_name'] as String,
+      type: json['device_type'] as String,
+      // widgets are attached later
+      widgets: const [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'device_id': id,
+        'device_name': name,
+        'device_type': type,
+      };
 }
 
-mixin Toggleable {
-  bool get isOn;
-}
+class DevicesResponse {
+  final List<Device> data;
 
-mixin Quantifiable {
-  double get value;
-  double get minValue;
-  double get maxValue;
-  String get unit;
+  const DevicesResponse({required this.data});
+
+  factory DevicesResponse.fromJson(Map<String, dynamic> json) {
+    final list = (json['data'] as List).cast<Map<String, dynamic>>();
+    return DevicesResponse(data: list.map(Device.fromJson).toList());
+  }
 }
