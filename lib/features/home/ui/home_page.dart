@@ -7,6 +7,9 @@ import '../../auth/bloc/auth_event.dart';
 import '../bloc/devices_bloc.dart';
 import '../bloc/devices_event.dart';
 import '../bloc/devices_state.dart';
+import '../data/device_repository.dart';
+import '../data/mqtt/mqtt_service.dart';
+import '../models/device_widget.dart';
 import 'widgets/widget_card.dart';
 
 class HomePage extends StatelessWidget {
@@ -15,7 +18,17 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DevicesBloc()..add(const DevicesStarted()),
+      create: (_) {
+        final mqtt = MqttService(
+          broker: 'YOUR_BROKER_HOST', //TODO: replace with your MQTT broker host
+          port: 1883,
+          clientId: 'pm-mobile-${DateTime.now().millisecondsSinceEpoch}',
+        );
+
+        final repo = DevicesRepository(mqtt: mqtt);
+
+        return DevicesBloc(repo: repo)..add(const DevicesStarted());
+      },
       child: const _HomeView(),
     );
   }
@@ -70,30 +83,30 @@ class _HomeView extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              Container(
-                height: 120,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4CB2FF), Color(0xFFBFE5FF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                padding: const EdgeInsets.all(18),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '23°C\nจตุจักร, กรุงเทพฯ',
-                        style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Icon(Icons.weekend_rounded, color: Colors.white, size: 58),
-                  ],
-                ),
-              ),
+              // Container(
+              //   height: 120,
+              //   width: double.infinity,
+              //   decoration: BoxDecoration(
+              //     borderRadius: BorderRadius.circular(18),
+              //     gradient: const LinearGradient(
+              //       colors: [Color(0xFF4CB2FF), Color(0xFFBFE5FF)],
+              //       begin: Alignment.topLeft,
+              //       end: Alignment.bottomRight,
+              //     ),
+              //   ),
+              //   padding: const EdgeInsets.all(18),
+              //   child: const Row(
+              //     children: [
+              //       Expanded(
+              //         child: Text(
+              //           '23°C\nจตุจักร, กรุงเทพฯ',
+              //           style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+              //         ),
+              //       ),
+              //       Icon(Icons.weekend_rounded, color: Colors.white, size: 58),
+              //     ],
+              //   ),
+              // ),
 
               const SizedBox(height: 12),
 
@@ -115,14 +128,26 @@ class _HomeView extends StatelessWidget {
                         childAspectRatio: 1.0,
                       ),
                       itemBuilder: (context, i) {
-                        final w = widgets[i];
+                      final w = widgets[i];
 
-                        return WidgetCard(
-                          widgetData: w,
-                          onToggle: (widgetId) => context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
-                          onValue: (widgetId, v) => context.read<DevicesBloc>().add(WidgetValueChanged(widgetId, v)),
-                        );
-                      },
+                      // Find the toggle widget for the same device (capability.id == 1 is toggle)
+                      final DeviceWidget? toggle = st.widgets.cast<DeviceWidget?>().firstWhere(
+                            (x) => x != null && x.device.id == w.device.id && x.capability.id == 1,
+                            orElse: () => null,
+                          );
+
+                      final bool isOn = toggle == null ? true : toggle.value >= 1;
+
+                      return WidgetCard(
+                        key: ValueKey(w.widgetId),
+                        widgetData: w,
+                        isOn: isOn,
+                        onToggle: (widgetId) =>
+                            context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
+                        onValue: (widgetId, v) =>
+                            context.read<DevicesBloc>().add(WidgetValueChanged(widgetId, v)),
+                      );
+                    },
                     );
                   },
                 ),

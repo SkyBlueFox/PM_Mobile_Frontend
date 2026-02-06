@@ -27,3 +27,9 @@ class DevicesAllToggled extends DeviceEvent {
   final bool turnOn;
   const DevicesAllToggled(this.turnOn);
 }
+
+class WidgetUpdateReceived extends DeviceEvent {
+  final int widgetId;
+  final double value;
+  const WidgetUpdateReceived(this.widgetId, this.value);
+}

@@ -38,6 +38,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   equatable: ^2.0.8
   flutter_svg: ^2.2.2
+  mqtt_client: ^10.0.0
 
 dev_dependencies:
   flutter_test:

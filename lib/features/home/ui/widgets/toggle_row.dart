@@ -7,6 +7,7 @@ class ToggleRow extends StatelessWidget {
   final VoidCallback? onChanged;
 
   const ToggleRow({
+    super.key,
     required this.label,
     required this.isOn,
     required this.enabled,

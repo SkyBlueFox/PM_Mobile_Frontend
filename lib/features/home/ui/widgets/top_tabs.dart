@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/room.dart';
 
-class TopTab extends StatelessWidget {
+class TopTab extends StatefulWidget {
   final List<Room> rooms;
 
   /// null = All
@@ -18,6 +18,36 @@ class TopTab extends StatelessWidget {
   });
 
   @override
+  State<TopTab> createState() => _TopTabState();
+}
+
+class _TopTabState extends State<TopTab> {
+  int? _selectedRoomId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRoomId = widget.selectedRoomId;
+  }
+
+  @override
+  void didUpdateWidget(covariant TopTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Sync with Bloc updates
+    if (oldWidget.selectedRoomId != widget.selectedRoomId) {
+      _selectedRoomId = widget.selectedRoomId;
+    }
+  }
+
+  void _handleTap(int? roomId) {
+    if (_selectedRoomId == roomId) return;
+
+    setState(() => _selectedRoomId = roomId);
+    widget.onChanged(roomId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -25,25 +55,26 @@ class TopTab extends StatelessWidget {
         children: [
           _TabItem(
             label: 'ทั้งหมด',
-            isSelected: selectedRoomId == null,
-            onTap: () => onChanged(null),
+            isSelected: _selectedRoomId == null,
+            onTap: () => _handleTap(null),
           ),
-
-          ...rooms.map((r) => Padding(
-                padding: const EdgeInsets.only(left: 18),
-                child: _TabItem(
-                  label: r.name,
-                  isSelected: selectedRoomId == r.id,
-                  onTap: () => onChanged(r.id),
-                ),
-              )),
+          ...widget.rooms.map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(left: 18),
+              child: _TabItem(
+                label: r.name,
+                isSelected: _selectedRoomId == r.id,
+                onTap: () => _handleTap(r.id),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _TabItem extends StatelessWidget {
+class _TabItem extends StatefulWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
@@ -55,16 +86,23 @@ class _TabItem extends StatelessWidget {
   });
 
   @override
+  State<_TabItem> createState() => _TabItemState();
+}
+
+class _TabItemState extends State<_TabItem> {
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Text(
-        label,
+      onTap: widget.onTap,
+      child: AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
         style: TextStyle(
           fontSize: 16,
-          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          color: isSelected ? Colors.black87 : Colors.black38,
+          fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: widget.isSelected ? Colors.black87 : Colors.black38,
         ),
+        child: Text(widget.label),
       ),
     );
   }

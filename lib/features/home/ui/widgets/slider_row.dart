@@ -9,6 +9,7 @@ class SliderRow extends StatelessWidget {
   final ValueChanged<double>? onChanged;
 
   const SliderRow({
+    super.key,
     required this.label,
     required this.value,
     required this.min,

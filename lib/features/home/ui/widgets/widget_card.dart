@@ -2,40 +2,33 @@ import 'package:flutter/material.dart';
 import '../../models/device_widget.dart';
 import 'capability_control.dart';
 
-class WidgetCard extends StatelessWidget {
-  /// One card = one widget (capability)
+class WidgetCard extends StatefulWidget {
   final DeviceWidget widgetData;
 
-  final ValueChanged<int>? onToggle; // widgetId
-  final void Function(int widgetId, double value)? onValue; // widgetId, value
+  /// Provided by parent (computed from state.widgets)
+  final bool isOn;
+
+  final ValueChanged<int>? onToggle;
+  final void Function(int widgetId, double value)? onValue;
 
   const WidgetCard({
     super.key,
     required this.widgetData,
+    required this.isOn,
     this.onToggle,
     this.onValue,
   });
 
   @override
+  State<WidgetCard> createState() => _WidgetCardState();
+}
+
+class _WidgetCardState extends State<WidgetCard> {
+  @override
   Widget build(BuildContext context) {
-    final device = widgetData.device;
+    final device = widget.widgetData.device;
 
-    // Determine device on/off from its toggle widget (if any), so we can gray out icon
-    // Find toggle for the same device as widgetData.device
-    final toggleWidget = device.widgets
-        .where((w) => w.status == 'include')
-        .cast<DeviceWidget?>()
-        .firstWhere(
-          (w) => w != null && w!.capability.type.name == 'toggle',
-          orElse: () => null,
-        );
-
-    final bool isOn = toggleWidget == null ? true : toggleWidget.value >= 1;
-
-    // Enable rule:
-    // - if device is on -> enabled
-    // - if device is off -> only enable toggle widget
-    final bool enabled = isOn || widgetData.capability.type.name == 'toggle';
+    final bool enabled = widget.isOn || widget.widgetData.capability.id == 1; // id 1 = toggle
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
@@ -49,13 +42,12 @@ class WidgetCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: icon + device name
           Row(
             children: [
               Icon(
                 _iconForType(device.type),
                 size: 30,
-                color: isOn ? const Color(0xFF3AA7FF) : const Color(0xFFB0BEC5),
+                color: widget.isOn ? const Color(0xFF3AA7FF) : const Color(0xFFB0BEC5),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -68,15 +60,10 @@ class WidgetCard extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
-          // Exactly ONE control
           CapabilityControl(
-            widgetData: widgetData,
+            widgetData: widget.widgetData,
             enabled: enabled,
-            onToggle: onToggle,
-            onValue: onValue,
           ),
         ],
       ),

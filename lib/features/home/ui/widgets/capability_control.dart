@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../bloc/devices_bloc.dart';
+import '../../bloc/devices_event.dart';
 import '../../models/device_widget.dart';
-import 'slider.dart';
-import 'toggle.dart';
+import 'info_row.dart';
+import 'slider_row.dart';
+import 'toggle_row.dart';
 
-class CapabilityControl extends StatelessWidget {
+class CapabilityControl extends StatefulWidget {
   final DeviceWidget widgetData;
   final bool enabled;
 
-  final ValueChanged<int>? onToggle; // widgetId
-  final void Function(int widgetId, double value)? onValue; // widgetId, value
-
   const CapabilityControl({
+    super.key,
     required this.widgetData,
     required this.enabled,
-    required this.onToggle,
-    required this.onValue,
   });
+
+  @override
+  State<CapabilityControl> createState() => _CapabilityControlState();
+}
+
+class _CapabilityControlState extends State<CapabilityControl> {
+  DeviceWidget get widgetData => widget.widgetData;
+  bool get enabled => widget.enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -26,29 +34,44 @@ class CapabilityControl extends StatelessWidget {
           label: 'Power',
           isOn: widgetData.value >= 1,
           enabled: true, // always allow toggling
-          onChanged: onToggle == null ? null : () => onToggle!(widgetData.widgetId),
+          onChanged: () {
+            context.read<DevicesBloc>().add(WidgetToggled(widgetData.widgetId));
+          },
         );
 
-      case 2: // adjust (example: temperature / volume)
+      case 2: // adjust
         return SliderRow(
           label: 'Adjust',
           value: widgetData.value,
           min: 0,
           max: 100,
           enabled: enabled,
-          onChanged: onValue == null ? null : (v) => onValue!(widgetData.widgetId, v),
+          onChanged: !enabled
+              ? null
+              : (v) {
+                  context
+                      .read<DevicesBloc>()
+                      .add(WidgetValueChanged(widgetData.widgetId, v));
+                },
         );
 
-      // Add more capability IDs here:
-      // case 3: brightness
-      // case 4: color
-      // case 5: mode
+      case 3: // info (read-only)
+        return InfoRow(
+          label: 'Info',
+          valueText: _formatInfo(widgetData.value),
+          enabled: enabled,
+        );
+
       default:
-        // fallback: show something minimal so you can see it's there
         return Text(
           'capability_id=${widgetData.capability.id} value=${widgetData.value.toStringAsFixed(0)}',
           style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
         );
     }
+  }
+
+  String _formatInfo(double v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toStringAsFixed(1);
   }
 }
