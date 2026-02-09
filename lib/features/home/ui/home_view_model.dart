@@ -1,6 +1,7 @@
 import '../bloc/devices_state.dart';
 import '../models/device_widget.dart';
 
+/// ViewModel สำหรับ “Sensor 1 ตัว” (Read-only)
 class HomeSensorVM {
   final String label;
   final String valueText;
@@ -13,12 +14,12 @@ class HomeSensorVM {
   });
 }
 
+/// ViewModel สำหรับ “Toggle 1 ตัว”
+/// NOTE: ไม่มี fallback => ถ้ามีรายการ แปลว่ามาจาก API จริง ๆ ดังนั้น widgetId ไม่ควรเป็น null
 class HomeToggleVM {
   final String label;
   final bool isOn;
-
-  /// null = โหมดทำ UI (ไม่ยิง event)
-  final int? widgetId;
+  final int widgetId;
 
   const HomeToggleVM({
     required this.label,
@@ -27,20 +28,23 @@ class HomeToggleVM {
   });
 }
 
+/// ViewModel สำหรับ “Adjust 1 ตัว” (เช่น color/brightness)
+/// NOTE: อาจเป็น null ได้ เพราะ section จะถูกซ่อนไว้เมื่อไม่มี id
 class HomeAdjustVM {
-  /// null = โหมดทำ UI (ไม่ยิง event)
   final int? widgetId;
-
   const HomeAdjustVM({required this.widgetId});
 }
 
+/// แปลง DevicesState -> ข้อมูลที่ UI ต้องใช้
+/// หลักการ:
+/// - ไม่สร้าง placeholder/fallback
+/// - ถ้าไม่มีข้อมูลจริง -> list ว่าง / widgetId null -> แล้วให้ UI “ไม่ render section”
 class HomeViewModel {
-  final List<HomeSensorVM> sensors; // 2 ตัว
-  final List<HomeToggleVM> toggles; // 2 ตัว
-  final HomeAdjustVM colorAdjust;
-  final HomeAdjustVM brightnessAdjust;
+  final List<HomeSensorVM> sensors; // capability id = 3
+  final List<HomeToggleVM> toggles; // capability id = 1
+  final HomeAdjustVM colorAdjust; // capability id = 2 ตัวที่ 1
+  final HomeAdjustVM brightnessAdjust; // capability id = 2 ตัวที่ 2
 
-  /// ใช้เพื่อโชว์ banner แต่ไม่บล็อก UI
   final bool isLoading;
   final String? error;
 
@@ -53,110 +57,59 @@ class HomeViewModel {
     required this.error,
   });
 
-  // factory HomeViewModel.fromState(DevicesState st) {
-  //   final widgets = st.visibleWidgets;
-
-  //   final infos = widgets.where((w) => w.capability.id == 3).toList();
-  //   final toggles = widgets.where((w) => w.capability.id == 1).toList();
-  //   final adjusts = widgets.where((w) => w.capability.id == 2).toList();
-
-  //   final a = infos.isNotEmpty ? infos[0] : null;
-  //   final b = infos.length > 1 ? infos[1] : null;
-
-  //   final led1 = toggles.isNotEmpty ? toggles[0] : null;
-  //   final led2 = toggles.length > 1 ? toggles[1] : null;
-
-  //   final adjustColor = adjusts.isNotEmpty ? adjusts[0] : null;
-  //   final adjustBrightness = adjusts.length > 1 ? adjusts[1] : null;
-
-  //   return HomeViewModel(
-  //     sensors: [
-  //       _sensorFrom(a, fallbackLabel: 'Sensor A'),
-  //       _sensorFrom(b, fallbackLabel: 'Sensor B', fallbackUnit: '°C'),
-  //     ],
-  //     toggles: [
-  //       _toggleFrom(led1, fallbackLabel: 'LED 1', fallbackOn: true),
-  //       _toggleFrom(led2, fallbackLabel: 'LED 2', fallbackOn: false),
-  //     ],
-  //     colorAdjust: HomeAdjustVM(widgetId: adjustColor?.widgetId),
-  //     brightnessAdjust: HomeAdjustVM(widgetId: adjustBrightness?.widgetId),
-  //     isLoading: st.isLoading,
-  //     error: st.error,
-  //   );
-  // }
-
-  // static HomeSensorVM _sensorFrom(
-  //   DeviceWidget? w, {
-  //   required String fallbackLabel,
-  //   String fallbackUnit = 'lux',
-  // }) {
-  //   if (w == null) {
-  //     return HomeSensorVM(label: fallbackLabel, valueText: '26', unit: fallbackUnit);
-  //   }
-  //   return HomeSensorVM(
-  //     label: w.device.name,
-  //     valueText: _fmt(w.value),
-  //     unit: _guessUnit(w.device.name, fallback: fallbackUnit),
-  //   );
-  // }
-
-  // static HomeToggleVM _toggleFrom(
-  //   DeviceWidget? w, {
-  //   required String fallbackLabel,
-  //   required bool fallbackOn,
-  // }) {
-  //   if (w == null) {
-  //     return HomeToggleVM(label: fallbackLabel, isOn: fallbackOn, widgetId: null);
-  //   }
-  //   return HomeToggleVM(
-  //     label: w.device.name,
-  //     isOn: w.value >= 1,
-  //     widgetId: w.widgetId,
-  //   );
-  // }
-
   factory HomeViewModel.fromState(DevicesState st) {
-  final widgets = st.visibleWidgets;
+    final widgets = st.visibleWidgets;
 
-  final infos = widgets.where((w) => w.capability.id == 3).toList();
-  final togglesW = widgets.where((w) => w.capability.id == 1).toList();
-  final adjusts = widgets.where((w) => w.capability.id == 2).toList();
+    // ดึงตาม capability (ใช้ข้อมูลจริงเท่านั้น)
+    final infos = widgets.where((w) => w.capability.id == 3).toList();
+    final togglesW = widgets.where((w) => w.capability.id == 1).toList();
+    final adjusts = widgets.where((w) => w.capability.id == 2).toList();
 
-  return HomeViewModel(
-    sensors: infos.map(_sensorFromNoFallback).toList(),
-    toggles: togglesW.map(_toggleFromNoFallback).toList(),
-    colorAdjust: HomeAdjustVM(widgetId: adjusts.isNotEmpty ? adjusts[0].widgetId : null),
-    brightnessAdjust: HomeAdjustVM(widgetId: adjusts.length > 1 ? adjusts[1].widgetId : null),
-    isLoading: st.isLoading,
-    error: st.error,
-  );
-}
+    return HomeViewModel(
+      sensors: infos.map(_sensorFrom).toList(),
+      toggles: togglesW.map(_toggleFrom).toList(),
+      // ถ้าไม่มี adjust จริง -> widgetId เป็น null และ UI จะ “ไม่โชว์ section”
+      colorAdjust: HomeAdjustVM(widgetId: adjusts.isNotEmpty ? adjusts[0].widgetId : null),
+      brightnessAdjust: HomeAdjustVM(widgetId: adjusts.length > 1 ? adjusts[1].widgetId : null),
+      isLoading: st.isLoading,
+      error: st.error,
+    );
+  }
 
-static HomeSensorVM _sensorFromNoFallback(DeviceWidget w) {
-  return HomeSensorVM(
-    label: w.device.name,
-    valueText: _fmt(w.value),
-    unit: _guessUnit(w.device.name, fallback: ''),
-  );
-}
+  /// Flags สำหรับให้ UI ตัดสินใจ “โชว์/ไม่โชว์ section”
+  bool get hasSensors => sensors.isNotEmpty;
+  bool get hasDevices => toggles.isNotEmpty;
+  bool get hasColor => colorAdjust.widgetId != null;
+  bool get hasBrightness => brightnessAdjust.widgetId != null;
 
-static HomeToggleVM _toggleFromNoFallback(DeviceWidget w) {
-  return HomeToggleVM(
-    label: w.device.name,
-    isOn: w.value >= 1,
-    widgetId: w.widgetId,
-  );
-}
+  /// ตอนนี้ extra ไม่ผูกกับ API => ให้ซ่อนไว้เพื่อไม่ทำ fallback
+  bool get hasExtra => false;
 
+  static HomeSensorVM _sensorFrom(DeviceWidget w) {
+    return HomeSensorVM(
+      label: w.device.name,
+      valueText: _fmt(w.value),
+      unit: _guessUnit(w.device.name),
+    );
+  }
+
+  static HomeToggleVM _toggleFrom(DeviceWidget w) {
+    return HomeToggleVM(
+      label: w.device.name,
+      isOn: w.value >= 1,
+      widgetId: w.widgetId,
+    );
+  }
 
   static String _fmt(double v) =>
       (v == v.roundToDouble()) ? v.toInt().toString() : v.toStringAsFixed(1);
 
-  static String _guessUnit(String? name, {required String fallback}) {
+  /// เดายูนิตจากชื่อ (ถ้าเดาไม่ได้ให้เป็น '' เพื่อไม่ใส่ unit เกินจริง)
+  static String _guessUnit(String? name) {
     final n = (name ?? '').toLowerCase();
     if (n.contains('temp') || n.contains('อุณ') || n.contains('celsius')) return '°C';
     if (n.contains('hum') || n.contains('ความชื้น')) return '%';
     if (n.contains('lux') || n.contains('light') || n.contains('แสง')) return 'lux';
-    return fallback;
+    return '';
   }
 }

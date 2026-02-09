@@ -1,31 +1,34 @@
 import 'package:flutter/material.dart';
 
-class DevicesSection extends StatelessWidget {
-  final String label1;
-  final bool isOn1;
-  final VoidCallback? onToggle1;
+import '../../home_view_model.dart';
 
-  final String label2;
-  final bool isOn2;
-  final VoidCallback? onToggle2;
+class DevicesSection extends StatelessWidget {
+  /// Toggles จาก API (ไม่มี fallback)
+  final List<HomeToggleVM> toggles;
+
+  /// ส่ง widgetId กลับไปให้ parent ยิง event
+  final void Function(int widgetId) onToggle;
 
   const DevicesSection({
     super.key,
-    required this.label1,
-    required this.isOn1,
-    required this.onToggle1,
-    required this.label2,
-    required this.isOn2,
-    required this.onToggle2,
+    required this.toggles,
+    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (toggles.isEmpty) return const SizedBox.shrink();
+
     return Column(
       children: [
-        _ToggleTile(label: label1, isOn: isOn1, onToggle: onToggle1),
-        const SizedBox(height: 10),
-        _ToggleTile(label: label2, isOn: isOn2, onToggle: onToggle2),
+        for (int i = 0; i < toggles.length; i++) ...[
+          _ToggleTile(
+            label: toggles[i].label,
+            isOn: toggles[i].isOn,
+            onToggle: () => onToggle(toggles[i].widgetId),
+          ),
+          if (i != toggles.length - 1) const SizedBox(height: 10),
+        ],
       ],
     );
   }
@@ -34,7 +37,7 @@ class DevicesSection extends StatelessWidget {
 class _ToggleTile extends StatelessWidget {
   final String label;
   final bool isOn;
-  final VoidCallback? onToggle;
+  final VoidCallback onToggle;
 
   const _ToggleTile({
     required this.label,
@@ -56,7 +59,7 @@ class _ToggleTile extends StatelessWidget {
           const Spacer(),
           Switch(
             value: isOn,
-            onChanged: onToggle == null ? null : (_) => onToggle!(),
+            onChanged: (_) => onToggle(),
           ),
         ],
       ),

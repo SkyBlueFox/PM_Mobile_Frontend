@@ -27,19 +27,18 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
-  providers: [
-    RepositoryProvider(create: (_) => WidgetRepository(baseUrl: 'http://10.0.2.2:3000')),
-    RepositoryProvider(create: (_) => RoomRepository(baseUrl: 'http://10.0.2.2:3000')),
-  ],
-  child: BlocProvider(
-    create: (context) => DevicesBloc(
-      widgetRepo: context.read<WidgetRepository>(),
-      roomRepo: context.read<RoomRepository>(),
-    )..add(DevicesStarted()),
-    child: const _HomeView(),
-  ),
-);
-
+      providers: [
+        RepositoryProvider(create: (_) => WidgetRepository(baseUrl: 'http://10.0.2.2:3000')),
+        RepositoryProvider(create: (_) => RoomRepository(baseUrl: 'http://10.0.2.2:3000')),
+      ],
+      child: BlocProvider(
+        create: (context) => DevicesBloc(
+          widgetRepo: context.read<WidgetRepository>(),
+          roomRepo: context.read<RoomRepository>(),
+        )..add(DevicesStarted()),
+        child: const _HomeView(),
+      ),
+    );
   }
 }
 
@@ -51,6 +50,7 @@ class _HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<_HomeView> {
+  /// เก็บ “ลำดับ section” (ผู้ใช้ลากสลับได้)
   final List<HomeSection> _order = <HomeSection>[
     HomeSection.sensors,
     HomeSection.devices,
@@ -64,11 +64,25 @@ class _HomeViewState extends State<_HomeView> {
   bool _modeOn = true;
   int _bottomIndex = 0;
 
-  void _onReorder(int oldIndex, int newIndex) {
+  /// Reorder แบบถูกต้องเมื่อ “บาง section ถูกซ่อน”
+  /// - UI แสดงเฉพาะ visibleSections
+  /// - แต่เราต้องอัปเดตลำดับใน _order โดย “แทนที่เฉพาะสมาชิกที่มองเห็น”
+  void _onReorderVisible(List<HomeSection> visible, int oldIndex, int newIndex) {
+    final reordered = List<HomeSection>.from(visible);
+
+    if (newIndex > oldIndex) newIndex -= 1;
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    final visibleSet = reordered.toSet();
+    var qi = 0;
+
     setState(() {
-      if (newIndex > oldIndex) newIndex -= 1;
-      final item = _order.removeAt(oldIndex);
-      _order.insert(newIndex, item);
+      for (var i = 0; i < _order.length; i++) {
+        if (visibleSet.contains(_order[i])) {
+          _order[i] = reordered[qi++];
+        }
+      }
     });
   }
 
@@ -98,15 +112,11 @@ class _HomeViewState extends State<_HomeView> {
             children: [
               const SizedBox(height: 8),
 
-              // Header (ไม่มีการ์ดโซฟาแล้ว)
               Row(
                 children: [
                   const Icon(Icons.home_rounded, color: Color(0xFF3AA7FF), size: 28),
                   const SizedBox(width: 10),
-                  const Text(
-                    'บ้านเกม 1',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
+                  const Text('บ้านเกม 1', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                   const Spacer(),
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert_rounded, color: Colors.black45),
@@ -141,25 +151,40 @@ class _HomeViewState extends State<_HomeView> {
 
               Expanded(
                 child: BlocBuilder<DevicesBloc, DevicesState>(
+                  // ลด rebuild ที่ไม่จำเป็น: สนใจเฉพาะ widget/room/loading/error
+                  buildWhen: (p, c) =>
+                      p.widgets != c.widgets ||
+                      p.selectedRoomId != c.selectedRoomId ||
+                      p.deviceRoomId != c.deviceRoomId ||
+                      p.isLoading != c.isLoading ||
+                      p.error != c.error,
                   builder: (context, st) {
                     final vm = HomeViewModel.fromState(st);
 
-                    // ไม่บล็อก UI (ทำดีไซน์ก่อน)
+                    // ✅ กรอง section ที่มีข้อมูลจริงเท่านั้น
+                    final visibleSections = _order.where((s) => s.hasData(vm)).toList();
+
+                    // ถ้าไม่มีข้อมูลจริงเลย => ไม่ render อะไร (ไม่มีการ์ดว่าง/ข้อความ fallback)
+                    if (visibleSections.isEmpty) {
+                      // จะยังมี header+tabs อยู่ตามปกติ (ตามที่คุณต้องการ)
+                      return const SizedBox.shrink();
+                    }
+
                     return Column(
                       children: [
+                        // Banner ใช้เพื่อบอกสถานะโหลด/ผิดพลาด (ไม่ใช่ fallback ข้อมูล)
                         if (vm.isLoading || vm.error != null)
-                          _Banner(
-                            isLoading: vm.isLoading,
-                            error: vm.error,
-                          ),
+                          _Banner(isLoading: vm.isLoading, error: vm.error),
+
                         Expanded(
                           child: ReorderableListView.builder(
                             padding: const EdgeInsets.only(bottom: 18),
                             buildDefaultDragHandles: false,
-                            itemCount: _order.length,
-                            onReorder: _onReorder,
+                            itemCount: visibleSections.length,
+                            onReorder: (oldIndex, newIndex) =>
+                                _onReorderVisible(visibleSections, oldIndex, newIndex),
                             itemBuilder: (context, i) {
-                              final section = _order[i];
+                              final section = visibleSections[i];
 
                               return Padding(
                                 key: ValueKey('section_${section.name}'),
@@ -169,10 +194,7 @@ class _HomeViewState extends State<_HomeView> {
                                   actionText: section.actionText,
                                   dragHandle: ReorderableDragStartListener(
                                     index: i,
-                                    child: const Icon(
-                                      Icons.drag_indicator_rounded,
-                                      color: Colors.black26,
-                                    ),
+                                    child: const Icon(Icons.drag_indicator_rounded, color: Colors.black26),
                                   ),
                                   child: _buildSection(section, vm),
                                 ),
@@ -192,65 +214,51 @@ class _HomeViewState extends State<_HomeView> {
     );
   }
 
-  Widget _empty(String msg) => Padding(
-  padding: const EdgeInsets.all(12),
-  child: Text(msg, style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w600)),
-);
+  Widget _buildSection(HomeSection section, HomeViewModel vm) {
+    switch (section) {
+      case HomeSection.sensors:
+        // แสดงเท่าที่มี (1..N)
+        return SensorsSection(sensors: vm.sensors);
 
-Widget _buildSection(HomeSection section, HomeViewModel vm) {
-  switch (section) {
-    case HomeSection.sensors:
-      if (vm.sensors.length < 2) return _empty('No sensors from API');
-      final s1 = vm.sensors[0];
-      final s2 = vm.sensors[1];
-      return SensorsSection(
-        aLabel: s1.label, aValue: s1.valueText, aUnit: s1.unit,
-        bLabel: s2.label, bValue: s2.valueText, bUnit: s2.unit,
-      );
+      case HomeSection.devices:
+        // แสดงเท่าที่มี (1..N)
+        return DevicesSection(
+          toggles: vm.toggles,
+          onToggle: (widgetId) =>
+              context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
+        );
 
-    case HomeSection.devices:
-      if (vm.toggles.length < 2) return _empty('No toggles from API');
-      final t1 = vm.toggles[0];
-      final t2 = vm.toggles[1];
-      return DevicesSection(
-        label1: t1.label,
-        isOn1: t1.isOn,
-        onToggle1: t1.widgetId == null ? null : () => context.read<DevicesBloc>().add(WidgetToggled(t1.widgetId!)),
-        label2: t2.label,
-        isOn2: t2.isOn,
-        onToggle2: t2.widgetId == null ? null : () => context.read<DevicesBloc>().add(WidgetToggled(t2.widgetId!)),
-      );
+      case HomeSection.color:
+        // section นี้ถูกกรองแล้วว่า “มี widgetId จริง”
+        final id = vm.colorAdjust.widgetId!;
+        return ColorSection(
+          value: _colorValue,
+          onChanged: (v) {
+            setState(() => _colorValue = v);
+            context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
+          },
+        );
 
-    case HomeSection.color:
-      // ถ้าไม่มี widgetId ก็ยังขยับสไลเดอร์ได้ แต่ไม่ยิง event
-      return ColorSection(
-        value: _colorValue,
-        onChanged: (v) {
-          setState(() => _colorValue = v);
-          final id = vm.colorAdjust.widgetId;
-          if (id != null) context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
-        },
-      );
+      case HomeSection.brightness:
+        final id = vm.brightnessAdjust.widgetId!;
+        return BrightnessSection(
+          value: _brightnessValue,
+          onChanged: (v) {
+            setState(() => _brightnessValue = v);
+            context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
+          },
+        );
 
-    case HomeSection.brightness:
-      return BrightnessSection(
-        value: _brightnessValue,
-        onChanged: (v) {
-          setState(() => _brightnessValue = v);
-          final id = vm.brightnessAdjust.widgetId;
-          if (id != null) context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
-        },
-      );
-
-    case HomeSection.extra:
-      return ExtraSection(
-        modeOn: _modeOn,
-        onModeChanged: (v) => setState(() => _modeOn = v),
-        onMinus: () {},
-        onPlus: () {},
-      );
+      case HomeSection.extra:
+        // ปัจจุบัน hasExtra=false => ไม่ควรถูกเรียก
+        return ExtraSection(
+          modeOn: _modeOn,
+          onModeChanged: (v) => setState(() => _modeOn = v),
+          onMinus: () {},
+          onPlus: () {},
+        );
+    }
   }
-}
 }
 
 class _Banner extends StatelessWidget {
@@ -265,8 +273,8 @@ class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = isLoading
-        ? 'กำลังโหลดข้อมูล (โหมดทำดีไซน์)'
-        : 'เชื่อมต่อไม่สำเร็จ (โหมดทำดีไซน์)';
+        ? 'กำลังโหลดข้อมูล'
+        : 'เชื่อมต่อไม่สำเร็จ';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

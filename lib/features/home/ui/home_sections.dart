@@ -1,3 +1,5 @@
+import 'home_view_model.dart';
+
 enum HomeSection {
   sensors,
   devices,
@@ -31,6 +33,23 @@ extension HomeSectionX on HomeSection {
       case HomeSection.brightness:
       case HomeSection.extra:
         return '';
+    }
+  }
+
+  /// จุดเดียวที่กำหนดว่า section ไหน “ควรถูก render”
+  /// หลัก: ถ้าไม่มีข้อมูลจริง => return false (ไม่แสดงการ์ดว่าง)
+  bool hasData(HomeViewModel vm) {
+    switch (this) {
+      case HomeSection.sensors:
+        return vm.hasSensors;
+      case HomeSection.devices:
+        return vm.hasDevices;
+      case HomeSection.color:
+        return vm.hasColor;
+      case HomeSection.brightness:
+        return vm.hasBrightness;
+      case HomeSection.extra:
+        return vm.hasExtra;
     }
   }
 }

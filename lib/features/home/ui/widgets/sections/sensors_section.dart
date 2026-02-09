@@ -1,37 +1,49 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-class SensorsSection extends StatelessWidget {
-  final String aLabel;
-  final String aValue;
-  final String aUnit;
+import '../../home_view_model.dart';
 
-  final String bLabel;
-  final String bValue;
-  final String bUnit;
+class SensorsSection extends StatelessWidget {
+  /// Sensors จาก API (ไม่มี fallback)
+  final List<HomeSensorVM> sensors;
 
   const SensorsSection({
     super.key,
-    required this.aLabel,
-    required this.aValue,
-    required this.aUnit,
-    required this.bLabel,
-    required this.bValue,
-    required this.bUnit,
+    required this.sensors,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (sensors.isEmpty) return const SizedBox.shrink();
+
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(child: _MiniValueCard(label: aLabel, value: aValue, unit: aUnit)),
-            const SizedBox(width: 12),
-            Expanded(child: _MiniValueCard(label: bLabel, value: bValue, unit: bUnit)),
-          ],
+        // แสดงเป็น 2 คอลัมน์แบบดีไซน์ ถ้ามี 1 ตัวจะเต็มแถว
+        LayoutBuilder(
+          builder: (context, c) {
+            final width = c.maxWidth;
+            final cardWidth = (sensors.length == 1) ? width : (width - 12) / 2;
+
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: sensors.map((s) {
+                final unitPart = s.unit.isEmpty ? '' : ' ${s.unit}';
+                return SizedBox(
+                  width: cardWidth,
+                  child: _MiniValueCard(
+                    label: s.label,
+                    valueText: '${s.valueText}$unitPart',
+                  ),
+                );
+              }).toList(),
+            );
+          },
         ),
+
         const SizedBox(height: 12),
+
+        // กราฟเป็น UI แสดงผล (placeholder) — ไม่อ้างข้อมูลเกินจริง
         SizedBox(
           height: 140,
           width: double.infinity,
@@ -44,13 +56,11 @@ class SensorsSection extends StatelessWidget {
 
 class _MiniValueCard extends StatelessWidget {
   final String label;
-  final String value;
-  final String unit;
+  final String valueText;
 
   const _MiniValueCard({
     required this.label,
-    required this.value,
-    required this.unit,
+    required this.valueText,
   });
 
   @override
@@ -73,7 +83,7 @@ class _MiniValueCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '$value $unit',
+            valueText,
             style: const TextStyle(
               color: Color(0xFF3AA7FF),
               fontWeight: FontWeight.w800,
