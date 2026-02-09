@@ -7,8 +7,8 @@ import '../../auth/bloc/auth_event.dart';
 import '../bloc/devices_bloc.dart';
 import '../bloc/devices_event.dart';
 import '../bloc/devices_state.dart';
-import '../data/device_repository.dart';
-import '../data/mqtt/mqtt_service.dart';
+import '../data/room_repository.dart';
+import '../data/widget_repository.dart';
 
 import 'home_sections.dart';
 import 'home_view_model.dart';
@@ -26,19 +26,20 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) {
-        final mqtt = MqttService(
-          broker: 'YOUR_BROKER_HOST', // TODO: ใส่ host จริงทีหลัง
-          port: 1883,
-          clientId: 'pm-mobile-${DateTime.now().millisecondsSinceEpoch}',
-        );
+    return MultiRepositoryProvider(
+  providers: [
+    RepositoryProvider(create: (_) => WidgetRepository(baseUrl: 'http://10.0.2.2:3000')),
+    RepositoryProvider(create: (_) => RoomRepository(baseUrl: 'http://10.0.2.2:3000')),
+  ],
+  child: BlocProvider(
+    create: (context) => DevicesBloc(
+      widgetRepo: context.read<WidgetRepository>(),
+      roomRepo: context.read<RoomRepository>(),
+    )..add(DevicesStarted()),
+    child: const _HomeView(),
+  ),
+);
 
-        final repo = DevicesRepository(mqtt: mqtt);
-        return DevicesBloc(repo: repo)..add(const DevicesStarted());
-      },
-      child: const _HomeView(),
-    );
   }
 }
 
@@ -125,7 +126,6 @@ class _HomeViewState extends State<_HomeView> {
                 buildWhen: (p, c) =>
                     p.selectedRoomId != c.selectedRoomId ||
                     p.rooms != c.rooms ||
-                    p.devices != c.devices ||
                     p.deviceRoomId != c.deviceRoomId,
                 builder: (context, st) {
                   return TopTab(
@@ -192,69 +192,65 @@ class _HomeViewState extends State<_HomeView> {
     );
   }
 
-  Widget _buildSection(HomeSection section, HomeViewModel vm) {
-    switch (section) {
-      case HomeSection.sensors:
-        final s1 = vm.sensors[0];
-        final s2 = vm.sensors[1];
-        return SensorsSection(
-          aLabel: s1.label,
-          aValue: s1.valueText,
-          aUnit: s1.unit,
-          bLabel: s2.label,
-          bValue: s2.valueText,
-          bUnit: s2.unit,
-        );
+  Widget _empty(String msg) => Padding(
+  padding: const EdgeInsets.all(12),
+  child: Text(msg, style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w600)),
+);
 
-      case HomeSection.devices:
-        final t1 = vm.toggles[0];
-        final t2 = vm.toggles[1];
-        return DevicesSection(
-          label1: t1.label,
-          isOn1: t1.isOn,
-          onToggle1: t1.widgetId == null
-              ? null
-              : () => context.read<DevicesBloc>().add(WidgetToggled(t1.widgetId!)),
-          label2: t2.label,
-          isOn2: t2.isOn,
-          onToggle2: t2.widgetId == null
-              ? null
-              : () => context.read<DevicesBloc>().add(WidgetToggled(t2.widgetId!)),
-        );
+Widget _buildSection(HomeSection section, HomeViewModel vm) {
+  switch (section) {
+    case HomeSection.sensors:
+      if (vm.sensors.length < 2) return _empty('No sensors from API');
+      final s1 = vm.sensors[0];
+      final s2 = vm.sensors[1];
+      return SensorsSection(
+        aLabel: s1.label, aValue: s1.valueText, aUnit: s1.unit,
+        bLabel: s2.label, bValue: s2.valueText, bUnit: s2.unit,
+      );
 
-      case HomeSection.color:
-        return ColorSection(
-          value: _colorValue,
-          onChanged: (v) {
-            setState(() => _colorValue = v);
-            final id = vm.colorAdjust.widgetId;
-            if (id != null) {
-              context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
-            }
-          },
-        );
+    case HomeSection.devices:
+      if (vm.toggles.length < 2) return _empty('No toggles from API');
+      final t1 = vm.toggles[0];
+      final t2 = vm.toggles[1];
+      return DevicesSection(
+        label1: t1.label,
+        isOn1: t1.isOn,
+        onToggle1: t1.widgetId == null ? null : () => context.read<DevicesBloc>().add(WidgetToggled(t1.widgetId!)),
+        label2: t2.label,
+        isOn2: t2.isOn,
+        onToggle2: t2.widgetId == null ? null : () => context.read<DevicesBloc>().add(WidgetToggled(t2.widgetId!)),
+      );
 
-      case HomeSection.brightness:
-        return BrightnessSection(
-          value: _brightnessValue,
-          onChanged: (v) {
-            setState(() => _brightnessValue = v);
-            final id = vm.brightnessAdjust.widgetId;
-            if (id != null) {
-              context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
-            }
-          },
-        );
+    case HomeSection.color:
+      // ถ้าไม่มี widgetId ก็ยังขยับสไลเดอร์ได้ แต่ไม่ยิง event
+      return ColorSection(
+        value: _colorValue,
+        onChanged: (v) {
+          setState(() => _colorValue = v);
+          final id = vm.colorAdjust.widgetId;
+          if (id != null) context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
+        },
+      );
 
-      case HomeSection.extra:
-        return ExtraSection(
-          modeOn: _modeOn,
-          onModeChanged: (v) => setState(() => _modeOn = v),
-          onMinus: () {},
-          onPlus: () {},
-        );
-    }
+    case HomeSection.brightness:
+      return BrightnessSection(
+        value: _brightnessValue,
+        onChanged: (v) {
+          setState(() => _brightnessValue = v);
+          final id = vm.brightnessAdjust.widgetId;
+          if (id != null) context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
+        },
+      );
+
+    case HomeSection.extra:
+      return ExtraSection(
+        modeOn: _modeOn,
+        onModeChanged: (v) => setState(() => _modeOn = v),
+        onMinus: () {},
+        onPlus: () {},
+      );
   }
+}
 }
 
 class _Banner extends StatelessWidget {

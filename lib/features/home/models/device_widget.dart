@@ -47,7 +47,7 @@ class DeviceWidget {
       capability: Capability.fromJson(json['capability'] as Map<String, dynamic>),
       status: json['widget_status'] as String,
       order: json['widget_order'] as int,
-      value: (json['widget_value'] as num).toDouble(),
+      value: (json['value'] as num).toDouble(),
     );
   }
 }

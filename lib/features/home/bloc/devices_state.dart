@@ -1,4 +1,3 @@
-import '../models/device.dart';
 import '../models/device_widget.dart';
 import '../models/room.dart';
 
@@ -11,8 +10,7 @@ class DevicesState {
   /// null means "All"
   final int? selectedRoomId;
 
-  /// devices from backend
-  final List<Device> devices;
+  final bool selectedRoomIdSet;
 
   /// widgets from backend
   final List<DeviceWidget> widgets;
@@ -26,7 +24,7 @@ class DevicesState {
     this.isLoading = false,
     this.rooms = const [],
     this.selectedRoomId,
-    this.devices = const [],
+    this.selectedRoomIdSet = false,
     this.widgets = const [],
     this.deviceRoomId = const {},
     this.error,
@@ -37,7 +35,6 @@ class DevicesState {
     List<Room>? rooms,
     int? selectedRoomId,            // can be null
     bool selectedRoomIdSet = false, // tells copyWith “I want to update it”
-    List<Device>? devices,
     List<DeviceWidget>? widgets,
     Map<int, int>? deviceRoomId,
     String? error,
@@ -46,18 +43,11 @@ class DevicesState {
       isLoading: isLoading ?? this.isLoading,
       rooms: rooms ?? this.rooms,
       selectedRoomId: selectedRoomIdSet ? selectedRoomId : this.selectedRoomId,
-      devices: devices ?? this.devices,
+      selectedRoomIdSet: selectedRoomIdSet ? true : this.selectedRoomIdSet,
       widgets: widgets ?? this.widgets,
       deviceRoomId: deviceRoomId ?? this.deviceRoomId,
       error: error,
     );
-  }
-
-  List<Device> get visibleDevices {
-    final rid = selectedRoomId;
-    if (rid == null) return devices;
-
-    return devices.where((d) => deviceRoomId[d.id] == rid).toList();
   }
 
   /// One card per widget
@@ -79,8 +69,6 @@ class DevicesState {
 
     return filtered;
   }
-
-  int get deviceCount => visibleDevices.length;
 
   Room? get selectedRoom {
     final rid = selectedRoomId;

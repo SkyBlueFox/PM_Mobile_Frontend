@@ -53,67 +53,101 @@ class HomeViewModel {
     required this.error,
   });
 
+  // factory HomeViewModel.fromState(DevicesState st) {
+  //   final widgets = st.visibleWidgets;
+
+  //   final infos = widgets.where((w) => w.capability.id == 3).toList();
+  //   final toggles = widgets.where((w) => w.capability.id == 1).toList();
+  //   final adjusts = widgets.where((w) => w.capability.id == 2).toList();
+
+  //   final a = infos.isNotEmpty ? infos[0] : null;
+  //   final b = infos.length > 1 ? infos[1] : null;
+
+  //   final led1 = toggles.isNotEmpty ? toggles[0] : null;
+  //   final led2 = toggles.length > 1 ? toggles[1] : null;
+
+  //   final adjustColor = adjusts.isNotEmpty ? adjusts[0] : null;
+  //   final adjustBrightness = adjusts.length > 1 ? adjusts[1] : null;
+
+  //   return HomeViewModel(
+  //     sensors: [
+  //       _sensorFrom(a, fallbackLabel: 'Sensor A'),
+  //       _sensorFrom(b, fallbackLabel: 'Sensor B', fallbackUnit: '°C'),
+  //     ],
+  //     toggles: [
+  //       _toggleFrom(led1, fallbackLabel: 'LED 1', fallbackOn: true),
+  //       _toggleFrom(led2, fallbackLabel: 'LED 2', fallbackOn: false),
+  //     ],
+  //     colorAdjust: HomeAdjustVM(widgetId: adjustColor?.widgetId),
+  //     brightnessAdjust: HomeAdjustVM(widgetId: adjustBrightness?.widgetId),
+  //     isLoading: st.isLoading,
+  //     error: st.error,
+  //   );
+  // }
+
+  // static HomeSensorVM _sensorFrom(
+  //   DeviceWidget? w, {
+  //   required String fallbackLabel,
+  //   String fallbackUnit = 'lux',
+  // }) {
+  //   if (w == null) {
+  //     return HomeSensorVM(label: fallbackLabel, valueText: '26', unit: fallbackUnit);
+  //   }
+  //   return HomeSensorVM(
+  //     label: w.device.name,
+  //     valueText: _fmt(w.value),
+  //     unit: _guessUnit(w.device.name, fallback: fallbackUnit),
+  //   );
+  // }
+
+  // static HomeToggleVM _toggleFrom(
+  //   DeviceWidget? w, {
+  //   required String fallbackLabel,
+  //   required bool fallbackOn,
+  // }) {
+  //   if (w == null) {
+  //     return HomeToggleVM(label: fallbackLabel, isOn: fallbackOn, widgetId: null);
+  //   }
+  //   return HomeToggleVM(
+  //     label: w.device.name,
+  //     isOn: w.value >= 1,
+  //     widgetId: w.widgetId,
+  //   );
+  // }
+
   factory HomeViewModel.fromState(DevicesState st) {
-    final widgets = st.visibleWidgets;
+  final widgets = st.visibleWidgets;
 
-    final infos = widgets.where((w) => w.capability.id == 3).toList();
-    final toggles = widgets.where((w) => w.capability.id == 1).toList();
-    final adjusts = widgets.where((w) => w.capability.id == 2).toList();
+  final infos = widgets.where((w) => w.capability.id == 3).toList();
+  final togglesW = widgets.where((w) => w.capability.id == 1).toList();
+  final adjusts = widgets.where((w) => w.capability.id == 2).toList();
 
-    final a = infos.isNotEmpty ? infos[0] : null;
-    final b = infos.length > 1 ? infos[1] : null;
+  return HomeViewModel(
+    sensors: infos.map(_sensorFromNoFallback).toList(),
+    toggles: togglesW.map(_toggleFromNoFallback).toList(),
+    colorAdjust: HomeAdjustVM(widgetId: adjusts.isNotEmpty ? adjusts[0].widgetId : null),
+    brightnessAdjust: HomeAdjustVM(widgetId: adjusts.length > 1 ? adjusts[1].widgetId : null),
+    isLoading: st.isLoading,
+    error: st.error,
+  );
+}
 
-    final led1 = toggles.isNotEmpty ? toggles[0] : null;
-    final led2 = toggles.length > 1 ? toggles[1] : null;
+static HomeSensorVM _sensorFromNoFallback(DeviceWidget w) {
+  return HomeSensorVM(
+    label: w.device.name,
+    valueText: _fmt(w.value),
+    unit: _guessUnit(w.device.name, fallback: ''),
+  );
+}
 
-    final adjustColor = adjusts.isNotEmpty ? adjusts[0] : null;
-    final adjustBrightness = adjusts.length > 1 ? adjusts[1] : null;
+static HomeToggleVM _toggleFromNoFallback(DeviceWidget w) {
+  return HomeToggleVM(
+    label: w.device.name,
+    isOn: w.value >= 1,
+    widgetId: w.widgetId,
+  );
+}
 
-    return HomeViewModel(
-      sensors: [
-        _sensorFrom(a, fallbackLabel: 'Sensor A'),
-        _sensorFrom(b, fallbackLabel: 'Sensor B', fallbackUnit: '°C'),
-      ],
-      toggles: [
-        _toggleFrom(led1, fallbackLabel: 'LED 1', fallbackOn: true),
-        _toggleFrom(led2, fallbackLabel: 'LED 2', fallbackOn: false),
-      ],
-      colorAdjust: HomeAdjustVM(widgetId: adjustColor?.widgetId),
-      brightnessAdjust: HomeAdjustVM(widgetId: adjustBrightness?.widgetId),
-      isLoading: st.isLoading,
-      error: st.error,
-    );
-  }
-
-  static HomeSensorVM _sensorFrom(
-    DeviceWidget? w, {
-    required String fallbackLabel,
-    String fallbackUnit = 'lux',
-  }) {
-    if (w == null) {
-      return HomeSensorVM(label: fallbackLabel, valueText: '26', unit: fallbackUnit);
-    }
-    return HomeSensorVM(
-      label: w.device.name,
-      valueText: _fmt(w.value),
-      unit: _guessUnit(w.device.name, fallback: fallbackUnit),
-    );
-  }
-
-  static HomeToggleVM _toggleFrom(
-    DeviceWidget? w, {
-    required String fallbackLabel,
-    required bool fallbackOn,
-  }) {
-    if (w == null) {
-      return HomeToggleVM(label: fallbackLabel, isOn: fallbackOn, widgetId: null);
-    }
-    return HomeToggleVM(
-      label: w.device.name,
-      isOn: w.value >= 1,
-      widgetId: w.widgetId,
-    );
-  }
 
   static String _fmt(double v) =>
       (v == v.roundToDouble()) ? v.toInt().toString() : v.toStringAsFixed(1);
