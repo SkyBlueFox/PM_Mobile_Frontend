@@ -25,7 +25,7 @@ class WidgetRepository {
 
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
     final List list = decoded['data'] as List;
-    
+
     return list
         .map((e) => DeviceWidget.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -65,6 +65,29 @@ class WidgetRepository {
       throw Exception('Failed to create widget');
     }
   }
+
+  Future<void> sendWidgetCommand({
+    required int widgetId,
+    required String capabilityId,
+    required int value,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/widgets/$widgetId/command');
+
+    final res = await _client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'capability_id': capabilityId,
+        'value': value,
+      }),
+    );
+    if (res.statusCode != 202) {
+      throw Exception(
+        'Command failed (id=$widgetId, status=${res.statusCode}, body=${res.body})',
+      );
+    }
+  }
+
 
   /// PUT /api/widgets/{widget_id}
   Future<void> updateWidget({

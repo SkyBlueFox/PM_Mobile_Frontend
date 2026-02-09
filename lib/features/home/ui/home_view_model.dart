@@ -88,7 +88,7 @@ class HomeViewModel {
   static HomeSensorVM _sensorFrom(DeviceWidget w) {
     return HomeSensorVM(
       label: w.device.name,
-      valueText: _fmt(w.value),
+      valueText: w.value.toString(),
       unit: _guessUnit(w.device.name),
     );
   }

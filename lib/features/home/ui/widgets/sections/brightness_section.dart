@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BrightnessSection extends StatelessWidget {
-  final double value;
+  final int value;
   final ValueChanged<double> onChanged;
 
   const BrightnessSection({

@@ -72,8 +72,8 @@ class _HomeViewState extends State<_HomeView> {
   ];
 
   // ค่า UI ของสไลเดอร์ (ยังทำงานได้เฉพาะเมื่อมี widgetId จริง)
-  double _colorValue = 50;
-  double _brightnessValue = 60;
+  int _colorValue = 50;
+  int _brightnessValue = 60;
 
   // ค่า UI ของ extra (ตอนนี้ hasExtra=false จึงปกติไม่ถูกแสดง)
   bool _modeOn = true;
@@ -272,8 +272,8 @@ class _HomeViewState extends State<_HomeView> {
         return ColorSection(
           value: _colorValue,
           onChanged: (v) {
-            setState(() => _colorValue = v);
-            context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
+            setState(() => _colorValue = v.toInt());
+            context.read<DevicesBloc>().add(WidgetValueChanged(id, v.toInt()));
           },
         );
 
@@ -283,8 +283,8 @@ class _HomeViewState extends State<_HomeView> {
         return BrightnessSection(
           value: _brightnessValue,
           onChanged: (v) {
-            setState(() => _brightnessValue = v);
-            context.read<DevicesBloc>().add(WidgetValueChanged(id, v));
+            setState(() => _brightnessValue = v.toInt());
+            context.read<DevicesBloc>().add(WidgetValueChanged(id, v.toInt()));
           },
         );
 

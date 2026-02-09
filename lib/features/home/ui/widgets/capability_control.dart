@@ -5,7 +5,7 @@ import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_event.dart';
 import '../../models/device_widget.dart';
 import 'info_row.dart';
-import 'slider_row.dart';
+import 'adjust_row.dart';
 import 'toggle_row.dart';
 
 class CapabilityControl extends StatefulWidget {
@@ -40,7 +40,7 @@ class _CapabilityControlState extends State<CapabilityControl> {
         );
 
       case 2: // adjust
-        return SliderRow(
+        return AdjustRow(
           label: 'Adjust',
           value: widgetData.value,
           min: 0,
@@ -58,7 +58,7 @@ class _CapabilityControlState extends State<CapabilityControl> {
       case 3: // info (read-only)
         return InfoRow(
           label: 'Info',
-          valueText: _formatInfo(widgetData.value),
+          valueText: widgetData.value.toString(),
           enabled: enabled,
         );
 
@@ -68,10 +68,5 @@ class _CapabilityControlState extends State<CapabilityControl> {
           style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
         );
     }
-  }
-
-  String _formatInfo(double v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toStringAsFixed(1);
   }
 }

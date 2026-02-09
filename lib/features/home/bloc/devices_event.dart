@@ -19,7 +19,7 @@ class WidgetToggled extends DeviceEvent {
 
 class WidgetValueChanged extends DeviceEvent {
   final int widgetId;
-  final double value;
+  final int value;
   const WidgetValueChanged(this.widgetId, this.value);
 }
 
@@ -30,6 +30,6 @@ class DevicesAllToggled extends DeviceEvent {
 
 class WidgetUpdateReceived extends DeviceEvent {
   final int widgetId;
-  final double value;
+  final int value;
   const WidgetUpdateReceived(this.widgetId, this.value);
 }

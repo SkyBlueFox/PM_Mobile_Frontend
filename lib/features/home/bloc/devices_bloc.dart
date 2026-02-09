@@ -82,49 +82,80 @@ class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
     }
   }
 
-  void _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) {
-    final updated = state.widgets.map((w) {
+  Future<void> _onWidgetToggled(
+    WidgetToggled event,
+    Emitter<DevicesState> emit,
+  ) async {
+    final before = state.widgets;
+
+    // optimistic update
+    final updated = before.map((w) {
       if (w.widgetId != event.widgetId) return w;
       if (w.capability.id != 1) return w;
 
-      final newValue = w.value >= 1 ? 0.0 : 1.0;
+      final newValue = w.value >= 1 ? 0 : 1;
       return w.copyWith(value: newValue);
     }).toList();
 
-    emit(state.copyWith(widgets: updated));
+    emit(state.copyWith(widgets: updated, error: null));
 
-    // OPTIONAL later: call backend
-    // repo.setToggle(event.widgetId, newValue);
-    // then refresh from backend if needed
+    try {
+      final w = updated.firstWhere((x) => x.widgetId == event.widgetId);
+      await widgetRepo.sendWidgetCommand(
+        widgetId: w.widgetId,
+        capabilityId: w.capability.type.toString(),
+        value: w.value,
+      );
+    } catch (e) {
+      // revert if API fails
+      emit(state.copyWith(widgets: before, error: 'สั่งงานไม่สำเร็จ: $e'));
+    }
   }
 
-  void _onWidgetValueChanged(WidgetValueChanged event, Emitter<DevicesState> emit) {
-    final deviceId = _deviceIdOf(event.widgetId);
+  Future<void> _onWidgetValueChanged(
+    WidgetValueChanged event,
+    Emitter<DevicesState> emit,
+  ) async {
+    final before = state.widgets;
 
+    // update UI
     final updated = state.widgets.map((w) {
-      if (w.device.id != deviceId) return w;
-
       if (w.widgetId == event.widgetId && w.capability.id == 2) {
         return w.copyWith(value: event.value);
       }
 
-      // info mirrors slider (your rule)
+      // info mirrors slider
       if (w.capability.id == 3) {
-        return w.copyWith(value: event.value);
+        // mirror only if same device as the adjust widget
+        final deviceId = _deviceIdOf(event.widgetId);
+        if (w.device.id == deviceId) return w.copyWith(value: event.value);
       }
 
       return w;
     }).toList();
 
-    emit(state.copyWith(widgets: updated));
+    emit(state.copyWith(widgets: updated, error: null));
 
-    // OPTIONAL later: call backend
-    // repo.setAdjust(event.widgetId, event.value);
+    // send command
+    try {
+      final w = state.widgets.firstWhere(
+        (w) => w.widgetId == event.widgetId,
+      );
+
+      await widgetRepo.sendWidgetCommand(
+        widgetId: event.widgetId,
+        capabilityId: w.capability.type.toString(),
+        value: event.value,
+      );
+    } catch (e) {
+      // revert if API fails
+      emit(state.copyWith(widgets: before, error: 'ปรับค่าไม่สำเร็จ: $e'));
+    }
   }
 
   void _onAllToggled(DevicesAllToggled event, Emitter<DevicesState> emit) {
     final rid = state.selectedRoomId;
-    final turnOnValue = event.turnOn ? 1.0 : 0.0;
+    final turnOnValue = event.turnOn ? 1 : 0;
 
     final updatedWidgets = state.widgets.map((w) {
       final inRoom = rid == null || state.deviceRoomId[w.device.id] == rid;

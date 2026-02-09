@@ -8,7 +8,7 @@ class DeviceWidget {
 
   final String status; // include / exclude
   final int order;
-  final double value;
+  final int value;
 
   const DeviceWidget({
     required this.widgetId,
@@ -28,7 +28,7 @@ class DeviceWidget {
     Capability? capability,
     String? status,
     int? order,
-    double? value,
+    int? value,
   }) {
     return DeviceWidget(
       widgetId: widgetId ?? this.widgetId,
@@ -47,7 +47,7 @@ class DeviceWidget {
       capability: Capability.fromJson(json['capability'] as Map<String, dynamic>),
       status: json['widget_status'] as String,
       order: json['widget_order'] as int,
-      value: (json['value'] as num).toDouble(),
+      value: json['value'] as int,
     );
   }
 }

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class SliderRow extends StatelessWidget {
+class AdjustRow extends StatelessWidget {
   final String label;
-  final double value;
-  final double min;
-  final double max;
+  final int value;
+  final int min;
+  final int max;
   final bool enabled;
-  final ValueChanged<double>? onChanged;
+  final ValueChanged<int>? onChanged;
 
-  const SliderRow({
+  const AdjustRow({
     super.key,
     required this.label,
     required this.value,
@@ -28,9 +28,9 @@ class SliderRow extends StatelessWidget {
         Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
         Slider(
           value: v,
-          min: min,
-          max: max,
-          onChanged: enabled ? onChanged : null,
+          min: min.toDouble(),
+          max: max.toDouble(),
+          onChanged: enabled ? (value) => onChanged!(value.toInt()) : null,
         ),
       ],
     );
