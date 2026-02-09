@@ -52,22 +52,17 @@ class DevicesState {
 
   /// One card per widget
   List<DeviceWidget> get visibleWidgets {
-    final rid = selectedRoomId;
+    // If widgets are already fetched by room, DO NOT filter by deviceRoomId.
+    // Just filter by status (if you want to hide inactive).
+    final base = widgets.where((w) => w.status != 'inactive').toList();
 
-    final base = widgets.where((w) => w.status == 'include');
-
-    final filtered = rid == null
-        ? base.toList()
-        : base.where((w) => deviceRoomId[w.device.id] == rid).toList();
-
-    // Stable sorting: by device id then order (helps when many widgets share same order)
-    filtered.sort((a, b) {
+    base.sort((a, b) {
       final did = a.device.id.compareTo(b.device.id);
       if (did != 0) return did;
       return a.order.compareTo(b.order);
     });
 
-    return filtered;
+    return base;
   }
 
   Room? get selectedRoom {

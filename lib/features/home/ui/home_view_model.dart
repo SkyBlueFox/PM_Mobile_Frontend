@@ -36,7 +36,7 @@ class HomeAdjustVM {
 }
 
 /// แปลง DevicesState -> ข้อมูลที่ UI ต้องใช้
-/// หลักการ:
+/// หลักการ: 
 /// - ไม่สร้าง placeholder/fallback
 /// - ถ้าไม่มีข้อมูลจริง -> list ว่าง / widgetId null -> แล้วให้ UI “ไม่ render section”
 class HomeViewModel {

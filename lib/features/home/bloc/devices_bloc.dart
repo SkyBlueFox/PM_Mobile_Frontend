@@ -49,11 +49,37 @@ class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
     }
   }
 
-  void _onRoomChanged(DevicesRoomChanged event, Emitter<DevicesState> emit) {
+  Future<void> _onRoomChanged(
+    DevicesRoomChanged event,
+    Emitter<DevicesState> emit,
+  ) async {
+    // update selected tab immediately
     emit(state.copyWith(
       selectedRoomId: event.roomId,
       selectedRoomIdSet: true,
+      isLoading: true,
+      error: null,
     ));
+
+    try {
+      final int? roomId = event.roomId;
+
+      // All tab -> load global widgets
+      final widgets = roomId == null
+          ? await widgetRepo.fetchWidgets()
+          : await roomRepo.fetchWidgetsByRoomId(roomId);
+
+      emit(state.copyWith(
+        isLoading: false,
+        widgets: widgets,
+        error: null,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        isLoading: false,
+        error: 'โหลดข้อมูลไม่สำเร็จ: $e',
+      ));
+    }
   }
 
   void _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) {
