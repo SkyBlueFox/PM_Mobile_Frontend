@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
@@ -35,10 +36,10 @@ class HomePage extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider(
-          create: (_) => WidgetRepository(baseUrl: 'http://10.0.2.2:3000'),
+          create: (_) => WidgetRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
         ),
         RepositoryProvider(
-          create: (_) => RoomRepository(baseUrl: 'http://10.0.2.2:3000'),
+          create: (_) => RoomRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
         ),
       ],
       child: BlocProvider(
@@ -70,10 +71,6 @@ class _HomeViewState extends State<_HomeView> {
     HomeSection.brightness,
     HomeSection.extra,
   ];
-
-  // ค่า UI ของสไลเดอร์ (ยังทำงานได้เฉพาะเมื่อมี widgetId จริง)
-  int _colorValue = 50;
-  int _brightnessValue = 60;
 
   // ค่า UI ของ extra (ตอนนี้ hasExtra=false จึงปกติไม่ถูกแสดง)
   bool _modeOn = true;
@@ -160,8 +157,7 @@ class _HomeViewState extends State<_HomeView> {
               BlocBuilder<DevicesBloc, DevicesState>(
                 buildWhen: (p, c) =>
                     p.selectedRoomId != c.selectedRoomId ||
-                    p.rooms != c.rooms ||
-                    p.deviceRoomId != c.deviceRoomId,
+                    p.rooms != c.rooms,
                 builder: (context, st) {
                   return TopTab(
                     rooms: st.rooms,
@@ -182,7 +178,6 @@ class _HomeViewState extends State<_HomeView> {
                   buildWhen: (p, c) =>
                       p.widgets != c.widgets ||
                       p.selectedRoomId != c.selectedRoomId ||
-                      p.deviceRoomId != c.deviceRoomId ||
                       p.isLoading != c.isLoading ||
                       p.error != c.error,
                   builder: (context, st) {
@@ -270,9 +265,8 @@ class _HomeViewState extends State<_HomeView> {
         // section นี้ถูกกรองแล้วว่า “มี widgetId จริง”
         final id = vm.colorAdjust.widgetId!;
         return ColorSection(
-          value: _colorValue,
+          value: vm.colorAdjust.value,
           onChanged: (v) {
-            setState(() => _colorValue = v.toInt());
             context.read<DevicesBloc>().add(WidgetValueChanged(id, v.toInt()));
           },
         );
@@ -281,9 +275,8 @@ class _HomeViewState extends State<_HomeView> {
         // section นี้ถูกกรองแล้วว่า “มี widgetId จริง”
         final id = vm.brightnessAdjust.widgetId!;
         return BrightnessSection(
-          value: _brightnessValue,
+          value: vm.brightnessAdjust.value,
           onChanged: (v) {
-            setState(() => _brightnessValue = v.toInt());
             context.read<DevicesBloc>().add(WidgetValueChanged(id, v.toInt()));
           },
         );

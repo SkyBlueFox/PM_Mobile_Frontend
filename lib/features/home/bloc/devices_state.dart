@@ -15,9 +15,6 @@ class DevicesState {
   /// widgets from backend
   final List<DeviceWidget> widgets;
 
-  /// deviceId(int) -> roomId(int)
-  final Map<int, int> deviceRoomId;
-
   final String? error;
 
   const DevicesState({
@@ -26,7 +23,6 @@ class DevicesState {
     this.selectedRoomId,
     this.selectedRoomIdSet = false,
     this.widgets = const [],
-    this.deviceRoomId = const {},
     this.error,
   });
 
@@ -45,7 +41,6 @@ class DevicesState {
       selectedRoomId: selectedRoomIdSet ? selectedRoomId : this.selectedRoomId,
       selectedRoomIdSet: selectedRoomIdSet ? true : this.selectedRoomIdSet,
       widgets: widgets ?? this.widgets,
-      deviceRoomId: deviceRoomId ?? this.deviceRoomId,
       error: error,
     );
   }

@@ -24,22 +24,13 @@ class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
     try {
       // optional: load all include widgets (GET /api/widgets)
       final widgets = await widgetRepo.fetchWidgets();
-      print('Room Fetching started...');
       final rooms = await roomRepo.fetchRooms();
-      print('Rooms loaded: ${rooms.length}');
 
-      final deviceRoomId = <int, int>{
-        66: 1,
-        67: 1,
-        68: 2,
-        70: 1,
-      };
 
       emit(state.copyWith(
         isLoading: false,
         widgets: widgets,
         rooms: rooms,
-        deviceRoomId: deviceRoomId,
         selectedRoomId: null,
         selectedRoomIdSet: true,
         error: null,
@@ -158,7 +149,7 @@ class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
     final turnOnValue = event.turnOn ? 1 : 0;
 
     final updatedWidgets = state.widgets.map((w) {
-      final inRoom = rid == null || state.deviceRoomId[w.device.id] == rid;
+      final inRoom = rid == null;
       if (!inRoom) return w;
 
       if (w.capability.type != CapabilityType.toggle) return w;

@@ -7,7 +7,6 @@ import '../bloc/sign_in_state.dart';
 
 import '../data/auth_repository.dart';
 import '../bloc/auth_bloc.dart';
-import '../bloc/auth_event.dart';
 
 import 'widgets/auth_background.dart';
 import 'widgets/pill_text_field.dart';

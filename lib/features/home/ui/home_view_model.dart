@@ -32,7 +32,12 @@ class HomeToggleVM {
 /// NOTE: อาจเป็น null ได้ เพราะ section จะถูกซ่อนไว้เมื่อไม่มี id
 class HomeAdjustVM {
   final int? widgetId;
-  const HomeAdjustVM({required this.widgetId});
+  final int value;
+
+  const HomeAdjustVM({
+    required this.widgetId,
+    required this.value,
+  });
 }
 
 /// แปลง DevicesState -> ข้อมูลที่ UI ต้องใช้
@@ -64,13 +69,21 @@ class HomeViewModel {
     final infos = widgets.where((w) => w.capability.id == 3).toList();
     final togglesW = widgets.where((w) => w.capability.id == 1).toList();
     final adjusts = widgets.where((w) => w.capability.id == 2).toList();
+    final adjustColor = adjusts.isNotEmpty ? adjusts[0] : null;
+    final adjustBrightness = adjusts.length > 1 ? adjusts[1] : null;
 
     return HomeViewModel(
       sensors: infos.map(_sensorFrom).toList(),
       toggles: togglesW.map(_toggleFrom).toList(),
       // ถ้าไม่มี adjust จริง -> widgetId เป็น null และ UI จะ “ไม่โชว์ section”
-      colorAdjust: HomeAdjustVM(widgetId: adjusts.isNotEmpty ? adjusts[0].widgetId : null),
-      brightnessAdjust: HomeAdjustVM(widgetId: adjusts.length > 1 ? adjusts[1].widgetId : null),
+      colorAdjust: HomeAdjustVM(
+        widgetId: adjustColor?.widgetId,
+        value: adjustColor?.value ?? 0,
+      ),
+      brightnessAdjust: HomeAdjustVM(
+        widgetId: adjustBrightness?.widgetId,
+        value: adjustBrightness?.value ?? 0,
+      ),
       isLoading: st.isLoading,
       error: st.error,
     );
@@ -100,9 +113,6 @@ class HomeViewModel {
       widgetId: w.widgetId,
     );
   }
-
-  static String _fmt(double v) =>
-      (v == v.roundToDouble()) ? v.toInt().toString() : v.toStringAsFixed(1);
 
   /// เดายูนิตจากชื่อ (ถ้าเดาไม่ได้ให้เป็น '' เพื่อไม่ใส่ unit เกินจริง)
   static String _guessUnit(String? name) {
