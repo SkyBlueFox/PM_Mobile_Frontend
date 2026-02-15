@@ -41,3 +41,18 @@ class DevicesAllToggled extends DevicesEvent {
   final bool turnOn;
   const DevicesAllToggled(this.turnOn);
 }
+
+class ReorderModeChanged extends DevicesEvent {
+  final bool enabled;
+  const ReorderModeChanged(this.enabled);
+}
+
+class WidgetsOrderChanged extends DevicesEvent {
+  final List<int> orderedWidgetIds;
+  const WidgetsOrderChanged(this.orderedWidgetIds);
+}
+
+class CommitReorderPressed extends DevicesEvent {
+  const CommitReorderPressed();
+}
+

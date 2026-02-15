@@ -83,15 +83,15 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
             runSpacing: gap,
             children: _tiles.map((t) {
               final width = (t.span == HomeTileSpan.full) ? fullW : halfW;
-
+              final locked = widget.reorderEnabled;
               final card = SizedBox(
                 width: width,
                 child: WidgetCard(
                   tile: t,
                   showDragHint: widget.reorderEnabled,
-                  onToggle: () => widget.onToggle(t.widgetId),
-                  onAdjust: (v) => widget.onAdjust(t.widgetId, v),
-                  onOpenSensor: () => widget.onOpenSensor(t),
+                  onToggle: locked ? () {} : () => widget.onToggle(t.widgetId),
+                  onAdjust: locked ? (_) {} : (v) => widget.onAdjust(t.widgetId, v),
+                  onOpenSensor: locked ? () {} : () => widget.onOpenSensor(t),
                 ),
               );
 

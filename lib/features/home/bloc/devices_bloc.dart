@@ -26,6 +26,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<WidgetToggled>(_onWidgetToggled);
     on<WidgetValueChanged>(_onWidgetValueChanged);
     on<DevicesAllToggled>(_onAllToggled);
+
+    on<ReorderModeChanged>(_onReorderModeChanged);
+    on<WidgetsOrderChanged>(_onWidgetsOrderChanged);
+    on<CommitReorderPressed>(_onCommitReorderPressed);
   }
 
   Future<void> _onStarted(DevicesStarted event, Emitter<DevicesState> emit) async {
@@ -70,6 +74,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   }
 
   Future<void> _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) async {
+    if (state.reorderLocked) return;
     final before = state.widgets;
 
     final idx = before.indexWhere((w) => w.widgetId == event.widgetId);
@@ -87,7 +92,12 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     emit(state.copyWith(widgets: updated, error: null));
 
     try {
-      // TODO: ยิง API จริง
+      final w = updated[idx];
+      await widgetRepo.sendWidgetCommand(
+        widgetId: w.widgetId,
+        capabilityId: w.capability.type.toString(),
+        value: w.value,
+      );
     } catch (e, st) {
       debugPrint('[DevicesBloc] toggle send failed: $e\n$st');
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
@@ -95,6 +105,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   }
 
   Future<void> _onWidgetValueChanged(WidgetValueChanged event, Emitter<DevicesState> emit) async {
+    if (state.reorderLocked) return;
     final before = state.widgets;
 
     final deviceId = _deviceIdOf(before, event.widgetId);
@@ -116,7 +127,12 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     emit(state.copyWith(widgets: updated, error: null));
 
     try {
-      // TODO: ยิง API จริง
+      final w = updated.firstWhere((w) => w.widgetId == event.widgetId);
+      await widgetRepo.sendWidgetCommand(
+        widgetId: w.widgetId,
+        capabilityId: w.capability.type.toString(),
+        value: w.value,
+      );
     } catch (e, st) {
       debugPrint('[DevicesBloc] adjust send failed: $e\n$st');
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
@@ -134,6 +150,101 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
     emit(state.copyWith(widgets: updated, error: null));
   }
+
+  List<int> _currentVisibleIds(List<DeviceWidget> all) {
+    final visible = all.where((w) => w.status != 'inactive').toList();
+    visible.sort((a, b) {
+      final byOrder = a.order.compareTo(b.order);
+      if (byOrder != 0) return byOrder;
+      return a.widgetId.compareTo(b.widgetId);
+    });
+    return visible.map((e) => e.widgetId).toList();
+  }
+
+  void _onReorderModeChanged(ReorderModeChanged event, Emitter<DevicesState> emit) {
+    if (event.enabled) {
+      final ids = _currentVisibleIds(state.widgets);
+      emit(state.copyWith(
+        reorderEnabled: true,
+        reorderSaving: false,
+        reorderOriginalVisibleIds: ids,
+        reorderWorkingVisibleIds: List<int>.from(ids),
+        error: null,
+      ));
+    } else {
+      // exit without saving: reset working to original
+      emit(state.copyWith(
+        reorderEnabled: false,
+        reorderSaving: false,
+        reorderWorkingVisibleIds: const [],
+        reorderOriginalVisibleIds: const [],
+        error: null,
+      ));
+    }
+  }
+
+  void _onWidgetsOrderChanged(WidgetsOrderChanged event, Emitter<DevicesState> emit) {
+    if (!state.reorderEnabled || state.reorderSaving) return;
+
+    emit(state.copyWith(
+      reorderWorkingVisibleIds: List<int>.from(event.orderedWidgetIds),
+      error: null,
+    ));
+  }
+
+  Future<void> _onCommitReorderPressed(
+    CommitReorderPressed event,
+    Emitter<DevicesState> emit,
+  ) async {
+    if (!state.reorderEnabled) return;
+    if (!state.reorderDirty) {
+      emit(state.copyWith(
+        reorderEnabled: false,
+        reorderSaving: false,
+        reorderOriginalVisibleIds: const [],
+        reorderWorkingVisibleIds: const [],
+        error: null,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(reorderSaving: true, error: null));
+
+    final workingIds = state.reorderWorkingVisibleIds;
+
+    final orderIndex = <int, int>{};
+    for (var i = 0; i < workingIds.length; i++) {
+      orderIndex[workingIds[i]] = i;
+    }
+
+    final updatedWidgets = state.widgets.map((w) {
+      final idx = orderIndex[w.widgetId];
+      if (idx == null) return w;
+      return w.copyWith(order: idx);
+    }).toList();
+
+    emit(state.copyWith(widgets: updatedWidgets));
+
+    try {
+      // ✅ YOU implement this in your repository
+      await widgetRepo.changeWidgetsOrder(workingIds);
+
+      emit(state.copyWith(
+        reorderEnabled: false,
+        reorderSaving: false,
+        reorderOriginalVisibleIds: const [],
+        reorderWorkingVisibleIds: const [],
+        error: null,
+      ));
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] commit reorder failed: $e\n$st');
+      emit(state.copyWith(
+        reorderSaving: false,
+        error: _msgCommandFailed,
+      ));
+    }
+  }
+
 
   int? _deviceIdOf(List<DeviceWidget> list, int widgetId) {
     final w = list.where((x) => x.widgetId == widgetId);

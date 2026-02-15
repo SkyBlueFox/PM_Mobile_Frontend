@@ -123,8 +123,10 @@ class _HomeViewState extends State<_HomeView> {
         builder: (context, st) {
           return FloatingActionButton(
             backgroundColor: const Color(0xFF3AA7FF),
-            onPressed: () => _openActionsSheet(st),
-            child: const Icon(Icons.more_horiz_rounded),
+            onPressed: _reorderEnabled
+          ? () => context.read<DevicesBloc>().add(const CommitReorderPressed()) //TODO: implement reorder commit
+          : () => _openActionsSheet(st),
+      child: Icon(_reorderEnabled ? Icons.check_rounded : Icons.more_horiz_rounded),
           );
         },
       ),

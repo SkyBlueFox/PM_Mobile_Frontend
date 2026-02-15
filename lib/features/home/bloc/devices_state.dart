@@ -9,18 +9,15 @@ import '../models/room.dart';
 
 class DevicesState {
   final bool isLoading;
-
-  /// rooms from backend
   final List<Room> rooms;
-
-  /// null means "All"
   final int? selectedRoomId;
-
-  /// widgets from backend (รวม active + inactive)
   final List<DeviceWidget> widgets;
-
-  /// user-facing error (สั้นพอ)
   final String? error;
+
+  final bool reorderEnabled;
+  final bool reorderSaving;
+  final List<int> reorderOriginalVisibleIds;
+  final List<int> reorderWorkingVisibleIds;
 
   const DevicesState({
     this.isLoading = false,
@@ -28,6 +25,10 @@ class DevicesState {
     this.selectedRoomId,
     this.widgets = const [],
     this.error,
+    this.reorderEnabled = false,
+    this.reorderSaving = false,
+    this.reorderOriginalVisibleIds = const [],
+    this.reorderWorkingVisibleIds = const [],
   });
 
   DevicesState copyWith({
@@ -36,6 +37,10 @@ class DevicesState {
     int? selectedRoomId, // allow null
     List<DeviceWidget>? widgets,
     String? error,
+    bool? reorderEnabled,
+    bool? reorderSaving,
+    List<int>? reorderOriginalVisibleIds,
+    List<int>? reorderWorkingVisibleIds,    
   }) {
     return DevicesState(
       isLoading: isLoading ?? this.isLoading,
@@ -43,6 +48,12 @@ class DevicesState {
       selectedRoomId: selectedRoomId ?? this.selectedRoomId,
       widgets: widgets ?? this.widgets,
       error: error,
+      reorderEnabled: reorderEnabled ?? this.reorderEnabled,
+      reorderSaving: reorderSaving ?? this.reorderSaving,
+      reorderOriginalVisibleIds:
+          reorderOriginalVisibleIds ?? this.reorderOriginalVisibleIds,
+      reorderWorkingVisibleIds:
+          reorderWorkingVisibleIds ?? this.reorderWorkingVisibleIds,
     );
   }
 
@@ -76,5 +87,17 @@ class DevicesState {
       if (r.id == rid) return r;
     }
     return null;
+  }
+
+  bool get reorderLocked => reorderEnabled || reorderSaving;
+
+  bool get reorderDirty {
+    final a = reorderWorkingVisibleIds;
+    final b = reorderOriginalVisibleIds;
+    if (a.length != b.length) return true;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return true;
+    }
+    return false;
   }
 }

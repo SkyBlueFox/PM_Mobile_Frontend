@@ -6,6 +6,10 @@
 // - Remove widgets (move to drawer)
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../bloc/devices_bloc.dart';
+import '../../pages/add_device_page.dart';
 
 enum HomeAction {
   addWidgets,
@@ -14,6 +18,7 @@ enum HomeAction {
 }
 
 Future<HomeAction?> showHomeActionsSheet(BuildContext context) {
+  final devicesBloc = context.read<DevicesBloc>();
   return showModalBottomSheet<HomeAction>(
     context: context,
     showDragHandle: true,
@@ -25,7 +30,16 @@ Future<HomeAction?> showHomeActionsSheet(BuildContext context) {
             ListTile(
               leading: const Icon(Icons.add_circle_outline),
               title: const Text('Add devices/widgets'),
-              onTap: () => Navigator.pop(context, HomeAction.addWidgets),
+              onTap: () => 
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider.value(
+                    value: devicesBloc,
+                    child: const AddDevicePage(),
+                  ),
+                ),
+              )
             ),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
