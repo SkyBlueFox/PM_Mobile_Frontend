@@ -1,3 +1,5 @@
+// lib/features/home/data/widget_repository.dart
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -13,118 +15,60 @@ class WidgetRepository {
   }) : _client = client ?? http.Client();
 
   /// GET /api/widgets
-  /// get all include widgets
+  /// NOTE: backend บางครั้งคืน {"data":null} => ต้องแปลงเป็น [] เพื่อไม่พัง
   Future<List<DeviceWidget>> fetchWidgets() async {
-    final res = await _client.get(
-      Uri.parse('$baseUrl/api/widgets'),
-    );
+    final res = await _client.get(Uri.parse('$baseUrl/api/widgets'));
 
     if (res.statusCode != 200) {
       throw Exception('Failed to load widgets');
     }
 
-    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    final List list = decoded['data'] as List;
+    final decoded = jsonDecode(res.body);
+
+    // supports:
+    // { "data": [ ... ] } OR { "data": null } OR [ ... ]
+    final List list = decoded is Map<String, dynamic>
+        ? (decoded['data'] as List? ?? const [])
+        : (decoded as List);
 
     return list
         .map((e) => DeviceWidget.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  /// GET /api/widgets/{widget_id}
-  Future<DeviceWidget> fetchWidgetById(int widgetId) async {
-    final res = await _client.get(
-      Uri.parse('$baseUrl/api/widgets/$widgetId'),
-    );
-
-    if (res.statusCode != 200) {
-      throw Exception('Failed to load widget $widgetId');
-    }
-
-    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    return DeviceWidget.fromJson(decoded);
-  }
-
-  /// POST /api/widget
-  Future<void> createWidget({
-    required int deviceId,
-    required int capabilityId,
-    required String widgetStatus,
-  }) async {
-    final res = await _client.post(
-      Uri.parse('$baseUrl/api/widget'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'device_id': deviceId,
-        'capability_id': capabilityId,
-        'widget_status': widgetStatus,
-      }),
-    );
-
-    if (res.statusCode != 200) {
-      throw Exception('Failed to create widget');
-    }
-  }
-
+  /// ส่งคำสั่งไป backend (toggle/adjust)
+  /// NOTE: ชื่อ endpoint จริงอาจต่างจากนี้ — ปรับให้ตรง backend ของคุณได้ทีหลัง
   Future<void> sendWidgetCommand({
     required int widgetId,
     required String capabilityId,
-    required int value,
+    required num value,
   }) async {
-    final url = Uri.parse('$baseUrl/api/widgets/$widgetId/command');
-
     final res = await _client.post(
-      url,
+      Uri.parse('$baseUrl/api/widgets/$widgetId/command'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'capability_id': capabilityId,
         'value': value,
       }),
     );
-    if (res.statusCode != 202) {
-      throw Exception(
-        'Command failed (id=$widgetId, status=${res.statusCode}, body=${res.body})',
-      );
-    }
-  }
 
-
-  /// PUT /api/widgets/{widget_id}
-  Future<void> updateWidget({
-    required int widgetId,
-    required int deviceId,
-    required int capabilityId,
-    required String widgetStatus,
-  }) async {
-    final res = await _client.put(
-      Uri.parse('$baseUrl/api/widgets/$widgetId'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'device_id': deviceId,
-        'capability_id': capabilityId,
-        'widget_status': widgetStatus,
-      }),
-    );
-
-    if (res.statusCode != 200) {
-      throw Exception('Failed to update widget $widgetId');
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Failed to send command');
     }
   }
 
   /// PATCH /api/widgets/{widget_id}/status
   Future<void> changeWidgetStatus({
     required int widgetId,
-    required String widgetStatus,
+    required String widgetStatus, // 'active' | 'inactive'
   }) async {
     final res = await _client.patch(
       Uri.parse('$baseUrl/api/widgets/$widgetId/status'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'widget_status': widgetStatus,
-      }),
+      body: jsonEncode({'widget_status': widgetStatus}),
     );
 
-    if (res.statusCode != 200) {
+    if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Failed to change widget status');
     }
   }
@@ -134,28 +78,13 @@ class WidgetRepository {
     final res = await _client.patch(
       Uri.parse('$baseUrl/api/widgets/order'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'widget_orders': widgetOrders,
-      }),
+      body: jsonEncode({'widget_orders': widgetOrders}),
     );
 
-    if (res.statusCode != 200) {
+    if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Failed to change widget order');
     }
   }
 
-  /// DELETE /api/widgets/{widget_id}
-  Future<void> deleteWidget(int widgetId) async {
-    final res = await _client.delete(
-      Uri.parse('$baseUrl/api/widgets/$widgetId'),
-    );
-
-    if (res.statusCode != 200) {
-      throw Exception('Failed to delete widget $widgetId');
-    }
-  }
-
-  void dispose() {
-    _client.close();
-  }
+  void dispose() => _client.close();
 }

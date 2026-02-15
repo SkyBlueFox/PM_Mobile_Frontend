@@ -1,16 +1,26 @@
+// lib/features/home/bloc/devices_bloc.dart
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../data/room_repository.dart';
 import '../data/widget_repository.dart';
 import '../models/capability.dart';
+import '../models/device_widget.dart';
 import 'devices_event.dart';
 import 'devices_state.dart';
 
-class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
+class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   final WidgetRepository widgetRepo;
   final RoomRepository roomRepo;
 
-  DevicesBloc({required this.widgetRepo, required this.roomRepo}) : super(const DevicesState()) {
+  static const String _msgLoadFailed = 'Unable to load data. Please try again.';
+  static const String _msgCommandFailed = 'Unable to send command. Please try again.';
+
+  DevicesBloc({
+    required this.widgetRepo,
+    required this.roomRepo,
+  }) : super(const DevicesState()) {
     on<DevicesStarted>(_onStarted);
     on<DevicesRoomChanged>(_onRoomChanged);
     on<WidgetToggled>(_onWidgetToggled);
@@ -22,32 +32,25 @@ class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
-      // optional: load all include widgets (GET /api/widgets)
-      final widgets = await widgetRepo.fetchWidgets();
       final rooms = await roomRepo.fetchRooms();
-
+      final widgets = await widgetRepo.fetchWidgets();
 
       emit(state.copyWith(
         isLoading: false,
-        widgets: widgets,
         rooms: rooms,
+        widgets: widgets,
         selectedRoomId: null,
-        selectedRoomIdSet: true,
         error: null,
       ));
-    } catch (_) {
-      emit(state.copyWith(isLoading: false, error: 'โหลดข้อมูลไม่สำเร็จ'));
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] start failed: $e\n$st');
+      emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
     }
   }
 
-  Future<void> _onRoomChanged(
-    DevicesRoomChanged event,
-    Emitter<DevicesState> emit,
-  ) async {
-    // update selected tab immediately
+  Future<void> _onRoomChanged(DevicesRoomChanged event, Emitter<DevicesState> emit) async {
     emit(state.copyWith(
       selectedRoomId: event.roomId,
-      selectedRoomIdSet: true,
       isLoading: true,
       error: null,
     ));
@@ -55,112 +58,86 @@ class DevicesBloc extends Bloc<DeviceEvent, DevicesState> {
     try {
       final int? roomId = event.roomId;
 
-      // All tab -> load global widgets
       final widgets = roomId == null
           ? await widgetRepo.fetchWidgets()
           : await roomRepo.fetchWidgetsByRoomId(roomId);
 
-      emit(state.copyWith(
-        isLoading: false,
-        widgets: widgets,
-        error: null,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'โหลดข้อมูลไม่สำเร็จ: $e',
-      ));
+      emit(state.copyWith(isLoading: false, widgets: widgets, error: null));
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] roomChanged failed: $e\n$st');
+      emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
     }
   }
 
-  Future<void> _onWidgetToggled(
-    WidgetToggled event,
-    Emitter<DevicesState> emit,
-  ) async {
+  Future<void> _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) async {
     final before = state.widgets;
 
-    // optimistic update
-    final updated = before.map((w) {
-      if (w.widgetId != event.widgetId) return w;
-      if (w.capability.id != 1) return w;
+    final idx = before.indexWhere((w) => w.widgetId == event.widgetId);
+    if (idx < 0) return;
 
-      final newValue = w.value >= 1 ? 0 : 1;
-      return w.copyWith(value: newValue);
-    }).toList();
+    final target = before[idx];
+    if (target.capability.type != CapabilityType.toggle) return;
+
+    // ✅ ใช้ int แทน double
+    final int newValue = target.value >= 1 ? 0 : 1;
+
+    final updated = List<DeviceWidget>.from(before);
+    updated[idx] = target.copyWith(value: newValue);
 
     emit(state.copyWith(widgets: updated, error: null));
 
     try {
-      final w = updated.firstWhere((x) => x.widgetId == event.widgetId);
-      await widgetRepo.sendWidgetCommand(
-        widgetId: w.widgetId,
-        capabilityId: w.capability.type.toString(),
-        value: w.value,
-      );
-    } catch (e) {
-      // revert if API fails
-      emit(state.copyWith(widgets: before, error: 'สั่งงานไม่สำเร็จ: $e'));
+      // TODO: ยิง API จริง
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] toggle send failed: $e\n$st');
+      emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
   }
 
-  Future<void> _onWidgetValueChanged(
-    WidgetValueChanged event,
-    Emitter<DevicesState> emit,
-  ) async {
+  Future<void> _onWidgetValueChanged(WidgetValueChanged event, Emitter<DevicesState> emit) async {
     final before = state.widgets;
 
-    // update UI
-    final updated = state.widgets.map((w) {
-      if (w.widgetId == event.widgetId && w.capability.id == 2) {
-        return w.copyWith(value: event.value);
-      }
+    final deviceId = _deviceIdOf(before, event.widgetId);
+    if (deviceId == null) return;
 
-      // info mirrors slider
-      if (w.capability.id == 3) {
-        // mirror only if same device as the adjust widget
-        final deviceId = _deviceIdOf(event.widgetId);
-        if (w.device.id == deviceId) return w.copyWith(value: event.value);
-      }
+    // ✅ กันชนิดไม่ตรง: ถ้า event.value เป็น double ก็ปัดเป็น int ก่อน
+    final int v = (event.value as num).round();
 
+    final updated = before.map((w) {
+      if (w.widgetId == event.widgetId && w.capability.type == CapabilityType.adjust) {
+        return w.copyWith(value: v);
+      }
+      if (w.device.id == deviceId && w.capability.type == CapabilityType.info) {
+        return w.copyWith(value: v);
+      }
       return w;
     }).toList();
 
     emit(state.copyWith(widgets: updated, error: null));
 
-    // send command
     try {
-      final w = state.widgets.firstWhere(
-        (w) => w.widgetId == event.widgetId,
-      );
-
-      await widgetRepo.sendWidgetCommand(
-        widgetId: event.widgetId,
-        capabilityId: w.capability.type.toString(),
-        value: event.value,
-      );
-    } catch (e) {
-      // revert if API fails
-      emit(state.copyWith(widgets: before, error: 'ปรับค่าไม่สำเร็จ: $e'));
+      // TODO: ยิง API จริง
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] adjust send failed: $e\n$st');
+      emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
   }
 
   void _onAllToggled(DevicesAllToggled event, Emitter<DevicesState> emit) {
-    final rid = state.selectedRoomId;
-    final turnOnValue = event.turnOn ? 1 : 0;
+    // ✅ ใช้ int แทน double
+    final int turnOnValue = event.turnOn ? 1 : 0;
 
-    final updatedWidgets = state.widgets.map((w) {
-      final inRoom = rid == null;
-      if (!inRoom) return w;
-
+    final updated = state.widgets.map((w) {
       if (w.capability.type != CapabilityType.toggle) return w;
       return w.copyWith(value: turnOnValue);
     }).toList();
 
-    emit(state.copyWith(widgets: updatedWidgets));
+    emit(state.copyWith(widgets: updated, error: null));
   }
 
-
-  int _deviceIdOf(int widgetId) {
-    return state.widgets.firstWhere((w) => w.widgetId == widgetId).device.id;
+  int? _deviceIdOf(List<DeviceWidget> list, int widgetId) {
+    final w = list.where((x) => x.widgetId == widgetId);
+    if (w.isEmpty) return null;
+    return w.first.device.id;
   }
 }

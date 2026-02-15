@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/room.dart';
+import '../../../models/room.dart';
 
 class TopTab extends StatefulWidget {
   final List<Room> rooms;

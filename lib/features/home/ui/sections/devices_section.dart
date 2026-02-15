@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../home_view_model.dart';
+import '../view_models/home_view_model.dart';
 
 class DevicesSection extends StatelessWidget {
   /// Toggles จาก API (ไม่มี fallback)
-  final List<HomeToggleVM> toggles;
+  /// ใช้ VM เดียวกับหน้า home (HomeWidgetTileVM) แล้วคัดเฉพาะ kind=toggle ตอนส่งเข้ามา
+  final List<HomeWidgetTileVM> toggles;
 
   /// ส่ง widgetId กลับไปให้ parent ยิง event
   final void Function(int widgetId) onToggle;
@@ -23,7 +24,7 @@ class DevicesSection extends StatelessWidget {
       children: [
         for (int i = 0; i < toggles.length; i++) ...[
           _ToggleTile(
-            label: toggles[i].label,
+            label: toggles[i].title,
             isOn: toggles[i].isOn,
             onToggle: () => onToggle(toggles[i].widgetId),
           ),
@@ -55,8 +56,14 @@ class _ToggleTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-          const Spacer(),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
           Switch(
             value: isOn,
             onChanged: (_) => onToggle(),

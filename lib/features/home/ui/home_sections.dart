@@ -1,4 +1,4 @@
-import 'home_view_model.dart';
+import 'view_models/home_view_model.dart';
 
 enum HomeSection {
   sensors,

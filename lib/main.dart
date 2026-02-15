@@ -10,8 +10,8 @@ import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/token_storage.dart';
 
-import 'features/auth/ui/sign_in_page.dart';
-import 'features/home/ui/home_page.dart';
+import 'features/auth/ui/pages/sign_in_page.dart';
+import 'features/home/ui/pages/home_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

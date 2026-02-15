@@ -1,3 +1,9 @@
+// lib/features/home/bloc/devices_state.dart
+//
+// State for DevicesBloc.
+// หลักการ: state เป็น immutable, copyWith ชัดเจน (KISS)
+// เอา class ซ้ำออก (ของเดิมคุณมีซ้ำ 2 ชุด)
+
 import '../models/device_widget.dart';
 import '../models/room.dart';
 
@@ -10,18 +16,16 @@ class DevicesState {
   /// null means "All"
   final int? selectedRoomId;
 
-  final bool selectedRoomIdSet;
-
-  /// widgets from backend
+  /// widgets from backend (รวม active + inactive)
   final List<DeviceWidget> widgets;
 
+  /// user-facing error (สั้นพอ)
   final String? error;
 
   const DevicesState({
     this.isLoading = false,
     this.rooms = const [],
     this.selectedRoomId,
-    this.selectedRoomIdSet = false,
     this.widgets = const [],
     this.error,
   });
@@ -29,34 +33,39 @@ class DevicesState {
   DevicesState copyWith({
     bool? isLoading,
     List<Room>? rooms,
-    int? selectedRoomId,            // can be null
-    bool selectedRoomIdSet = false, // tells copyWith “I want to update it”
+    int? selectedRoomId, // allow null
     List<DeviceWidget>? widgets,
-    Map<int, int>? deviceRoomId,
     String? error,
   }) {
     return DevicesState(
       isLoading: isLoading ?? this.isLoading,
       rooms: rooms ?? this.rooms,
-      selectedRoomId: selectedRoomIdSet ? selectedRoomId : this.selectedRoomId,
-      selectedRoomIdSet: selectedRoomIdSet ? true : this.selectedRoomIdSet,
+      selectedRoomId: selectedRoomId ?? this.selectedRoomId,
       widgets: widgets ?? this.widgets,
       error: error,
     );
   }
 
-  /// One card per widget
+  /// widgets ที่ "แสดงบนหน้า home"
+  /// - ตัด inactive ออก (inactive = เก็บเข้าลิ้นชัก)
+  /// - sort ให้ stable
   List<DeviceWidget> get visibleWidgets {
-    // If widgets are already fetched by room, DO NOT filter by deviceRoomId.
-    // Just filter by status (if you want to hide inactive).
     final base = widgets.where((w) => w.status != 'inactive').toList();
 
     base.sort((a, b) {
-      final did = a.device.id.compareTo(b.device.id);
-      if (did != 0) return did;
-      return a.order.compareTo(b.order);
+      final byOrder = a.order.compareTo(b.order);
+      if (byOrder != 0) return byOrder;
+      // fallback stable
+      return a.widgetId.compareTo(b.widgetId);
     });
 
+    return base;
+  }
+
+  /// widgets ที่ "อยู่ในลิ้นชัก"
+  List<DeviceWidget> get drawerWidgets {
+    final base = widgets.where((w) => w.status == 'inactive').toList();
+    base.sort((a, b) => a.order.compareTo(b.order));
     return base;
   }
 

@@ -1,35 +1,43 @@
-sealed class DeviceEvent {
-  const DeviceEvent();
+// lib/features/home/bloc/devices_event.dart
+//
+// Events for DevicesBloc.
+// หลักการ: Event ต้องชื่อเดียวกับที่ Bloc ใช้ generics (DevicesEvent)
+// เพื่อไม่ให้เกิด error แบบ "isn't a type".
+
+sealed class DevicesEvent {
+  const DevicesEvent();
 }
 
-class DevicesStarted extends DeviceEvent {
+/// initial load rooms + widgets (All)
+class DevicesStarted extends DevicesEvent {
   const DevicesStarted();
 }
 
 /// select a room (null = All)
-class DevicesRoomChanged extends DeviceEvent {
+class DevicesRoomChanged extends DevicesEvent {
   final int? roomId;
   const DevicesRoomChanged(this.roomId);
 }
 
-class WidgetToggled extends DeviceEvent {
+/// toggle widget (capability = toggle)
+class WidgetToggled extends DevicesEvent {
   final int widgetId;
   const WidgetToggled(this.widgetId);
 }
 
-class WidgetValueChanged extends DeviceEvent {
+/// slider/adjust change (capability = adjust)
+class WidgetValueChanged extends DevicesEvent {
   final int widgetId;
-  final int value;
+
+  /// ใช้ double ภายใน state/repo (ปลอดภัยกว่า)
+  /// UI ค่อย format เป็นจำนวนเต็มตอนแสดง
+  final double value;
+
   const WidgetValueChanged(this.widgetId, this.value);
 }
 
-class DevicesAllToggled extends DeviceEvent {
+/// optional: toggle all in current room (ถ้าใช้)
+class DevicesAllToggled extends DevicesEvent {
   final bool turnOn;
   const DevicesAllToggled(this.turnOn);
-}
-
-class WidgetUpdateReceived extends DeviceEvent {
-  final int widgetId;
-  final int value;
-  const WidgetUpdateReceived(this.widgetId, this.value);
 }

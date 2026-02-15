@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_event.dart';
 import '../../models/device_widget.dart';
-import 'info_row.dart';
-import 'adjust_row.dart';
-import 'toggle_row.dart';
+import 'rows/info_row.dart';
+import 'rows/adjust_row.dart';
+import 'rows/toggle_row.dart';
 
 class CapabilityControl extends StatefulWidget {
   final DeviceWidget widgetData;
@@ -51,7 +51,7 @@ class _CapabilityControlState extends State<CapabilityControl> {
               : (v) {
                   context
                       .read<DevicesBloc>()
-                      .add(WidgetValueChanged(widgetData.widgetId, v));
+                      .add(WidgetValueChanged(widgetData.widgetId, v.toDouble()));
                 },
         );
 

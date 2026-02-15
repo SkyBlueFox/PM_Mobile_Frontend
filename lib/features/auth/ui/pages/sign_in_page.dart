@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../bloc/sign_in_bloc.dart';
-import '../bloc/sign_in_event.dart';
-import '../bloc/sign_in_state.dart';
+import '../../bloc/sign_in_bloc.dart';
+import '../../bloc/sign_in_event.dart';
+import '../../bloc/sign_in_state.dart';
 
-import '../data/auth_repository.dart';
-import '../bloc/auth_bloc.dart';
+import '../../data/auth_repository.dart';
+import '../../bloc/auth_bloc.dart';
 
-import 'widgets/auth_background.dart';
-import 'widgets/pill_text_field.dart';
+import '../widgets/auth_background.dart';
+import '../widgets/pill_text_field.dart';
 
 class SignInPage extends StatelessWidget {
   const SignInPage({super.key});
