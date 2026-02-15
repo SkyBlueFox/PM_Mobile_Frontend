@@ -84,10 +84,12 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     if (target.capability.type != CapabilityType.toggle) return;
 
     // ✅ ใช้ int แทน double
-    final int newValue = target.value >= 1 ? 0 : 1;
+    final double? doubleValue = double.tryParse(target.value);
+    final int intValue = doubleValue?.round() ?? 0;
+    final int newValue = intValue >= 1 ? 0 : 1;
 
     final updated = List<DeviceWidget>.from(before);
-    updated[idx] = target.copyWith(value: newValue);
+    updated[idx] = target.copyWith(value: newValue.toString());
 
     emit(state.copyWith(widgets: updated, error: null));
 
@@ -95,7 +97,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       final w = updated[idx];
       await widgetRepo.sendWidgetCommand(
         widgetId: w.widgetId,
-        capabilityId: w.capability.type.toString(),
+        capabilityId: w.capability.id,
         value: w.value,
       );
     } catch (e, st) {
@@ -116,10 +118,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
     final updated = before.map((w) {
       if (w.widgetId == event.widgetId && w.capability.type == CapabilityType.adjust) {
-        return w.copyWith(value: v);
+        return w.copyWith(value: v.toString());
       }
       if (w.device.id == deviceId && w.capability.type == CapabilityType.info) {
-        return w.copyWith(value: v);
+        return w.copyWith(value: v.toString());
       }
       return w;
     }).toList();
@@ -130,7 +132,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       final w = updated.firstWhere((w) => w.widgetId == event.widgetId);
       await widgetRepo.sendWidgetCommand(
         widgetId: w.widgetId,
-        capabilityId: w.capability.type.toString(),
+        capabilityId: w.capability.id,
         value: w.value,
       );
     } catch (e, st) {
@@ -145,7 +147,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
     final updated = state.widgets.map((w) {
       if (w.capability.type != CapabilityType.toggle) return w;
-      return w.copyWith(value: turnOnValue);
+      return w.copyWith(value: turnOnValue.toString());
     }).toList();
 
     emit(state.copyWith(widgets: updated, error: null));
@@ -246,7 +248,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   }
 
 
-  int? _deviceIdOf(List<DeviceWidget> list, int widgetId) {
+  String? _deviceIdOf(List<DeviceWidget> list, int widgetId) {
     final w = list.where((x) => x.widgetId == widgetId);
     if (w.isEmpty) return null;
     return w.first.device.id;

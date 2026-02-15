@@ -8,7 +8,7 @@ class DeviceWidget {
 
   final String status; // include / exclude
   final int order;
-  final int value;
+  final String value;
 
   const DeviceWidget({
     required this.widgetId,
@@ -19,16 +19,13 @@ class DeviceWidget {
     required this.value,
   });
 
-  bool get isIncluded => status == 'include';
-  bool get isOn => capability.type == CapabilityType.toggle && value >= 1;
-
   DeviceWidget copyWith({
     int? widgetId,
     Device? device,
     Capability? capability,
     String? status,
     int? order,
-    int? value,
+    String? value,
   }) {
     return DeviceWidget(
       widgetId: widgetId ?? this.widgetId,
@@ -47,7 +44,7 @@ class DeviceWidget {
       capability: Capability.fromJson(json['capability'] as Map<String, dynamic>),
       status: json['widget_status'] as String,
       order: json['widget_order'] as int,
-      value: json['value'] as int,
+      value: json['value'] as String,
     );
   }
 }

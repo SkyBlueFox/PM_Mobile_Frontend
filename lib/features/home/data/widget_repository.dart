@@ -38,8 +38,8 @@ class WidgetRepository {
   /// NOTE: ชื่อ endpoint จริงอาจต่างจากนี้ — ปรับให้ตรง backend ของคุณได้ทีหลัง
   Future<void> sendWidgetCommand({
     required int widgetId,
-    required String capabilityId,
-    required num value,
+    required int capabilityId,
+    required String value,
   }) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/api/widgets/$widgetId/command'),

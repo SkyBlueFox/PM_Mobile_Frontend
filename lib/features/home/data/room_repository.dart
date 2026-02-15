@@ -50,7 +50,7 @@ class RoomRepository {
     return list
         .map(
           (e) => Device(
-            id: e['device_id'] as int,
+            id: e['device_id'] as String,
             name: e['device_name'] as String,
             type: e['device_type'] as String,
           ),

@@ -1,7 +1,7 @@
 import 'device_widget.dart';
 
 class Device {
-  final int id;
+  final String id;
   final String name;
   final String type;
 
@@ -16,7 +16,7 @@ class Device {
   });
 
   Device copyWith({
-    int? id,
+    String? id,
     String? name,
     String? type,
     List<DeviceWidget>? widgets,
@@ -31,7 +31,7 @@ class Device {
 
   factory Device.fromJson(Map<String, dynamic> json) {
     return Device(
-      id: json['device_id'] as int,
+      id: json['device_id'] as String,
       name: json['device_name'] as String,
       type: json['device_type'] as String,
       // widgets are attached later

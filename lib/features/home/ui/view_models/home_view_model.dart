@@ -66,7 +66,8 @@ class HomeViewModel {
       final title = w.device.name;
       final subtitle = _capLabel(cap);
 
-      final intValue = w.value.round(); // ✅ โชว์เป็นจำนวนเต็ม
+      final double? doubleValue = double.tryParse(w.value);
+      final int intValue = doubleValue?.round() ?? 0;
 
       if (cap.type == CapabilityType.info) {
         return HomeWidgetTileVM(
@@ -91,7 +92,7 @@ class HomeViewModel {
           subtitle: subtitle,
           span: HomeTileSpan.half,
           kind: HomeTileKind.toggle,
-          isOn: w.value >= 1,
+          isOn: intValue >= 1,
           intValue: intValue,
           unit: '',
           min: 0,

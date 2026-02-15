@@ -28,11 +28,13 @@ class _CapabilityControlState extends State<CapabilityControl> {
 
   @override
   Widget build(BuildContext context) {
+    final double? doubleValue = double.tryParse(widgetData.value);
+    final int intValue = doubleValue?.round() ?? 0;
     switch (widgetData.capability.id) {
       case 1: // toggle
         return ToggleRow(
           label: 'Power',
-          isOn: widgetData.value >= 1,
+          isOn: intValue >= 1,
           enabled: true, // always allow toggling
           onChanged: () {
             context.read<DevicesBloc>().add(WidgetToggled(widgetData.widgetId));
@@ -42,7 +44,7 @@ class _CapabilityControlState extends State<CapabilityControl> {
       case 2: // adjust
         return AdjustRow(
           label: 'Adjust',
-          value: widgetData.value,
+          value: intValue,
           min: 0,
           max: 100,
           enabled: enabled,
@@ -64,7 +66,7 @@ class _CapabilityControlState extends State<CapabilityControl> {
 
       default:
         return Text(
-          'capability_id=${widgetData.capability.id} value=${widgetData.value.toStringAsFixed(0)}',
+          'capability_id=${widgetData.capability.id} value=${widgetData.value}',
           style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
         );
     }
