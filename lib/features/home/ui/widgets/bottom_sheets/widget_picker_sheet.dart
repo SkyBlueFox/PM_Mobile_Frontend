@@ -155,8 +155,6 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
         return 'Device • Toggle';
       case HomeTileKind.adjust:
         return 'Adjust • Slider';
-      default:
-        return 'Widget';
-    }
+      }
   }
 }

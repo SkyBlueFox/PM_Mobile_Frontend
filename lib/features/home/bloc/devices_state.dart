@@ -6,6 +6,7 @@
 
 import '../models/device_widget.dart';
 import '../models/room.dart';
+import '../models/device.dart';
 
 class DevicesState {
   final bool isLoading;
@@ -13,6 +14,7 @@ class DevicesState {
   final int? selectedRoomId;
   final List<DeviceWidget> widgets;
   final String? error;
+  final List<Device>? devices;
 
   final bool reorderEnabled;
   final bool reorderSaving;
@@ -25,6 +27,7 @@ class DevicesState {
     this.selectedRoomId,
     this.widgets = const [],
     this.error,
+    this.devices = const [],
     this.reorderEnabled = false,
     this.reorderSaving = false,
     this.reorderOriginalVisibleIds = const [],
@@ -37,6 +40,7 @@ class DevicesState {
     int? selectedRoomId, // allow null
     List<DeviceWidget>? widgets,
     String? error,
+    List<Device>? devices,
     bool? reorderEnabled,
     bool? reorderSaving,
     List<int>? reorderOriginalVisibleIds,
@@ -48,6 +52,7 @@ class DevicesState {
       selectedRoomId: selectedRoomId ?? this.selectedRoomId,
       widgets: widgets ?? this.widgets,
       error: error,
+      devices: devices ?? this.devices,
       reorderEnabled: reorderEnabled ?? this.reorderEnabled,
       reorderSaving: reorderSaving ?? this.reorderSaving,
       reorderOriginalVisibleIds:

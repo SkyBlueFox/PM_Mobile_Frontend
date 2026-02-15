@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../data/device_repository.dart';
 import '../data/room_repository.dart';
 import '../data/widget_repository.dart';
 import '../models/capability.dart';
@@ -13,6 +14,7 @@ import 'devices_state.dart';
 class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   final WidgetRepository widgetRepo;
   final RoomRepository roomRepo;
+  final DeviceRepository deviceRepo;
 
   static const String _msgLoadFailed = 'Unable to load data. Please try again.';
   static const String _msgCommandFailed = 'Unable to send command. Please try again.';
@@ -20,6 +22,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   DevicesBloc({
     required this.widgetRepo,
     required this.roomRepo,
+    required this.deviceRepo,
   }) : super(const DevicesState()) {
     on<DevicesStarted>(_onStarted);
     on<DevicesRoomChanged>(_onRoomChanged);
@@ -30,6 +33,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<ReorderModeChanged>(_onReorderModeChanged);
     on<WidgetsOrderChanged>(_onWidgetsOrderChanged);
     on<CommitReorderPressed>(_onCommitReorderPressed);
+    on<DevicesRequested>(_onDevicesRequested);
   }
 
   Future<void> _onStarted(DevicesStarted event, Emitter<DevicesState> emit) async {
@@ -228,7 +232,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     emit(state.copyWith(widgets: updatedWidgets));
 
     try {
-      // ✅ YOU implement this in your repository
       await widgetRepo.changeWidgetsOrder(workingIds);
 
       emit(state.copyWith(
@@ -253,4 +256,20 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     if (w.isEmpty) return null;
     return w.first.device.id;
   }
+
+  Future<void> _onDevicesRequested(
+    DevicesRequested event,
+    Emitter<DevicesState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      final devices = await deviceRepo.fetchDevices(
+        connected: event.connectedOnly ? true : null,
+      );
+      emit(state.copyWith(isLoading: false, devices: devices));
+    } catch (_) {
+      emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
+    }
+  }
+
 }

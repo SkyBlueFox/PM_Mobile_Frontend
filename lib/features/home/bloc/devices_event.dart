@@ -56,3 +56,8 @@ class CommitReorderPressed extends DevicesEvent {
   const CommitReorderPressed();
 }
 
+class DevicesRequested extends DevicesEvent {
+  final bool connectedOnly;
+  const DevicesRequested({this.connectedOnly = false});
+}
+

@@ -1,6 +1,3 @@
-// lib/features/home/ui/view_models/home_view_model.dart
-
-import '../../../home/models/device_widget.dart';
 import '../../../home/models/capability.dart';
 import '../../../home/bloc/devices_state.dart';
 

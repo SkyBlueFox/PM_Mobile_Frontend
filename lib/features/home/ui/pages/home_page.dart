@@ -12,6 +12,7 @@ import '../../../auth/bloc/auth_event.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_event.dart';
 import '../../bloc/devices_state.dart';
+import '../../data/device_repository.dart';
 import '../../data/room_repository.dart';
 import '../../data/widget_repository.dart';
 
@@ -36,11 +37,15 @@ class HomePage extends StatelessWidget {
         RepositoryProvider(
           create: (_) => RoomRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
         ),
+        RepositoryProvider(
+          create: (_) => DeviceRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
+        ),
       ],
       child: BlocProvider(
         create: (context) => DevicesBloc(
           widgetRepo: context.read<WidgetRepository>(),
           roomRepo: context.read<RoomRepository>(),
+          deviceRepo: context.read<DeviceRepository>(),
         )..add(const DevicesStarted()),
         child: const _HomeView(),
       ),
@@ -56,7 +61,6 @@ class _HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<_HomeView> {
-  bool _reorderEnabled = false;
   int _bottomIndex = 0;
 
   void _logout() {
@@ -73,7 +77,8 @@ class _HomeViewState extends State<_HomeView> {
         break;
 
       case HomeAction.editWidgets:
-        setState(() => _reorderEnabled = !_reorderEnabled);
+        final enabled = !context.read<DevicesBloc>().state.reorderEnabled;
+        context.read<DevicesBloc>().add(ReorderModeChanged(enabled));
         break;
 
       case HomeAction.deleteWidgets:
@@ -93,7 +98,6 @@ class _HomeViewState extends State<_HomeView> {
       title: isDeleteMode ? 'Remove widgets' : 'Add widgets',
       confirmText: isDeleteMode ? 'Remove' : 'Add',
 
-      // ✅ กัน null (ตอนนี้ vm.activeTiles/vm.drawerTiles ยังเป็น null ในไฟล์ที่คุณส่งมา)
       items: vm.tiles,
 
       isDeleteMode: isDeleteMode,
@@ -120,13 +124,18 @@ class _HomeViewState extends State<_HomeView> {
         ],
       ),
       floatingActionButton: BlocBuilder<DevicesBloc, DevicesState>(
+        buildWhen: (p, c) =>
+          p.reorderEnabled != c.reorderEnabled ||
+          p.reorderSaving != c.reorderSaving,
         builder: (context, st) {
+          final enabled = st.reorderEnabled;
+
           return FloatingActionButton(
             backgroundColor: const Color(0xFF3AA7FF),
-            onPressed: _reorderEnabled
-          ? () => context.read<DevicesBloc>().add(const CommitReorderPressed()) //TODO: implement reorder commit
+            onPressed: enabled
+          ? () => context.read<DevicesBloc>().add(const CommitReorderPressed())
           : () => _openActionsSheet(st),
-      child: Icon(_reorderEnabled ? Icons.check_rounded : Icons.more_horiz_rounded),
+      child: Icon(enabled ? Icons.check_rounded : Icons.more_horiz_rounded),
           );
         },
       ),
@@ -177,10 +186,12 @@ class _HomeViewState extends State<_HomeView> {
               Expanded(
                 child: BlocBuilder<DevicesBloc, DevicesState>(
                   buildWhen: (p, c) =>
-                      p.widgets != c.widgets ||
-                      p.isLoading != c.isLoading ||
-                      p.error != c.error ||
-                      p.selectedRoomId != c.selectedRoomId,
+                    p.widgets != c.widgets ||
+                    p.isLoading != c.isLoading ||
+                    p.error != c.error ||
+                    p.selectedRoomId != c.selectedRoomId ||
+                    p.reorderEnabled != c.reorderEnabled ||
+                    p.reorderSaving != c.reorderSaving,
                   builder: (context, st) {
                     if (st.isLoading && st.widgets.isEmpty) {
                       return const Center(child: CircularProgressIndicator());
@@ -201,24 +212,22 @@ class _HomeViewState extends State<_HomeView> {
                     }
 
                     return HomeWidgetGrid(
-  tiles: vm.tiles,
-  reorderEnabled: _reorderEnabled,
+                      tiles: vm.tiles,
+                      reorderEnabled: st.reorderEnabled,
 
-  onToggle: (widgetId) =>
-      context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
+                      onToggle: (widgetId) =>
+                          context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
 
-  onAdjust: (widgetId, value) {
-  context.read<DevicesBloc>().add(
-        WidgetValueChanged(widgetId, value.toDouble()),
-      );
-},
+                      onAdjust: (widgetId, value) {
+                      context.read<DevicesBloc>().add(
+                            WidgetValueChanged(widgetId, value.toDouble()),
+                          );
+                    },
 
-
-  onOrderChanged: (newOrderWidgetIds) {
-    // TODO: call API change order
-  }, onOpenSensor: (HomeWidgetTileVM value) {  },
-);
-
+                      onOrderChanged: (newOrderWidgetIds) {
+                        context.read<DevicesBloc>().add(WidgetsOrderChanged(newOrderWidgetIds));
+                      }, onOpenSensor: (HomeWidgetTileVM value) {  },
+                    );
 
                   },
                 ),
