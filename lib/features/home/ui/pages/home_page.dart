@@ -93,19 +93,21 @@ class _HomeViewState extends State<_HomeView> {
   }) async {
     final vm = HomeViewModel.fromState(st);
 
-    final result = await showWidgetPickerSheet(
+    // ✅ sheet ใหม่: include ด้านบน / exclude ด้านล่าง
+    final includedIds = await showWidgetPickerSheet(
       context: context,
       title: isDeleteMode ? 'Remove widgets' : 'Add widgets',
-      confirmText: isDeleteMode ? 'Remove' : 'Add',
-
-      items: vm.tiles,
-
+      confirmText: isDeleteMode ? 'Remove' : 'Done',
+      includedItems: vm.activeTiles,
+      excludedItems: vm.drawerTiles,
       isDeleteMode: isDeleteMode,
     );
 
-    if (!mounted || result == null) return;
+    if (!mounted || includedIds == null) return;
 
-    // TODO: connect API add/remove แล้ว refresh
+    // TODO: connect API:
+    // - ตั้งค่า active/inactive ตาม includedIds (final state)
+    // - แล้ว refresh ห้องเดิม
     // context.read<DevicesBloc>().add(DevicesRoomChanged(st.selectedRoomId));
   }
 
@@ -124,18 +126,16 @@ class _HomeViewState extends State<_HomeView> {
         ],
       ),
       floatingActionButton: BlocBuilder<DevicesBloc, DevicesState>(
-        buildWhen: (p, c) =>
-          p.reorderEnabled != c.reorderEnabled ||
-          p.reorderSaving != c.reorderSaving,
+        buildWhen: (p, c) => p.reorderEnabled != c.reorderEnabled || p.reorderSaving != c.reorderSaving,
         builder: (context, st) {
           final enabled = st.reorderEnabled;
 
           return FloatingActionButton(
             backgroundColor: const Color(0xFF3AA7FF),
             onPressed: enabled
-          ? () => context.read<DevicesBloc>().add(const CommitReorderPressed())
-          : () => _openActionsSheet(st),
-      child: Icon(enabled ? Icons.check_rounded : Icons.more_horiz_rounded),
+                ? () => context.read<DevicesBloc>().add(const CommitReorderPressed())
+                : () => _openActionsSheet(st),
+            child: Icon(enabled ? Icons.check_rounded : Icons.more_horiz_rounded),
           );
         },
       ),
@@ -146,7 +146,6 @@ class _HomeViewState extends State<_HomeView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-
               Row(
                 children: [
                   const Icon(Icons.home_rounded, color: Color(0xFF3AA7FF), size: 28),
@@ -167,9 +166,7 @@ class _HomeViewState extends State<_HomeView> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 12),
-
               BlocBuilder<DevicesBloc, DevicesState>(
                 buildWhen: (p, c) => p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
                 builder: (context, st) {
@@ -180,18 +177,16 @@ class _HomeViewState extends State<_HomeView> {
                   );
                 },
               ),
-
               const SizedBox(height: 14),
-
               Expanded(
                 child: BlocBuilder<DevicesBloc, DevicesState>(
                   buildWhen: (p, c) =>
-                    p.widgets != c.widgets ||
-                    p.isLoading != c.isLoading ||
-                    p.error != c.error ||
-                    p.selectedRoomId != c.selectedRoomId ||
-                    p.reorderEnabled != c.reorderEnabled ||
-                    p.reorderSaving != c.reorderSaving,
+                      p.widgets != c.widgets ||
+                      p.isLoading != c.isLoading ||
+                      p.error != c.error ||
+                      p.selectedRoomId != c.selectedRoomId ||
+                      p.reorderEnabled != c.reorderEnabled ||
+                      p.reorderSaving != c.reorderSaving,
                   builder: (context, st) {
                     if (st.isLoading && st.widgets.isEmpty) {
                       return const Center(child: CircularProgressIndicator());
@@ -201,10 +196,9 @@ class _HomeViewState extends State<_HomeView> {
                       return _ErrorState(message: st.error!);
                     }
 
-                    final widgets = st.visibleWidgets;
                     final vm = HomeViewModel.fromState(st);
 
-                    if (widgets.isEmpty) {
+                    if (vm.tiles.isEmpty) {
                       return const _EmptyState(
                         title: 'No widgets in this room',
                         subtitle: 'Tap the blue button to add widgets.',
@@ -214,21 +208,17 @@ class _HomeViewState extends State<_HomeView> {
                     return HomeWidgetGrid(
                       tiles: vm.tiles,
                       reorderEnabled: st.reorderEnabled,
-
-                      onToggle: (widgetId) =>
-                          context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
-
+                      onToggle: (widgetId) => context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
                       onAdjust: (widgetId, value) {
-                      context.read<DevicesBloc>().add(
-                            WidgetValueChanged(widgetId, value.toDouble()),
-                          );
-                    },
-
+                        context.read<DevicesBloc>().add(
+                              WidgetValueChanged(widgetId, value.toDouble()),
+                            );
+                      },
                       onOrderChanged: (newOrderWidgetIds) {
                         context.read<DevicesBloc>().add(WidgetsOrderChanged(newOrderWidgetIds));
-                      }, onOpenSensor: (HomeWidgetTileVM value) {  },
+                      },
+                      onOpenSensor: (HomeWidgetTileVM value) {},
                     );
-
                   },
                 ),
               ),

@@ -1,3 +1,5 @@
+// lib/features/home/ui/view_models/home_view_model.dart
+
 import '../../../home/models/capability.dart';
 import '../../../home/bloc/devices_state.dart';
 
@@ -43,79 +45,42 @@ class HomeWidgetTileVM {
 }
 
 class HomeViewModel {
-  final List<HomeWidgetTileVM> tiles;
+  final List<HomeWidgetTileVM> tiles; // ใช้ render หน้า Home (เฉพาะ visible)
   final bool isLoading;
   final String? error;
+
+  // ✅ สำหรับลิ้นชัก: include/exclude
+  final List<HomeWidgetTileVM> activeTiles;
+  final List<HomeWidgetTileVM> drawerTiles;
 
   const HomeViewModel({
     required this.tiles,
     required this.isLoading,
     required this.error,
-  });
+    List<HomeWidgetTileVM>? activeTiles,
+    List<HomeWidgetTileVM>? drawerTiles,
+  })  : activeTiles = activeTiles ?? tiles,
+        drawerTiles = drawerTiles ?? const [];
 
   factory HomeViewModel.fromState(DevicesState st) {
-    final widgets = st.visibleWidgets;
+    // visible (include)
+    final visibleWidgets = st.visibleWidgets;
+    final visibleIds = visibleWidgets.map((w) => w.widgetId).toSet();
 
-    final tiles = widgets.map((w) {
-      final cap = w.capability;
+    // all (include + exclude) — ถ้า backend ส่งมาแค่ visible จริง ๆ ฝั่ง exclude จะว่างเอง
+    final allWidgets = st.widgets;
 
-      // title/subtitle ตามรูป: title = device name, subtitle = cap name/type
-      final title = w.device.name;
-      final subtitle = _capLabel(cap);
+    final activeTiles = visibleWidgets.map(_toTile).toList();
 
-      final double? doubleValue = double.tryParse(w.value);
-      final int intValue = doubleValue?.round() ?? 0;
-
-      if (cap.type == CapabilityType.info) {
-        return HomeWidgetTileVM(
-          widgetId: w.widgetId,
-          title: title,
-          subtitle: subtitle,
-          span: HomeTileSpan.half,
-          kind: HomeTileKind.sensor,
-          isOn: false,
-          intValue: intValue,
-          unit: _guessUnit(title),
-          min: 0,
-          max: 100,
-          showColorBar: false,
-        );
-      }
-
-      if (cap.type == CapabilityType.toggle) {
-        return HomeWidgetTileVM(
-          widgetId: w.widgetId,
-          title: title,
-          subtitle: subtitle,
-          span: HomeTileSpan.half,
-          kind: HomeTileKind.toggle,
-          isOn: intValue >= 1,
-          intValue: intValue,
-          unit: '',
-          min: 0,
-          max: 1,
-          showColorBar: false,
-        );
-      }
-
-      // adjust
-      return HomeWidgetTileVM(
-        widgetId: w.widgetId,
-        title: title,
-        subtitle: subtitle,
-        span: HomeTileSpan.full,
-        kind: HomeTileKind.adjust,
-        isOn: false,
-        intValue: intValue,
-        unit: _guessAdjustUnit(title),
-        min: 0,
-        max: 100,
-        showColorBar: _isColorLike(title),
-      );
-    }).toList();
+    final drawerTiles = allWidgets
+        .where((w) => !visibleIds.contains(w.widgetId))
+        .map(_toTile)
+        .toList();
 
     return HomeViewModel(
-      tiles: tiles,
+      tiles: activeTiles, // หน้า Home ใช้เฉพาะ include
+      activeTiles: activeTiles,
+      drawerTiles: drawerTiles,
       isLoading: st.isLoading,
       error: st.error,
     );
@@ -135,29 +100,75 @@ class HomeViewModel {
       .toList(growable: false);
 
   List<HomeWidgetTileVM> get colorTiles => tiles
-      .where((t) =>
-          t.kind == HomeTileKind.adjust &&
-          t.showColorBar &&
-          !_isBrightnessLike(t.title))
+      .where((t) => t.kind == HomeTileKind.adjust && t.showColorBar && !_isBrightnessLike(t.title))
       .toList(growable: false);
 
   List<HomeWidgetTileVM> get extraTiles => tiles
-      .where((t) =>
-          t.kind == HomeTileKind.adjust &&
-          !_isBrightnessLike(t.title) &&
-          !t.showColorBar)
+      .where((t) => t.kind == HomeTileKind.adjust && !_isBrightnessLike(t.title) && !t.showColorBar)
       .toList(growable: false);
 
-  // getters ที่ home_sections.dart เรียกใช้
   bool get hasSensors => sensorTiles.isNotEmpty;
   bool get hasDevices => deviceTiles.isNotEmpty;
   bool get hasColor => colorTiles.isNotEmpty;
   bool get hasBrightness => brightnessTiles.isNotEmpty;
   bool get hasExtra => extraTiles.isNotEmpty;
 
-  // เผื่อ UI เดิมเรียกใช้
-  List<HomeWidgetTileVM> get activeTiles => tiles;
-  List<HomeWidgetTileVM> get drawerTiles => tiles;
+  // ---- mapping ----
+  static HomeWidgetTileVM _toTile(dynamic w) {
+    final cap = w.capability as Capability;
+    final title = w.device.name as String;
+    final subtitle = _capLabel(cap);
+
+    final double? doubleValue = double.tryParse(w.value.toString());
+    final int intValue = doubleValue?.round() ?? 0;
+
+    if (cap.type == CapabilityType.info) {
+      return HomeWidgetTileVM(
+        widgetId: w.widgetId,
+        title: title,
+        subtitle: subtitle,
+        span: HomeTileSpan.half,
+        kind: HomeTileKind.sensor,
+        isOn: false,
+        intValue: intValue,
+        unit: _guessUnit(title),
+        min: 0,
+        max: 100,
+        showColorBar: false,
+      );
+    }
+
+    if (cap.type == CapabilityType.toggle) {
+      return HomeWidgetTileVM(
+        widgetId: w.widgetId,
+        title: title,
+        subtitle: subtitle,
+        span: HomeTileSpan.half,
+        kind: HomeTileKind.toggle,
+        isOn: intValue >= 1,
+        intValue: intValue,
+        unit: '',
+        min: 0,
+        max: 1,
+        showColorBar: false,
+      );
+    }
+
+    // adjust
+    return HomeWidgetTileVM(
+      widgetId: w.widgetId,
+      title: title,
+      subtitle: subtitle,
+      span: HomeTileSpan.full,
+      kind: HomeTileKind.adjust,
+      isOn: false,
+      intValue: intValue,
+      unit: _guessAdjustUnit(title),
+      min: 0,
+      max: 100,
+      showColorBar: _isColorLike(title),
+    );
+  }
 
   static String _capLabel(Capability cap) {
     return 'cap';
