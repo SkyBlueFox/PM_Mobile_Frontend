@@ -27,17 +27,16 @@ class ManageHomesPage extends StatelessWidget {
             _Card(
               child: InkWell(
                 onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => BlocProvider.value(
-        value: context.read<DevicesBloc>(),
-        child: const ManageRoomsPage(),
-      ),
-    ),
-  );
-},
-
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<DevicesBloc>(),
+                        child: const ManageRoomsPage(),
+                      ),
+                    ),
+                  );
+                },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                   child: Row(

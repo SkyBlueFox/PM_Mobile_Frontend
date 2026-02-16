@@ -8,6 +8,7 @@ import '../data/room_repository.dart';
 import '../data/widget_repository.dart';
 import '../models/capability.dart';
 import '../models/device_widget.dart';
+import '../models/room.dart';
 import 'devices_event.dart';
 import 'devices_state.dart';
 
@@ -34,6 +35,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<WidgetsOrderChanged>(_onWidgetsOrderChanged);
     on<CommitReorderPressed>(_onCommitReorderPressed);
     on<DevicesRequested>(_onDevicesRequested);
+
+    on<RoomCreateRequested>(_onRoomCreateRequested);
   }
 
   Future<void> _onStarted(DevicesStarted event, Emitter<DevicesState> emit) async {
@@ -42,6 +45,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     try {
       final rooms = await roomRepo.fetchRooms();
       final widgets = await widgetRepo.fetchWidgets();
+      final devices = await deviceRepo.fetchDevices();
 
       emit(state.copyWith(
         isLoading: false,
@@ -49,6 +53,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         widgets: widgets,
         selectedRoomId: null,
         error: null,
+        devices: devices,
       ));
     } catch (e, st) {
       debugPrint('[DevicesBloc] start failed: $e\n$st');
@@ -245,7 +250,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       debugPrint('[DevicesBloc] commit reorder failed: $e\n$st');
       emit(state.copyWith(
         reorderSaving: false,
-        error: _msgCommandFailed,
+        error: e.toString(), //
       ));
     }
   }
@@ -263,13 +268,42 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final devices = await deviceRepo.fetchDevices(
-        connected: event.connectedOnly ? true : null,
-      );
+      // final devices = await deviceRepo.fetchDevices(
+      //   connected: event.connectedOnly ? true : null,
+      // );
+      final devices = await deviceRepo.fetchDevices();
       emit(state.copyWith(isLoading: false, devices: devices));
     } catch (_) {
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
     }
   }
 
+  Future<void> _onRoomCreateRequested(
+    RoomCreateRequested event,
+    Emitter<DevicesState> emit,
+  ) async {
+    final name = event.roomName.trim();
+    if (name.isEmpty) return;
+
+    emit(state.copyWith(isLoading: true, error: null));
+
+    try {
+      await roomRepo.createRoom(roomName: name);
+
+      // ✅ refresh list
+      final rooms = await roomRepo.fetchRooms();
+
+      emit(state.copyWith(
+        isLoading: false,
+        rooms: rooms,
+        error: null,
+      ));
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] create room failed: $e\n$st');
+      emit(state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      ));
+    }
+  }
 }

@@ -35,6 +35,26 @@ class RoomRepository {
         .toList();
   }
 
+  Future<void> createRoom({
+    required String roomName,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/rooms');
+
+    final res = await _client.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'room_name': roomName,
+      }),
+    );
+    print("response status: ${res.statusCode}, body: ${res.body}");
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Failed to create room: ${res.statusCode} ${res.body}');
+    }
+  }
+
   /// GET /api/rooms/{room_id}/devices
   Future<List<Device>> fetchDevicesInRoom(int roomId) async {
     final res =
@@ -76,6 +96,28 @@ class RoomRepository {
     return list
         .map((e) => DeviceWidget.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> addDeviceToRoom({
+    required int roomId,
+    required String deviceId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/rooms/$roomId/devices');
+
+    final res = await _client.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'device_id': deviceId,
+      }),
+    );
+    if (res.statusCode != 200 && res.statusCode != 201 && res.statusCode != 204) {
+      throw Exception(
+        'Failed to add device to room: ${res.statusCode} ${res.body}',
+      );
+    }
   }
 
   void dispose() {

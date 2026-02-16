@@ -73,12 +73,13 @@ class WidgetRepository {
 
   /// PATCH /api/widgets/order
   Future<void> changeWidgetsOrder(List<int> widgetOrders) async {
-    final res = await _client.patch(
+    final res = await _client.put(
       Uri.parse('$baseUrl/api/widgets/order'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'widget_orders': widgetOrders}),
     );
-
+    print("widgetOrders sent to server: $widgetOrders");
+    print("response status: ${res.statusCode}, body: ${res.body}");
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Failed to change widget order');
     }

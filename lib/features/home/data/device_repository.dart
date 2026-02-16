@@ -13,14 +13,13 @@ class DeviceRepository {
   }) : _client = client ?? http.Client();
 
   Future<List<Device>> fetchDevices({bool? connected}) async {
-    final uri = Uri.parse('$baseUrl/api/devices').replace(
-      queryParameters: {
-        if (connected != null) 'connected': connected.toString(), // true/false
-      },
-    );
-
+    // final uri = Uri.parse('$baseUrl/api/devices').replace(
+    //   queryParameters: {
+    //     if (connected != null) 'connected': connected.toString(), // true/false
+    //   },
+    // );
+    final uri = Uri.parse('$baseUrl/api/devices');
     final res = await _client.get(uri);
-
     if (res.statusCode != 200) {
       throw Exception('Failed to load devices: ${res.statusCode}');
     }
@@ -51,7 +50,8 @@ class DeviceRepository {
         'device_key': deviceKey,
       }),
     );
-
+    print('pairDevice request: POST $uri with body ${jsonEncode({'device_key': deviceKey})}');
+    print('pairDevice response: ${res.statusCode} ${res.body}');
     if (res.statusCode != 200 && res.statusCode != 204) {
       throw Exception('Failed to pair device: ${res.statusCode} ${res.body}');
     }

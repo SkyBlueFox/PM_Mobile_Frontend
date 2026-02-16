@@ -5,6 +5,7 @@ import '../../models/device.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_state.dart';
 import '../../models/room.dart';
+import 'device_setup_page.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
@@ -191,15 +192,28 @@ class _AddDevicePageState extends State<AddDevicePage> {
     }
 
     try {
-      final repo = context.read<DevicesBloc>().deviceRepo;
+      final deviceRepo = context.read<DevicesBloc>().deviceRepo;
+      final roomRepo = context.read<DevicesBloc>().roomRepo;
 
-      await repo.pairDevice(
+      await deviceRepo.pairDevice(
         deviceId: _selectedDevice!.id,
         deviceKey: _passwordCtrl.text,
       );
 
+      await roomRepo.addDeviceToRoom(
+        roomId: _selectedRoom!.id,
+        deviceId: _selectedDevice!.id,
+      );
       if (!mounted) return;
-      Navigator.pop(context, true); // success
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DeviceSetupPage(
+            device: _selectedDevice!,
+            room: _selectedRoom!,
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
