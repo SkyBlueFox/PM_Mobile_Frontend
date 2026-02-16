@@ -1,4 +1,8 @@
 // lib/features/home/ui/view_models/home_view_model.dart
+//
+// ปรับให้มี include/exclude จริง:
+// - tiles = include (จาก state.visibleWidgets)
+// - drawerTiles = exclude (state.widgets - visibleWidgets)
 
 import '../../../home/models/capability.dart';
 import '../../../home/bloc/devices_state.dart';
@@ -18,7 +22,7 @@ class HomeWidgetTileVM {
   final bool isOn;
 
   // sensor/adjust display
-  final int intValue; // ให้ UI โชว์ “จำนวนเต็ม”
+  final int intValue;
   final String unit;
 
   // adjust
@@ -40,47 +44,34 @@ class HomeWidgetTileVM {
     required this.showColorBar,
   });
 
-  // ต้องเป็น "ตัวเลขล้วน" เพื่อให้ UI/Slider แปลงเป็นตัวเลขได้
   String get displayValue => '$intValue';
 }
 
 class HomeViewModel {
-  final List<HomeWidgetTileVM> tiles; // ใช้ render หน้า Home (เฉพาะ visible)
+  final List<HomeWidgetTileVM> tiles; // include
+  final List<HomeWidgetTileVM> drawerTiles; // exclude
   final bool isLoading;
   final String? error;
 
-  // ✅ สำหรับลิ้นชัก: include/exclude
-  final List<HomeWidgetTileVM> activeTiles;
-  final List<HomeWidgetTileVM> drawerTiles;
-
   const HomeViewModel({
     required this.tiles,
+    required this.drawerTiles,
     required this.isLoading,
     required this.error,
-    List<HomeWidgetTileVM>? activeTiles,
-    List<HomeWidgetTileVM>? drawerTiles,
-  })  : activeTiles = activeTiles ?? tiles,
-        drawerTiles = drawerTiles ?? const [];
+  });
 
   factory HomeViewModel.fromState(DevicesState st) {
-    // visible (include)
-    final visibleWidgets = st.visibleWidgets;
-    final visibleIds = visibleWidgets.map((w) => w.widgetId).toSet();
+    final includedWidgets = st.visibleWidgets;
+    final includedIds = includedWidgets.map((w) => w.widgetId).toSet();
 
-    // all (include + exclude) — ถ้า backend ส่งมาแค่ visible จริง ๆ ฝั่ง exclude จะว่างเอง
-    final allWidgets = st.widgets;
+    final excludedWidgets = st.widgets.where((w) => !includedIds.contains(w.widgetId)).toList();
 
-    final activeTiles = visibleWidgets.map(_toTile).toList();
-
-    final drawerTiles = allWidgets
-        .where((w) => !visibleIds.contains(w.widgetId))
-        .map(_toTile)
-        .toList();
+    final includedTiles = includedWidgets.map(_mapWidgetToTile).toList();
+    final excludedTiles = excludedWidgets.map(_mapWidgetToTile).toList();
 
     return HomeViewModel(
-      tiles: activeTiles, // หน้า Home ใช้เฉพาะ include
-      activeTiles: activeTiles,
-      drawerTiles: drawerTiles,
+      tiles: includedTiles,
+      drawerTiles: excludedTiles,
       isLoading: st.isLoading,
       error: st.error,
     );
@@ -88,39 +79,17 @@ class HomeViewModel {
 
   bool get isEmpty => tiles.isEmpty;
 
-  // === Section grouping (ใช้กับ home_sections.dart) ===
-  List<HomeWidgetTileVM> get sensorTiles =>
-      tiles.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false);
+  // ใช้ชื่อเดิมให้ home_page เรียกง่าย
+  List<HomeWidgetTileVM> get activeTiles => tiles;
 
-  List<HomeWidgetTileVM> get deviceTiles =>
-      tiles.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false);
+  static HomeWidgetTileVM _mapWidgetToTile(dynamic w) {
+    final cap = w.capability;
 
-  List<HomeWidgetTileVM> get brightnessTiles => tiles
-      .where((t) => t.kind == HomeTileKind.adjust && _isBrightnessLike(t.title))
-      .toList(growable: false);
-
-  List<HomeWidgetTileVM> get colorTiles => tiles
-      .where((t) => t.kind == HomeTileKind.adjust && t.showColorBar && !_isBrightnessLike(t.title))
-      .toList(growable: false);
-
-  List<HomeWidgetTileVM> get extraTiles => tiles
-      .where((t) => t.kind == HomeTileKind.adjust && !_isBrightnessLike(t.title) && !t.showColorBar)
-      .toList(growable: false);
-
-  bool get hasSensors => sensorTiles.isNotEmpty;
-  bool get hasDevices => deviceTiles.isNotEmpty;
-  bool get hasColor => colorTiles.isNotEmpty;
-  bool get hasBrightness => brightnessTiles.isNotEmpty;
-  bool get hasExtra => extraTiles.isNotEmpty;
-
-  // ---- mapping ----
-  static HomeWidgetTileVM _toTile(dynamic w) {
-    final cap = w.capability as Capability;
     final title = w.device.name as String;
     final subtitle = _capLabel(cap);
 
-    final double? doubleValue = double.tryParse(w.value.toString());
-    final int intValue = doubleValue?.round() ?? 0;
+    final doubleValue = double.tryParse(w.value.toString());
+    final intValue = doubleValue?.round() ?? 0;
 
     if (cap.type == CapabilityType.info) {
       return HomeWidgetTileVM(
@@ -170,9 +139,7 @@ class HomeViewModel {
     );
   }
 
-  static String _capLabel(Capability cap) {
-    return 'cap';
-  }
+  static String _capLabel(Capability cap) => 'cap';
 
   static String _guessUnit(String name) {
     final n = name.toLowerCase();
@@ -192,10 +159,5 @@ class HomeViewModel {
   static bool _isColorLike(String name) {
     final n = name.toLowerCase();
     return n.contains('color') || n.contains('temp') || n.contains('rgb');
-  }
-
-  static bool _isBrightnessLike(String name) {
-    final n = name.toLowerCase();
-    return n.contains('bright') || n.contains('brightness') || n.contains('ความสว่าง');
   }
 }

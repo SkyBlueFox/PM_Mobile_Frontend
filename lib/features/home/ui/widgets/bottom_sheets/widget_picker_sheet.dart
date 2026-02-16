@@ -1,51 +1,80 @@
-// lib/features/home/ui/widgets/widget_picker_sheet.dart
+// lib/features/home/ui/widgets/bottom_sheets/widget_picker_sheet.dart
+//
+// Manage widgets (Add/Delete) — ตาม UI
+// - ไม่มี checkbox
+// - ปุ่มขวาบนเป็น Save
+// - Include ด้านบน / Exclude ด้านล่าง (แยก Sensors/Devices/Adjust)
+// - แตะการ์ดใน Include = ย้ายลง Exclude
+// - แตะการ์ดใน Exclude = ย้ายขึ้น Include
+// - return: List<int> widgetIds ที่ “อยู่ใน Include” หลัง Save
 
 import 'package:flutter/material.dart';
 
 import '../../view_models/home_view_model.dart';
 
-/// ลิ้นชักปรับ widget:
-/// - แสดง Include (ด้านบน) / Exclude (ด้านล่าง)
-/// - checkbox อยู่ “มุมขวาบน” ของการ์ด
-/// - กดการ์ด/กด checkbox = ย้ายระหว่าง Include/Exclude
-/// - return: รายการ widgetId ที่ “อยู่ฝั่ง Include” หลังปรับเสร็จ
 Future<List<int>?> showWidgetPickerSheet({
   required BuildContext context,
   required String title,
-  required String confirmText,
+  String confirmText = 'Save',
   required List<HomeWidgetTileVM> includedItems,
   required List<HomeWidgetTileVM> excludedItems,
-  required bool isDeleteMode,
+
+  /// ถ้า true: กันไม่ให้เอาออกจาก include (แตะแล้วไม่ย้ายลง)
+  bool lockIncluded = false,
+
+  /// หัวแบบในรูป (optional)
+  String headerTitle = '',
+  String headerSubtitle = '',
 }) {
   return showModalBottomSheet<List<int>>(
     context: context,
     isScrollControlled: true,
+    backgroundColor: Colors.transparent,
     showDragHandle: true,
-    builder: (context) {
-      return _WidgetPickerSheet(
-        title: title,
-        confirmText: confirmText,
-        includedItems: includedItems,
-        excludedItems: excludedItems,
-        isDeleteMode: isDeleteMode,
+    builder: (_) {
+      return DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.70,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) {
+          return _WidgetPickerSheet(
+            scrollController: scrollController,
+            title: title,
+            confirmText: confirmText,
+            includedItems: includedItems,
+            excludedItems: excludedItems,
+            lockIncluded: lockIncluded,
+            headerTitle: headerTitle,
+            headerSubtitle: headerSubtitle,
+          );
+        },
       );
     },
   );
 }
 
 class _WidgetPickerSheet extends StatefulWidget {
+  final ScrollController scrollController;
+
   final String title;
   final String confirmText;
   final List<HomeWidgetTileVM> includedItems;
   final List<HomeWidgetTileVM> excludedItems;
-  final bool isDeleteMode;
+  final bool lockIncluded;
+
+  final String headerTitle;
+  final String headerSubtitle;
 
   const _WidgetPickerSheet({
+    required this.scrollController,
     required this.title,
     required this.confirmText,
     required this.includedItems,
     required this.excludedItems,
-    required this.isDeleteMode,
+    required this.lockIncluded,
+    required this.headerTitle,
+    required this.headerSubtitle,
   });
 
   @override
@@ -53,189 +82,209 @@ class _WidgetPickerSheet extends StatefulWidget {
 }
 
 class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
-  late final List<HomeWidgetTileVM> _allItems;
-  late final Set<int> _includedIds;
+  late final Set<int> _included = widget.includedItems.map((e) => e.widgetId).toSet();
 
-  @override
-  void initState() {
-    super.initState();
-
-    // รวมรายการทั้งหมด (รักษาลำดับ: included ก่อน แล้วตามด้วย excluded)
-    final seen = <int>{};
-    final all = <HomeWidgetTileVM>[];
-
-    for (final it in widget.includedItems) {
-      if (seen.add(it.widgetId)) all.add(it);
-    }
-    for (final it in widget.excludedItems) {
-      if (seen.add(it.widgetId)) all.add(it);
-    }
-
-    _allItems = all;
-    _includedIds = widget.includedItems.map((e) => e.widgetId).toSet();
-  }
-
-  void _toggleInclude(int widgetId) {
-    setState(() {
-      if (_includedIds.contains(widgetId)) {
-        _includedIds.remove(widgetId);
-      } else {
-        _includedIds.add(widgetId);
-      }
-    });
-  }
+  void _include(int id) => setState(() => _included.add(id));
+  void _exclude(int id) => setState(() => _included.remove(id));
 
   @override
   Widget build(BuildContext context) {
-    final included = _allItems.where((t) => _includedIds.contains(t.widgetId)).toList(growable: false);
-    final excluded = _allItems.where((t) => !_includedIds.contains(t.widgetId)).toList(growable: false);
+    // รวมทั้งหมดเพื่อให้ย้ายไปมาได้
+    final all = <HomeWidgetTileVM>[
+      ...widget.includedItems,
+      ...widget.excludedItems,
+    ];
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 6,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header: title + cancel + done
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
+    // ป้องกันซ้ำ (อิง widgetId)
+    final byId = <int, HomeWidgetTileVM>{};
+    for (final t in all) {
+      byId[t.widgetId] = t;
+    }
+    final uniq = byId.values.toList(growable: false);
+
+    final included = uniq.where((e) => _included.contains(e.widgetId)).toList(growable: false);
+    final excluded = uniq.where((e) => !_included.contains(e.widgetId)).toList(growable: false);
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+      child: Container(
+        color: const Color(0xFFF6F7FB),
+        child: SingleChildScrollView(
+          controller: widget.scrollController,
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ===== Header (optional) =====
+              if (widget.headerTitle.trim().isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.home_rounded, color: Color(0xFF3AA7FF), size: 24),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.headerTitle,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                        ),
+                        if (widget.headerSubtitle.trim().isNotEmpty)
+                          Text(
+                            widget.headerSubtitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black45,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, null),
-                  child: const Text('ยกเลิก'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: widget.isDeleteMode
-                      ? ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white)
-                      : null,
-                  onPressed: () => Navigator.pop(context, _includedIds.toList()),
-                  child: Text(widget.confirmText),
-                ),
+                const SizedBox(height: 12),
               ],
-            ),
-            const SizedBox(height: 10),
 
-            Flexible(
-              child: ListView(
+              // ===== Top bar: title + Cancel + Save =====
+              Row(
                 children: [
-                  _SectionHeader(title: 'Include', count: included.length),
-                  const SizedBox(height: 8),
-                  if (included.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Text('No widgets included.', style: TextStyle(color: Colors.black54)),
-                    )
-                  else
-                    _GroupedTiles(
-                      items: included,
-                      isChecked: (id) => _includedIds.contains(id),
-                      onToggle: _toggleInclude,
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
                     ),
-
-                  const SizedBox(height: 16),
-                  _SectionHeader(title: 'Exclude', count: excluded.length),
-                  const SizedBox(height: 8),
-                  if (excluded.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Text('No widgets excluded.', style: TextStyle(color: Colors.black54)),
-                    )
-                  else
-                    _GroupedTiles(
-                      items: excluded,
-                      isChecked: (id) => _includedIds.contains(id),
-                      onToggle: _toggleInclude,
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    child: const Text('ยกเลิก'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3AA7FF),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      elevation: 0,
                     ),
+                    onPressed: () => Navigator.pop(context, _included.toList()),
+                    child: Text(widget.confirmText, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  ),
                 ],
               ),
-            ),
-          ],
+
+              const SizedBox(height: 12),
+
+              // ===== Include =====
+              Text(
+                'Include (${included.length})',
+                style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black87),
+              ),
+              const SizedBox(height: 10),
+
+              _Group(
+                title: 'Devices',
+                items: included.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false),
+                onTap: (t) {
+                  if (widget.lockIncluded) return;
+                  _exclude(t.widgetId);
+                },
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Sensors',
+                items: included.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false),
+                onTap: (t) {
+                  if (widget.lockIncluded) return;
+                  _exclude(t.widgetId);
+                },
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Adjust',
+                items: included.where((t) => t.kind == HomeTileKind.adjust).toList(growable: false),
+                onTap: (t) {
+                  if (widget.lockIncluded) return;
+                  _exclude(t.widgetId);
+                },
+              ),
+
+              const SizedBox(height: 18),
+
+              // ===== Exclude =====
+              const Text(
+                'Exclude',
+                style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black87),
+              ),
+              const SizedBox(height: 10),
+
+              _Group(
+                title: 'Sensors',
+                items: excluded.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false),
+                onTap: (t) => _include(t.widgetId),
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Devices',
+                items: excluded.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false),
+                onTap: (t) => _include(t.widgetId),
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Adjust',
+                items: excluded.where((t) => t.kind == HomeTileKind.adjust).toList(growable: false),
+                onTap: (t) => _include(t.widgetId),
+              ),
+
+              if (excluded.isEmpty) ...[
+                const SizedBox(height: 8),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Center(
+                    child: Text('No widgets available.', style: TextStyle(color: Colors.black54)),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
+class _Group extends StatelessWidget {
   final String title;
-  final int count;
-
-  const _SectionHeader({required this.title, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-        const SizedBox(width: 6),
-        Text('($count)', style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w700)),
-      ],
-    );
-  }
-}
-
-class _GroupedTiles extends StatelessWidget {
   final List<HomeWidgetTileVM> items;
-  final bool Function(int widgetId) isChecked;
-  final void Function(int widgetId) onToggle;
+  final ValueChanged<HomeWidgetTileVM> onTap;
 
-  const _GroupedTiles({
+  const _Group({
+    required this.title,
     required this.items,
-    required this.isChecked,
-    required this.onToggle,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final sensors = items.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false);
-    final devices = items.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false);
-    final adjusts = items.where((t) => t.kind == HomeTileKind.adjust).toList(growable: false);
+    if (items.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (sensors.isNotEmpty) ...[
-          const Text('Sensors', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black54)),
-          const SizedBox(height: 8),
-          _TileWrapGrid(items: sensors, isChecked: isChecked, onToggle: onToggle),
-          const SizedBox(height: 12),
-        ],
-        if (devices.isNotEmpty) ...[
-          const Text('Devices', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black54)),
-          const SizedBox(height: 8),
-          _TileWrapGrid(items: devices, isChecked: isChecked, onToggle: onToggle),
-          const SizedBox(height: 12),
-        ],
-        if (adjusts.isNotEmpty) ...[
-          const Text('Adjust', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black54)),
-          const SizedBox(height: 8),
-          _TileWrapGrid(items: adjusts, isChecked: isChecked, onToggle: onToggle),
-        ],
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black54)),
+        const SizedBox(height: 10),
+        _TileGrid(items: items, onTap: onTap),
       ],
     );
   }
 }
 
-class _TileWrapGrid extends StatelessWidget {
+class _TileGrid extends StatelessWidget {
   final List<HomeWidgetTileVM> items;
-  final bool Function(int widgetId) isChecked;
-  final void Function(int widgetId) onToggle;
+  final ValueChanged<HomeWidgetTileVM> onTap;
 
-  const _TileWrapGrid({
+  const _TileGrid({
     required this.items,
-    required this.isChecked,
-    required this.onToggle,
+    required this.onTap,
   });
 
   @override
@@ -252,10 +301,10 @@ class _TileWrapGrid extends StatelessWidget {
             final w = t.span == HomeTileSpan.full ? full : half;
             return SizedBox(
               width: w,
-              child: _PickCard(
-                tile: t,
-                checked: isChecked(t.widgetId),
-                onToggle: () => onToggle(t.widgetId),
+              child: InkWell(
+                onTap: () => onTap(t),
+                borderRadius: BorderRadius.circular(16),
+                child: _WidgetPreviewCard(tile: t),
               ),
             );
           }).toList(),
@@ -265,95 +314,131 @@ class _TileWrapGrid extends StatelessWidget {
   }
 }
 
-class _PickCard extends StatelessWidget {
+class _WidgetPreviewCard extends StatelessWidget {
   final HomeWidgetTileVM tile;
-  final bool checked;
-  final VoidCallback onToggle;
 
-  const _PickCard({
-    required this.tile,
-    required this.checked,
-    required this.onToggle,
-  });
+  const _WidgetPreviewCard({required this.tile});
 
   @override
   Widget build(BuildContext context) {
-    final valueText = _valueText(tile);
-
-    return InkWell(
-      onTap: onToggle,
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x14000000),
-                  blurRadius: 18,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        tile.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      valueText,
-                      style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tile.subtitle,
+          // header
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  tile.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
                 ),
-              ],
-            ),
-          ),
-
-          // ✅ checkbox มุมขวาบน
-          Positioned(
-            top: 8,
-            right: 8,
-            child: InkWell(
-              onTap: onToggle,
-              borderRadius: BorderRadius.circular(999),
-              child: Icon(
-                checked ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                color: checked ? const Color(0xFF3AA7FF) : Colors.black26,
               ),
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.drag_indicator_rounded, color: Colors.black26, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            tile.subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.black45,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
           ),
+          const SizedBox(height: 10),
+
+          // body (preview)
+          if (tile.kind == HomeTileKind.sensor) _sensorBody(tile),
+          if (tile.kind == HomeTileKind.toggle) _toggleBody(tile),
+          if (tile.kind == HomeTileKind.adjust) _adjustBody(tile),
         ],
       ),
     );
   }
 
-  static String _valueText(HomeWidgetTileVM t) {
-    switch (t.kind) {
-      case HomeTileKind.toggle:
-        return t.isOn ? 'ON' : 'OFF';
-      case HomeTileKind.sensor:
-      case HomeTileKind.adjust:
-        return t.unit.isEmpty ? '${t.intValue}' : '${t.intValue}${t.unit}';
-    }
+  Widget _sensorBody(HomeWidgetTileVM t) {
+    final value = t.unit.isEmpty ? '${t.intValue}' : '${t.intValue}${t.unit}';
+    return Row(
+      children: [
+        const Icon(Icons.sensors_rounded, size: 16, color: Color(0xFF3AA7FF)),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F6FF),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF3AA7FF),
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _toggleBody(HomeWidgetTileVM t) {
+    return Row(
+      children: [
+        const Text('Power', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+        const Spacer(),
+        IgnorePointer(
+          child: Switch(
+            value: t.isOn,
+            onChanged: (_) {},
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _adjustBody(HomeWidgetTileVM t) {
+    final value = t.unit.isEmpty ? '${t.intValue}' : '${t.intValue}${t.unit}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Adjust', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+            const Spacer(),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF))),
+          ],
+        ),
+        const SizedBox(height: 6),
+        IgnorePointer(
+          child: Slider(
+            value: t.intValue.clamp(t.min, t.max).toDouble(),
+            min: t.min.toDouble(),
+            max: t.max.toDouble(),
+            onChanged: (_) {},
+          ),
+        ),
+      ],
+    );
   }
 }

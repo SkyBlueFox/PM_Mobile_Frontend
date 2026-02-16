@@ -1,60 +1,73 @@
 // lib/features/home/ui/widgets/bottom_sheets/home_actions_sheet.dart
 //
-// Bottom sheet สำหรับ FAB: 3 actions
-// - Add widgets
-// - Edit widgets (reorder mode)
-// - Remove widgets (move to drawer)
+// ปรับรายการให้เป็น:
+// - Add device/widget
+// - Reorder widget
+// - Add/Delete widget
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../../bloc/devices_bloc.dart';
-import '../../pages/add_device_page.dart';
 
 enum HomeAction {
-  addWidgets,
-  editWidgets,
-  deleteWidgets,
+  addDeviceWidget,
+  reorderWidgets,
+  manageWidgets,
 }
 
 Future<HomeAction?> showHomeActionsSheet(BuildContext context) {
-  final devicesBloc = context.read<DevicesBloc>();
   return showModalBottomSheet<HomeAction>(
     context: context,
     showDragHandle: true,
-    builder: (context) {
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+    ),
+    builder: (_) {
       return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add_circle_outline),
-              title: const Text('Add devices/widgets'),
-              onTap: () => 
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BlocProvider.value(
-                    value: devicesBloc,
-                    child: const AddDevicePage(),
-                  ),
-                ),
-              )
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit widgets (reorder)'),
-              onTap: () => Navigator.pop(context, HomeAction.editWidgets),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('Remove widgets (move to drawer)'),
-              onTap: () => Navigator.pop(context, HomeAction.deleteWidgets),
-            ),
-            const SizedBox(height: 10),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ActionTile(
+                icon: Icons.add_circle_outline_rounded,
+                title: 'Add device/widget',
+                onTap: () => Navigator.pop(context, HomeAction.addDeviceWidget),
+              ),
+              _ActionTile(
+                icon: Icons.reorder_rounded,
+                title: 'Reorder widget',
+                onTap: () => Navigator.pop(context, HomeAction.reorderWidgets),
+              ),
+              _ActionTile(
+                icon: Icons.widgets_outlined,
+                title: 'Add/Delete widget',
+                onTap: () => Navigator.pop(context, HomeAction.manageWidgets),
+              ),
+            ],
+          ),
         ),
       );
     },
   );
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.black87),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      onTap: onTap,
+    );
+  }
 }
