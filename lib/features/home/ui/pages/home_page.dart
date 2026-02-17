@@ -1,6 +1,4 @@
 // lib/features/home/ui/pages/home_page.dart
-//
-// Home page (after login)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -24,7 +22,9 @@ import '../widgets/components/home_widget_grid.dart';
 import '../widgets/bottom_sheets/home_actions_sheet.dart';
 import '../widgets/bottom_sheets/widget_picker_sheet.dart';
 
-import 'me_page.dart';
+import 'add_device_page.dart';
+
+// ✅ เพิ่ม
 import 'manage_homes_page.dart';
 import 'sensor_detail_page.dart';
 
@@ -35,15 +35,9 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider(
-          create: (_) => WidgetRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
-        ),
-        RepositoryProvider(
-          create: (_) => RoomRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
-        ),
-        RepositoryProvider(
-          create: (_) => DeviceRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
-        ),
+        RepositoryProvider(create: (_) => WidgetRepository(baseUrl: dotenv.get('BACKEND_API_URL'))),
+        RepositoryProvider(create: (_) => RoomRepository(baseUrl: dotenv.get('BACKEND_API_URL'))),
+        RepositoryProvider(create: (_) => DeviceRepository(baseUrl: dotenv.get('BACKEND_API_URL'))),
       ],
       child: BlocProvider(
         create: (context) => DevicesBloc(
@@ -88,71 +82,81 @@ class _HomeViewState extends State<_HomeView> {
     if (!mounted || action == null) return;
 
     switch (action) {
-      case HomeAction.addWidgets:
-        await _openWidgetPickerSheet(st, isDeleteMode: false);
+      case HomeAction.addDeviceWidget:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider.value(
+              value: context.read<DevicesBloc>(),
+              child: const AddDevicePage(),
+            ),
+          ),
+        );
+
+        if (!mounted) return;
+        final roomId = context.read<DevicesBloc>().state.selectedRoomId;
+        context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
         break;
 
-      case HomeAction.editWidgets:
+      case HomeAction.reorderWidgets:
         final enabled = !context.read<DevicesBloc>().state.reorderEnabled;
         context.read<DevicesBloc>().add(ReorderModeChanged(enabled));
         break;
 
-      case HomeAction.deleteWidgets:
-        await _openWidgetPickerSheet(st, isDeleteMode: true);
+      case HomeAction.manageWidgets:
+        await _openManageWidgetsSheet(st);
         break;
     }
   }
 
-  Future<void> _openWidgetPickerSheet(
-    DevicesState st, {
-    required bool isDeleteMode,
-  }) async {
+  Future<void> _openManageWidgetsSheet(DevicesState st) async {
     final vm = HomeViewModel.fromState(st);
 
-    // ✅ ลิ้นชักแบบ Include/Exclude (return: includedIds)
-    final includedIds = await showWidgetPickerSheet(
+    final result = await showWidgetPickerSheet(
       context: context,
-      title: isDeleteMode ? 'Remove widgets' : 'Add widgets',
-      confirmText: isDeleteMode ? 'Remove' : 'Done',
+      title: 'Add/Delete widget',
+      confirmText: 'Save',
       includedItems: vm.activeTiles,
       excludedItems: vm.drawerTiles,
-      isDeleteMode: isDeleteMode,
+      lockIncluded: false,
+      headerTitle: 'บ้านเกม 1',
+      headerSubtitle: '',
     );
 
-    if (!mounted || includedIds == null) return;
+    if (!mounted || result == null) return;
 
-    // TODO: connect API:
-    // - ตั้งค่า active/inactive ตาม includedIds (final state)
-    // - แล้ว refresh ห้องเดิม
-    // context.read<DevicesBloc>().add(DevicesRoomChanged(st.selectedRoomId));
+    // TODO: ต่อ API/Bloc เพื่อ set active/inactive + refresh
+    // context.read<DevicesBloc>().add(WidgetsVisibilitySaved(includedWidgetIds: result));
   }
 
   @override
   Widget build(BuildContext context) {
+    const blue = Color(0xFF3AA7FF);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _bottomIndex,
         onTap: (i) => setState(() => _bottomIndex = i),
-        selectedItemColor: const Color(0xFF3AA7FF),
+        selectedItemColor: blue,
         unselectedItemColor: Colors.black38,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'ฉัน'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Me'),
         ],
       ),
 
-      // ✅ ซ่อน FAB ตอนอยู่หน้า “ฉัน”
-      floatingActionButton: _bottomIndex == 0
-          ? BlocBuilder<DevicesBloc, DevicesState>(
+      floatingActionButton: _bottomIndex != 0
+          ? null
+          : BlocBuilder<DevicesBloc, DevicesState>(
               buildWhen: (p, c) =>
-                  p.reorderEnabled != c.reorderEnabled ||
-                  p.reorderSaving != c.reorderSaving,
+                  p.reorderEnabled != c.reorderEnabled || p.reorderSaving != c.reorderSaving,
               builder: (context, st) {
                 final enabled = st.reorderEnabled;
 
                 return FloatingActionButton(
-                  backgroundColor: const Color(0xFF3AA7FF),
+                  backgroundColor: blue,
                   onPressed: enabled
                       ? () => context.read<DevicesBloc>().add(const CommitReorderPressed())
                       : () => _openActionsSheet(st),
@@ -234,15 +238,14 @@ class _HomeViewState extends State<_HomeView> {
                             return _ErrorState(message: st.error!);
                           }
 
-                          final vm = HomeViewModel.fromState(st);
+                  final vm = HomeViewModel.fromState(st);
 
-                          // Empty state
-                          if (vm.tiles.isEmpty) {
-                            return const _EmptyState(
-                              title: 'No widgets in this room',
-                              subtitle: 'Tap the blue button to add widgets.',
-                            );
-                          }
+                  if (vm.tiles.isEmpty) {
+                    return const _EmptyState(
+                      title: 'No widgets in this room',
+                      subtitle: 'Tap the blue button to add widgets.',
+                    );
+                  }
 
                           return HomeWidgetGrid(
                             tiles: vm.tiles,
@@ -309,14 +312,27 @@ class _HomeViewState extends State<_HomeView> {
   }
 }
 
+class _MeTile extends StatelessWidget {
+  final String title;
+  final VoidCallback onTap;
+
+  const _MeTile({required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.black45),
+      onTap: onTap,
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _EmptyState({
-    required this.title,
-    required this.subtitle,
-  });
+  const _EmptyState({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -334,11 +350,7 @@ class _EmptyState extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
             ),
             const SizedBox(height: 6),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
-            ),
+            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
           ],
         ),
       ),
