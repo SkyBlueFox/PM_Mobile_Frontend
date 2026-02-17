@@ -138,9 +138,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       if (w.widgetId == event.widgetId && w.capability.type == CapabilityType.adjust) {
         return w.copyWith(value: v.toString());
       }
-      if (w.device.id == deviceId && w.capability.type == CapabilityType.sensor) {
-        return w.copyWith(value: v.toString());
-      }
       return w;
     }).toList();
 

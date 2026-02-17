@@ -107,20 +107,43 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
             children: _tiles.map((t) {
               final width = (t.span == HomeTileSpan.full) ? fullW : halfW;
               final locked = widget.reorderEnabled;
+              final effectiveValue = _draftAdjustValues.containsKey(t.widgetId)
+                ? _draftAdjustValues[t.widgetId]!.toString()
+                : t.value;
+
+              // copy tile ใหม่เฉพาะ adjust widget
+              final effectiveTile = (t.kind == HomeTileKind.adjust)
+                  ? HomeWidgetTileVM(
+                      widgetId: t.widgetId,
+                      title: t.title,
+                      subtitle: t.subtitle,
+                      span: t.span,
+                      kind: t.kind,
+                      isOn: t.isOn,
+                      value: effectiveValue, // ⭐ สำคัญมาก
+                      unit: t.unit,
+                      min: t.min,
+                      max: t.max,
+                      showColorBar: t.showColorBar,
+                    )
+                  : t;
+
               final card = SizedBox(
                 width: width,
                 child: WidgetCard(
-                  tile: t,
+                  tile: effectiveTile, // 👈 ใช้ effectiveTile แทน t
                   showDragHint: widget.reorderEnabled,
                   onToggle: locked ? () {} : () => widget.onToggle(t.widgetId),
+
                   onAdjust: locked
-                  ? (_) {}
-                  : (v) {
-                      setState(() {
-                        _draftAdjustValues[t.widgetId] = v;
-                      });
-                      _debouncedAdjust(t.widgetId, v); // still debounce sending to bloc/api
-                    },
+                      ? (_) {}
+                      : (v) {
+                          setState(() {
+                            _draftAdjustValues[t.widgetId] = v; // ให้ slider ขยับทันที
+                          });
+                          _debouncedAdjust(t.widgetId, v); // ส่งไป bloc แบบ debounce
+                        },
+
                   onOpenSensor: locked ? () {} : () => widget.onOpenSensor(t),
                 ),
               );
