@@ -65,3 +65,16 @@ class RoomCreateRequested extends DevicesEvent {
   final String roomName;
   const RoomCreateRequested(this.roomName);
 }
+
+class WidgetsPollingStarted extends DevicesEvent {
+  final int? roomId; // null = all
+  final Duration interval;
+  const WidgetsPollingStarted({
+    this.roomId,
+    this.interval = const Duration(seconds: 5),
+  });
+}
+
+class WidgetsPollingStopped extends DevicesEvent {
+  const WidgetsPollingStopped();
+}

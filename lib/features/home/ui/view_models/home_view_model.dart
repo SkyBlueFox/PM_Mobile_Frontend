@@ -18,7 +18,7 @@ class HomeWidgetTileVM {
   final bool isOn;
 
   // sensor/adjust display
-  final int intValue; // ให้ UI โชว์ “จำนวนเต็ม”
+  final String value; // ให้ UI โชว์ “จำนวนเต็ม”
   final String unit;
 
   // adjust
@@ -33,7 +33,7 @@ class HomeWidgetTileVM {
     required this.span,
     required this.kind,
     required this.isOn,
-    required this.intValue,
+    required this.value,
     required this.unit,
     required this.min,
     required this.max,
@@ -41,7 +41,7 @@ class HomeWidgetTileVM {
   });
 
   // ต้องเป็น "ตัวเลขล้วน" เพื่อให้ UI/Slider แปลงเป็นตัวเลขได้
-  String get displayValue => '$intValue';
+  String get displayValue => value;
 }
 
 class HomeViewModel {
@@ -69,8 +69,14 @@ class HomeViewModel {
 
     // all (include + exclude) — ถ้า backend ส่งมาแค่ visible จริง ๆ ฝั่ง exclude จะว่างเอง
     final allWidgets = st.widgets;
+    final sensorWidgets = st.widgets
+    .where((w) => (w.capability as Capability).type == CapabilityType.sensor);
 
-    final activeTiles = visibleWidgets.map(_toTile).toList();
+    final activeTiles = [
+      ...visibleWidgets,
+      ...sensorWidgets.where((w) => !visibleIds.contains(w.widgetId)), // avoid duplicate
+    ].map(_toTile).toList();
+
 
     final drawerTiles = allWidgets
         .where((w) => !visibleIds.contains(w.widgetId))
@@ -122,7 +128,7 @@ class HomeViewModel {
     final double? doubleValue = double.tryParse(w.value.toString());
     final int intValue = doubleValue?.round() ?? 0;
 
-    if (cap.type == CapabilityType.info) {
+    if (cap.type == CapabilityType.sensor) {
       return HomeWidgetTileVM(
         widgetId: w.widgetId,
         title: title,
@@ -130,7 +136,7 @@ class HomeViewModel {
         span: HomeTileSpan.half,
         kind: HomeTileKind.sensor,
         isOn: false,
-        intValue: intValue,
+        value: w.value,
         unit: _guessUnit(title),
         min: 0,
         max: 100,
@@ -146,7 +152,7 @@ class HomeViewModel {
         span: HomeTileSpan.half,
         kind: HomeTileKind.toggle,
         isOn: intValue >= 1,
-        intValue: intValue,
+        value: w.value,
         unit: '',
         min: 0,
         max: 1,
@@ -162,7 +168,7 @@ class HomeViewModel {
       span: HomeTileSpan.full,
       kind: HomeTileKind.adjust,
       isOn: false,
-      intValue: intValue,
+      value: w.value,
       unit: _guessAdjustUnit(title),
       min: 0,
       max: 100,

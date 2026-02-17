@@ -1,4 +1,4 @@
-enum CapabilityType { toggle, adjust, info, mode, unknown }
+enum CapabilityType { toggle, adjust, sensor, mode, unknown }
 
 CapabilityType capabilityTypeFromString(String value) {
   switch (value.trim().toLowerCase()) {
@@ -6,8 +6,8 @@ CapabilityType capabilityTypeFromString(String value) {
       return CapabilityType.toggle;
     case 'adjust':
       return CapabilityType.adjust;
-    case 'info':
-      return CapabilityType.info;
+    case 'sensor':
+      return CapabilityType.sensor;
     case 'mode':
       return CapabilityType.mode;
     default:

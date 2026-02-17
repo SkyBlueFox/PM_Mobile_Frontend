@@ -35,7 +35,6 @@ class WidgetRepository {
   }
 
   /// ส่งคำสั่งไป backend (toggle/adjust)
-  /// NOTE: ชื่อ endpoint จริงอาจต่างจากนี้ — ปรับให้ตรง backend ของคุณได้ทีหลัง
   Future<void> sendWidgetCommand({
     required int widgetId,
     required int capabilityId,
@@ -49,7 +48,8 @@ class WidgetRepository {
         'value': value,
       }),
     );
-
+    print("Widget command sent: widgetId=$widgetId, capabilityId=$capabilityId, value=$value");
+    print("Response status: ${res.statusCode}, body: ${res.body}");
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Failed to send command');
     }

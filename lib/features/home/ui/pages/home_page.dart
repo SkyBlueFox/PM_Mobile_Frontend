@@ -26,6 +26,7 @@ import '../widgets/bottom_sheets/widget_picker_sheet.dart';
 
 import 'me_page.dart';
 import 'manage_homes_page.dart';
+import 'sensor_detail_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -68,6 +69,18 @@ class _HomeViewState extends State<_HomeView> {
 
   void _logout() {
     context.read<AuthBloc>().add(const AuthLogoutRequested());
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<DevicesBloc>().add(const WidgetsPollingStarted());
+  }
+
+  @override
+  void dispose() {
+    context.read<DevicesBloc>().add(const WidgetsPollingStopped());
+    super.dispose();
   }
 
   Future<void> _openActionsSheet(DevicesState st) async {
@@ -190,8 +203,12 @@ class _HomeViewState extends State<_HomeView> {
                         return TopTab(
                           rooms: st.rooms,
                           selectedRoomId: st.selectedRoomId,
-                          onChanged: (roomId) =>
+                          onChanged: (roomId) =>{
                               context.read<DevicesBloc>().add(DevicesRoomChanged(roomId)),
+                              context.read<DevicesBloc>().add(
+                                WidgetsPollingStarted(roomId: roomId),
+                              )
+                              },
                         );
                       },
                     ),
@@ -247,7 +264,14 @@ class _HomeViewState extends State<_HomeView> {
                             },
 
                             onOpenSensor: (HomeWidgetTileVM value) {
-                              // TODO: Navigator.push to sensor_detail_page.dart
+                               final sensorWidget = st.widgets.firstWhere((w) => w.widgetId == value.widgetId);
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SensorDetailPage(sensorWidget: sensorWidget),
+                                ),
+                              );
                             },
                           );
                         },
@@ -260,17 +284,17 @@ class _HomeViewState extends State<_HomeView> {
                 displayName: 'FirstName LastName',
                 roleText: 'Role',
                 onManageHome: () {
-  final devicesBloc = context.read<DevicesBloc>();
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => BlocProvider.value(
-        value: devicesBloc,
-        child: const ManageHomesPage(),
-      ),
-    ),
-  );
-},
+                  final devicesBloc = context.read<DevicesBloc>();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: devicesBloc,
+                        child: const ManageHomesPage(),
+                      ),
+                    ),
+                  );
+                },
 
                 onManageDevices: () {
                   // TODO

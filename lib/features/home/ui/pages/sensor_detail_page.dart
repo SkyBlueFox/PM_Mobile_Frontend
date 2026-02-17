@@ -1,22 +1,24 @@
-// lib/features/home/ui/pages/sensor_detail_page.dart
-
 import 'package:flutter/material.dart';
+import '../../models/device_widget.dart';
 
 class SensorDetailPage extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String valueText;
+  final DeviceWidget sensorWidget;
 
   const SensorDetailPage({
     super.key,
-    required this.title,
-    required this.subtitle,
-    required this.valueText,
+    required this.sensorWidget,
   });
 
   @override
   Widget build(BuildContext context) {
-    // ตอนนี้ทำเป็น UI placeholder ให้เหมือนในรูป (กราฟ/ตาราง log ใส่ทีหลังได้)
+    final widget = sensorWidget;
+    final device = sensorWidget.device;
+    final title = device.name; // ปรับ field ตาม Device ของคุณ
+    final subtitle = 'cap';     // หรือ sensorWidget.capability.name ถ้ามี
+
+    // ค่าปัจจุบันของ sensor (เช่น heartbeat/sensor value)
+    final valueText = sensorWidget.value.toString();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
@@ -34,7 +36,6 @@ class SensorDetailPage extends StatelessWidget {
             Text(valueText, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
             const SizedBox(height: 14),
 
-            // fake chart card
             Container(
               height: 220,
               width: double.infinity,
@@ -48,7 +49,7 @@ class SensorDetailPage extends StatelessWidget {
               alignment: Alignment.center,
               child: const Text('Chart (TODO)', style: TextStyle(color: Colors.black45)),
             ),
-
+            Text('Widget value: ${widget.value}', style: const TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 16),
             const Text('Log', style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),

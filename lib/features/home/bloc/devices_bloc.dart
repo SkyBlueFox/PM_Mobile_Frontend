@@ -1,5 +1,7 @@
 // lib/features/home/bloc/devices_bloc.dart
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -20,6 +22,11 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   static const String _msgLoadFailed = 'Unable to load data. Please try again.';
   static const String _msgCommandFailed = 'Unable to send command. Please try again.';
 
+  Timer? _pollTimer;
+  bool _pollInFlight = false;
+  int? _pollRoomId;
+  Duration _pollInterval = const Duration(seconds: 5);
+
   DevicesBloc({
     required this.widgetRepo,
     required this.roomRepo,
@@ -37,6 +44,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<DevicesRequested>(_onDevicesRequested);
 
     on<RoomCreateRequested>(_onRoomCreateRequested);
+    on<WidgetsPollingStarted>(_onWidgetsPollingStarted);
+    on<WidgetsPollingStopped>(_onWidgetsPollingStopped);
   }
 
   Future<void> _onStarted(DevicesStarted event, Emitter<DevicesState> emit) async {
@@ -129,7 +138,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       if (w.widgetId == event.widgetId && w.capability.type == CapabilityType.adjust) {
         return w.copyWith(value: v.toString());
       }
-      if (w.device.id == deviceId && w.capability.type == CapabilityType.info) {
+      if (w.device.id == deviceId && w.capability.type == CapabilityType.sensor) {
         return w.copyWith(value: v.toString());
       }
       return w;
@@ -305,5 +314,61 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         error: e.toString(),
       ));
     }
+  }
+
+  Future<void> _onWidgetsPollingStarted(
+    WidgetsPollingStarted event,
+    Emitter<DevicesState> emit,
+  ) async {
+    _pollRoomId = event.roomId;
+    _pollInterval = event.interval;
+
+    // restart timer
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_pollInterval, (_) async {
+      print('Timer tick roomId=$_pollRoomId at ${DateTime.now()}');
+      await _pollOnce();
+    });
+    print('Started polling widgets every ${_pollInterval.inSeconds} seconds for roomId=$_pollRoomId');
+    // do an immediate fetch (so user doesn't wait for first tick)
+  }
+
+  Future<void> _onWidgetsPollingStopped(
+    WidgetsPollingStopped event,
+    Emitter<DevicesState> emit,
+  ) async {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  Future<void> _pollOnce() async {
+    if (_pollInFlight) return;
+    _pollInFlight = true;
+
+    try {
+      // ✅ ถ้า reorder อยู่ ให้ “skip” แต่ยังต้องปล่อยให้ finally ทำงานแน่นอน
+      if (state.reorderEnabled || state.reorderSaving) {
+        print('Polling skipped: reorderEnabled=${state.reorderEnabled} saving=${state.reorderSaving}');
+        return;
+      }
+
+      final widgets = (_pollRoomId == null)
+          ? await widgetRepo.fetchWidgets()
+          : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
+
+      print('Polled widgets: ${widgets.length} items for roomId=$_pollRoomId');
+      emit(state.copyWith(widgets: widgets, error: null));
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    } finally {
+      _pollInFlight = false;
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    return super.close();
   }
 }

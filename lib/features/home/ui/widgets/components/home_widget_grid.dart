@@ -1,7 +1,9 @@
 // lib/features/home/ui/widgets/home_widget_grid.dart
 
-import 'package:flutter/material.dart';
+import 'dart:ffi';
 
+import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../view_models/home_view_model.dart';
 import '../cards/widget_card.dart';
 
@@ -37,12 +39,33 @@ class HomeWidgetGrid extends StatefulWidget {
 
 class _HomeWidgetGridState extends State<HomeWidgetGrid> {
   late List<HomeWidgetTileVM> _tiles;
+  final Map<int, Timer> _debounceTimers = {};
+  final Map<int, int> _draftAdjustValues = {};
 
   @override
   void initState() {
     super.initState();
     _tiles = List<HomeWidgetTileVM>.from(widget.tiles);
   }
+
+  @override
+  void dispose() {
+    for (final t in _debounceTimers.values) {
+      t.cancel();
+    }
+    super.dispose();
+  }
+  
+  void _debouncedAdjust(int widgetId, int value) {
+    // cancel previous timer
+    _debounceTimers[widgetId]?.cancel();
+
+    // wait 400ms after last change
+    _debounceTimers[widgetId] = Timer(const Duration(milliseconds: 400), () {
+      widget.onAdjust(widgetId, value);
+    });
+  }
+
 
   @override
   void didUpdateWidget(covariant HomeWidgetGrid oldWidget) {
@@ -90,7 +113,14 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
                   tile: t,
                   showDragHint: widget.reorderEnabled,
                   onToggle: locked ? () {} : () => widget.onToggle(t.widgetId),
-                  onAdjust: locked ? (_) {} : (v) => widget.onAdjust(t.widgetId, v),
+                  onAdjust: locked
+                  ? (_) {}
+                  : (v) {
+                      setState(() {
+                        _draftAdjustValues[t.widgetId] = v;
+                      });
+                      _debouncedAdjust(t.widgetId, v); // still debounce sending to bloc/api
+                    },
                   onOpenSensor: locked ? () {} : () => widget.onOpenSensor(t),
                 ),
               );

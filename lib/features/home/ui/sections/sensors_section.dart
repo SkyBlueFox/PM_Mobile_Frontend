@@ -36,7 +36,7 @@ class SensorsSection extends StatelessWidget {
               spacing: 12,
               runSpacing: 12,
               children: items.map((s) {
-                final valueText = s.unit.isEmpty ? '${s.intValue}' : '${s.intValue}${s.unit}';
+                final valueText = s.unit.isEmpty ? '${s.value}' : '${s.value}${s.unit}';
 
                 return SizedBox(
                   width: cardWidth,

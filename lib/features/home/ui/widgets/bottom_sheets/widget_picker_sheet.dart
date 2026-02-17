@@ -353,7 +353,7 @@ class _PickCard extends StatelessWidget {
         return t.isOn ? 'ON' : 'OFF';
       case HomeTileKind.sensor:
       case HomeTileKind.adjust:
-        return t.unit.isEmpty ? '${t.intValue}' : '${t.intValue}${t.unit}';
+        return t.unit.isEmpty ? '${t.value}' : '${t.value}${t.unit}';
     }
   }
 }
