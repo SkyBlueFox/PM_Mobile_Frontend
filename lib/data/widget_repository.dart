@@ -75,9 +75,12 @@ class WidgetRepository {
 
   /// PUT /api/widgets/order
   /// ส่งเป็น "widget_ids ที่ include" เรียงตามลำดับใหม่
-  Future<void> changeWidgetsOrder(List<int> widgetOrders) async {
-    final res = await _client.put(
-      Uri.parse('$baseUrl/api/widgets/order'),
+  Future<void> changeWidgetsOrder({
+    required int roomId,
+    required List<int> widgetOrders,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/api/rooms/$roomId/widgets/order'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'widget_orders': widgetOrders}),
     );
