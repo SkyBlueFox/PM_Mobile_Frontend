@@ -10,7 +10,6 @@ import '../data/room_repository.dart';
 import '../data/widget_repository.dart';
 import '../models/capability.dart';
 import '../models/device_widget.dart';
-import '../models/room.dart';
 import 'devices_event.dart';
 import 'devices_state.dart';
 
@@ -19,8 +18,12 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   final RoomRepository roomRepo;
   final DeviceRepository deviceRepo;
 
-  static const String _msgLoadFailed = 'Unable to load data. Please try again.';
-  static const String _msgCommandFailed = 'Unable to send command. Please try again.';
+  static const String _msgLoadFailed =
+      'Unable to load data. Please try again.';
+  static const String _msgCommandFailed =
+      'Unable to send command. Please try again.';
+  static const String _msgSaveSelectionFailed =
+      'Unable to save widget selection. Please try again.';
 
   Timer? _pollTimer;
   bool _pollInFlight = false;
@@ -46,14 +49,20 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<RoomCreateRequested>(_onRoomCreateRequested);
     on<WidgetsPollingStarted>(_onWidgetsPollingStarted);
     on<WidgetsPollingStopped>(_onWidgetsPollingStopped);
+
+    // ✅ include/exclude selection events (จากไฟล์ devices_event.dart ที่เพิ่มไว้)
+    on<WidgetSelectionLoaded>(_onWidgetSelectionLoaded);
+    on<WidgetIncludeToggled>(_onWidgetIncludeToggled);
+    on<WidgetSelectionSaved>(_onWidgetSelectionSaved);
   }
 
-  Future<void> _onStarted(DevicesStarted event, Emitter<DevicesState> emit) async {
+  Future<void> _onStarted(
+      DevicesStarted event, Emitter<DevicesState> emit) async {
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
       final rooms = await roomRepo.fetchRooms();
-      final widgets = await widgetRepo.fetchWidgets();
+      final widgets = await widgetRepo.fetchWidgets(); // repo sort ตาม widgetId แล้ว
       final devices = await deviceRepo.fetchDevices();
 
       emit(state.copyWith(
@@ -70,7 +79,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-  Future<void> _onRoomChanged(DevicesRoomChanged event, Emitter<DevicesState> emit) async {
+  Future<void> _onRoomChanged(
+      DevicesRoomChanged event, Emitter<DevicesState> emit) async {
     emit(state.copyWith(
       selectedRoomId: event.roomId,
       isLoading: true,
@@ -84,6 +94,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
           ? await widgetRepo.fetchWidgets()
           : await roomRepo.fetchWidgetsByRoomId(roomId);
 
+      // ให้ sort เสมอ (กัน backend ส่งไม่เรียง)
+      widgets.sort((a, b) => a.widgetId.compareTo(b.widgetId));
+
       emit(state.copyWith(isLoading: false, widgets: widgets, error: null));
     } catch (e, st) {
       debugPrint('[DevicesBloc] roomChanged failed: $e\n$st');
@@ -91,7 +104,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-  Future<void> _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) async {
+  Future<void> _onWidgetToggled(
+      WidgetToggled event, Emitter<DevicesState> emit) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
 
@@ -124,18 +138,19 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-  Future<void> _onWidgetValueChanged(WidgetValueChanged event, Emitter<DevicesState> emit) async {
+  Future<void> _onWidgetValueChanged(
+      WidgetValueChanged event, Emitter<DevicesState> emit) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
 
     final deviceId = _deviceIdOf(before, event.widgetId);
     if (deviceId == null) return;
 
-    // ✅ กันชนิดไม่ตรง: ถ้า event.value เป็น double ก็ปัดเป็น int ก่อน
     final int v = (event.value as num).round();
 
     final updated = before.map((w) {
-      if (w.widgetId == event.widgetId && w.capability.type == CapabilityType.adjust) {
+      if (w.widgetId == event.widgetId &&
+          w.capability.type == CapabilityType.adjust) {
         return w.copyWith(value: v.toString());
       }
       return w;
@@ -157,7 +172,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   }
 
   void _onAllToggled(DevicesAllToggled event, Emitter<DevicesState> emit) {
-    // ✅ ใช้ int แทน double
     final int turnOnValue = event.turnOn ? 1 : 0;
 
     final updated = state.widgets.map((w) {
@@ -168,17 +182,22 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     emit(state.copyWith(widgets: updated, error: null));
   }
 
+  // ---------- Reorder ----------
   List<int> _currentVisibleIds(List<DeviceWidget> all) {
     final visible = all.where((w) => w.status != 'inactive').toList();
+
+    // reorder mode ยังคงใช้ order เป็นหลัก (เพื่อ UX เดิม)
     visible.sort((a, b) {
       final byOrder = a.order.compareTo(b.order);
       if (byOrder != 0) return byOrder;
       return a.widgetId.compareTo(b.widgetId);
     });
+
     return visible.map((e) => e.widgetId).toList();
   }
 
-  void _onReorderModeChanged(ReorderModeChanged event, Emitter<DevicesState> emit) {
+  void _onReorderModeChanged(
+      ReorderModeChanged event, Emitter<DevicesState> emit) {
     if (event.enabled) {
       final ids = _currentVisibleIds(state.widgets);
       emit(state.copyWith(
@@ -189,7 +208,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         error: null,
       ));
     } else {
-      // exit without saving: reset working to original
       emit(state.copyWith(
         reorderEnabled: false,
         reorderSaving: false,
@@ -200,7 +218,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-  void _onWidgetsOrderChanged(WidgetsOrderChanged event, Emitter<DevicesState> emit) {
+  void _onWidgetsOrderChanged(
+      WidgetsOrderChanged event, Emitter<DevicesState> emit) {
     if (!state.reorderEnabled || state.reorderSaving) return;
 
     emit(state.copyWith(
@@ -256,12 +275,12 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       debugPrint('[DevicesBloc] commit reorder failed: $e\n$st');
       emit(state.copyWith(
         reorderSaving: false,
-        error: e.toString(), //
+        error: e.toString(),
       ));
     }
   }
 
-
+  // ---------- Devices ----------
   String? _deviceIdOf(List<DeviceWidget> list, int widgetId) {
     final w = list.where((x) => x.widgetId == widgetId);
     if (w.isEmpty) return null;
@@ -274,9 +293,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      // final devices = await deviceRepo.fetchDevices(
-      //   connected: event.connectedOnly ? true : null,
-      // );
       final devices = await deviceRepo.fetchDevices();
       emit(state.copyWith(isLoading: false, devices: devices));
     } catch (_) {
@@ -284,6 +300,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ---------- Room create ----------
   Future<void> _onRoomCreateRequested(
     RoomCreateRequested event,
     Emitter<DevicesState> emit,
@@ -295,8 +312,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
     try {
       await roomRepo.createRoom(roomName: name);
-
-      // ✅ refresh list
       final rooms = await roomRepo.fetchRooms();
 
       emit(state.copyWith(
@@ -313,6 +328,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ---------- Polling ----------
   Future<void> _onWidgetsPollingStarted(
     WidgetsPollingStarted event,
     Emitter<DevicesState> emit,
@@ -320,14 +336,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     _pollRoomId = event.roomId;
     _pollInterval = event.interval;
 
-    // restart timer
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(_pollInterval, (_) async {
-      print('Timer tick roomId=$_pollRoomId at ${DateTime.now()}');
       await _pollOnce();
     });
-    print('Started polling widgets every ${_pollInterval.inSeconds} seconds for roomId=$_pollRoomId');
-    // do an immediate fetch (so user doesn't wait for first tick)
   }
 
   Future<void> _onWidgetsPollingStopped(
@@ -343,9 +355,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     _pollInFlight = true;
 
     try {
-      // ✅ ถ้า reorder อยู่ ให้ “skip” แต่ยังต้องปล่อยให้ finally ทำงานแน่นอน
       if (state.reorderEnabled || state.reorderSaving) {
-        print('Polling skipped: reorderEnabled=${state.reorderEnabled} saving=${state.reorderSaving}');
         return;
       }
 
@@ -353,12 +363,117 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
           ? await widgetRepo.fetchWidgets()
           : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
 
-      print('Polled widgets: ${widgets.length} items for roomId=$_pollRoomId');
+      widgets.sort((a, b) => a.widgetId.compareTo(b.widgetId));
       emit(state.copyWith(widgets: widgets, error: null));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     } finally {
       _pollInFlight = false;
+    }
+  }
+
+  // ---------- ✅ Include/Exclude selection ----------
+  Future<void> _onWidgetSelectionLoaded(
+    WidgetSelectionLoaded event,
+    Emitter<DevicesState> emit,
+  ) async {
+    emit(state.copyWith(selectionLoading: true, error: null));
+
+    try {
+      final int? roomId = event.roomId;
+
+      // ถ้า selection ผูกกับห้อง ให้โหลดเฉพาะห้องนั้น
+      final widgets = roomId == null
+          ? await widgetRepo.fetchWidgets()
+          : await roomRepo.fetchWidgetsByRoomId(roomId);
+
+      widgets.sort((a, b) => a.widgetId.compareTo(b.widgetId));
+
+      // snapshot status เดิมไว้ เพื่อคำนวณ diff ตอนกด save
+      final snap = <int, String>{};
+      for (final w in widgets) {
+        snap[w.widgetId] = w.status;
+      }
+
+      emit(state.copyWith(
+        selectionLoading: false,
+        widgets: widgets,
+        selectionOriginalStatusById: snap,
+        error: null,
+      ));
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] selection load failed: $e\n$st');
+      emit(state.copyWith(selectionLoading: false, error: _msgLoadFailed));
+    }
+  }
+
+  void _onWidgetIncludeToggled(
+    WidgetIncludeToggled event,
+    Emitter<DevicesState> emit,
+  ) {
+    // ห้าม toggle ระหว่าง reorder saving
+    if (state.reorderLocked) return;
+
+    final updated = state.widgets.map((w) {
+      if (w.widgetId != event.widgetId) return w;
+      // include => active, exclude => inactive
+      return w.copyWith(status: event.included ? 'active' : 'inactive');
+    }).toList();
+
+    // sort ให้คงที่
+    updated.sort((a, b) => a.widgetId.compareTo(b.widgetId));
+
+    emit(state.copyWith(widgets: updated, error: null));
+  }
+
+  Future<void> _onWidgetSelectionSaved(
+    WidgetSelectionSaved event,
+    Emitter<DevicesState> emit,
+  ) async {
+    emit(state.copyWith(selectionSaving: true, error: null));
+
+    try {
+      final original = state.selectionOriginalStatusById;
+
+      // หาเฉพาะตัวที่เปลี่ยนจริง
+      final changed = <DeviceWidget>[];
+      for (final w in state.widgets) {
+        final old = original[w.widgetId];
+        if (old == null) continue;
+        if (old != w.status) {
+          changed.add(w);
+        }
+      }
+
+      // ถ้าไม่มีอะไรเปลี่ยน ก็จบ
+      if (changed.isEmpty) {
+        emit(state.copyWith(selectionSaving: false, error: null));
+        return;
+      }
+
+      // บันทึกแบบยิงทีละตัว (เพราะ repo มี endpoint status ต่อ widget)
+      await Future.wait(changed.map((w) {
+        return widgetRepo.changeWidgetStatus(
+          widgetId: w.widgetId,
+          widgetStatus: w.status, // 'active' | 'inactive'
+        );
+      }));
+
+      // update snapshot ใหม่หลัง save สำเร็จ
+      final newSnap = Map<int, String>.from(original);
+      for (final w in changed) {
+        newSnap[w.widgetId] = w.status;
+      }
+
+      emit(state.copyWith(
+        selectionSaving: false,
+        selectionOriginalStatusById: newSnap,
+        error: null,
+      ));
+      // หน้า Home จะเปลี่ยนทันที เพราะ state.widgets ถูกอัปเดตตั้งแต่ toggle แล้ว
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] selection save failed: $e\n$st');
+      emit(state.copyWith(selectionSaving: false, error: _msgSaveSelectionFailed));
     }
   }
 

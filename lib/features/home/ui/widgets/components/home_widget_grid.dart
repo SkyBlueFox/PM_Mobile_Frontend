@@ -1,9 +1,8 @@
-// lib/features/home/ui/widgets/home_widget_grid.dart
+// lib/features/home/ui/widgets/components/home_widget_grid.dart
 
-import 'dart:ffi';
-
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
+
 import '../../view_models/home_view_model.dart';
 import '../cards/widget_card.dart';
 
@@ -39,13 +38,14 @@ class HomeWidgetGrid extends StatefulWidget {
 
 class _HomeWidgetGridState extends State<HomeWidgetGrid> {
   late List<HomeWidgetTileVM> _tiles;
+
   final Map<int, Timer> _debounceTimers = {};
   final Map<int, int> _draftAdjustValues = {};
 
   @override
   void initState() {
     super.initState();
-    _tiles = List<HomeWidgetTileVM>.from(widget.tiles);
+    _tiles = _deriveTiles(widget.tiles, widget.reorderEnabled);
   }
 
   @override
@@ -55,25 +55,33 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
     }
     super.dispose();
   }
-  
-  void _debouncedAdjust(int widgetId, int value) {
-    // cancel previous timer
-    _debounceTimers[widgetId]?.cancel();
 
-    // wait 400ms after last change
+  List<HomeWidgetTileVM> _deriveTiles(List<HomeWidgetTileVM> input, bool reorderEnabled) {
+    final list = List<HomeWidgetTileVM>.from(input);
+    // ✅ requirement: หน้า Home เรียงตาม widgetId (เมื่อไม่ได้ reorder)
+    if (!reorderEnabled) {
+      list.sort((a, b) => a.widgetId.compareTo(b.widgetId));
+    }
+    return list;
+  }
+
+  void _debouncedAdjust(int widgetId, int value) {
+    _debounceTimers[widgetId]?.cancel();
     _debounceTimers[widgetId] = Timer(const Duration(milliseconds: 400), () {
       widget.onAdjust(widgetId, value);
     });
   }
 
-
   @override
   void didUpdateWidget(covariant HomeWidgetGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // sync จาก bloc -> UI (กัน reorder ค้าง)
-    if (oldWidget.tiles != widget.tiles) {
-      _tiles = List<HomeWidgetTileVM>.from(widget.tiles);
+    // ✅ sync จาก bloc -> UI
+    // - ถ้า tiles เปลี่ยน (เช่น save include/exclude แล้วกลับหน้า home) ให้ replace
+    // - ถ้า switch เข้า/ออกโหมด reorder ก็ต้อง re-derive (เรียงตาม widgetId เมื่อไม่ได้ reorder)
+    if (!identical(oldWidget.tiles, widget.tiles) ||
+        oldWidget.reorderEnabled != widget.reorderEnabled) {
+      _tiles = _deriveTiles(widget.tiles, widget.reorderEnabled);
     }
   }
 
@@ -107,9 +115,10 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
             children: _tiles.map((t) {
               final width = (t.span == HomeTileSpan.full) ? fullW : halfW;
               final locked = widget.reorderEnabled;
+
               final effectiveValue = _draftAdjustValues.containsKey(t.widgetId)
-                ? _draftAdjustValues[t.widgetId]!.toString()
-                : t.value;
+                  ? _draftAdjustValues[t.widgetId]!.toString()
+                  : t.value;
 
               // copy tile ใหม่เฉพาะ adjust widget
               final effectiveTile = (t.kind == HomeTileKind.adjust)
@@ -120,7 +129,7 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
                       span: t.span,
                       kind: t.kind,
                       isOn: t.isOn,
-                      value: effectiveValue, // ⭐ สำคัญมาก
+                      value: effectiveValue,
                       unit: t.unit,
                       min: t.min,
                       max: t.max,
@@ -131,19 +140,17 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
               final card = SizedBox(
                 width: width,
                 child: WidgetCard(
-                  tile: effectiveTile, // 👈 ใช้ effectiveTile แทน t
+                  tile: effectiveTile,
                   showDragHint: widget.reorderEnabled,
                   onToggle: locked ? () {} : () => widget.onToggle(t.widgetId),
-
                   onAdjust: locked
                       ? (_) {}
                       : (v) {
                           setState(() {
-                            _draftAdjustValues[t.widgetId] = v; // ให้ slider ขยับทันที
+                            _draftAdjustValues[t.widgetId] = v;
                           });
-                          _debouncedAdjust(t.widgetId, v); // ส่งไป bloc แบบ debounce
+                          _debouncedAdjust(t.widgetId, v);
                         },
-
                   onOpenSensor: locked ? () {} : () => widget.onOpenSensor(t),
                 ),
               );

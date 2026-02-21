@@ -1,8 +1,4 @@
 // lib/features/home/bloc/devices_event.dart
-//
-// Events for DevicesBloc.
-// หลักการ: Event ต้องชื่อเดียวกับที่ Bloc ใช้ generics (DevicesEvent)
-// เพื่อไม่ให้เกิด error แบบ "isn't a type".
 
 sealed class DevicesEvent {
   const DevicesEvent();
@@ -19,20 +15,16 @@ class DevicesRoomChanged extends DevicesEvent {
   const DevicesRoomChanged(this.roomId);
 }
 
-/// toggle widget (capability = toggle)
+/// toggle widget (capability = toggle) = สั่งงานอุปกรณ์
 class WidgetToggled extends DevicesEvent {
   final int widgetId;
   const WidgetToggled(this.widgetId);
 }
 
-/// slider/adjust change (capability = adjust)
+/// slider/adjust change (capability = adjust) = สั่งงานอุปกรณ์
 class WidgetValueChanged extends DevicesEvent {
   final int widgetId;
-
-  /// ใช้ double ภายใน state/repo (ปลอดภัยกว่า)
-  /// UI ค่อย format เป็นจำนวนเต็มตอนแสดง
   final double value;
-
   const WidgetValueChanged(this.widgetId, this.value);
 }
 
@@ -77,4 +69,30 @@ class WidgetsPollingStarted extends DevicesEvent {
 
 class WidgetsPollingStopped extends DevicesEvent {
   const WidgetsPollingStopped();
+}
+
+/// ------------------------------
+/// include/exclude selection (สำหรับแสดงบนหน้า Home)
+/// ------------------------------
+
+/// โหลดรายการเพื่อทำ include/exclude (ใช้ก่อนเปิด picker)
+class WidgetSelectionLoaded extends DevicesEvent {
+  final int? roomId;
+  const WidgetSelectionLoaded({this.roomId});
+}
+
+/// toggle include/exclude (แสดง/ไม่แสดงบนหน้า Home)
+class WidgetIncludeToggled extends DevicesEvent {
+  final int widgetId;
+  final bool included;
+  const WidgetIncludeToggled({
+    required this.widgetId,
+    required this.included,
+  });
+}
+
+/// กดบันทึก include/exclude
+class WidgetSelectionSaved extends DevicesEvent {
+  final int? roomId;
+  const WidgetSelectionSaved({this.roomId});
 }

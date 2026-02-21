@@ -1,8 +1,8 @@
 // lib/features/home/bloc/devices_state.dart
 //
 // State for DevicesBloc.
-// หลักการ: state เป็น immutable, copyWith ชัดเจน (KISS)
-// เอา class ซ้ำออก (ของเดิมคุณมีซ้ำ 2 ชุด)
+// - เพิ่ม state สำหรับหน้าเลือก include/exclude (loading/saving + snapshot ของสถานะเดิม)
+// - visibleWidgets เรียงตาม widgetId ตาม requirement
 
 import '../models/device_widget.dart';
 import '../models/room.dart';
@@ -16,10 +16,19 @@ class DevicesState {
   final String? error;
   final List<Device>? devices;
 
+  // reorder
   final bool reorderEnabled;
   final bool reorderSaving;
   final List<int> reorderOriginalVisibleIds;
   final List<int> reorderWorkingVisibleIds;
+
+  // include/exclude selection (widget picker)
+  final bool selectionLoading;
+  final bool selectionSaving;
+
+  /// snapshot ของ status ตอนเริ่มเปิดหน้า picker เพื่อรู้ว่าอะไร "เปลี่ยนจริง"
+  /// key: widgetId, value: status เดิม (เช่น 'active'/'inactive')
+  final Map<int, String> selectionOriginalStatusById;
 
   const DevicesState({
     this.isLoading = false,
@@ -32,6 +41,10 @@ class DevicesState {
     this.reorderSaving = false,
     this.reorderOriginalVisibleIds = const [],
     this.reorderWorkingVisibleIds = const [],
+
+    this.selectionLoading = false,
+    this.selectionSaving = false,
+    this.selectionOriginalStatusById = const {},
   });
 
   DevicesState copyWith({
@@ -44,7 +57,11 @@ class DevicesState {
     bool? reorderEnabled,
     bool? reorderSaving,
     List<int>? reorderOriginalVisibleIds,
-    List<int>? reorderWorkingVisibleIds,    
+    List<int>? reorderWorkingVisibleIds,
+
+    bool? selectionLoading,
+    bool? selectionSaving,
+    Map<int, String>? selectionOriginalStatusById,
   }) {
     return DevicesState(
       isLoading: isLoading ?? this.isLoading,
@@ -59,29 +76,27 @@ class DevicesState {
           reorderOriginalVisibleIds ?? this.reorderOriginalVisibleIds,
       reorderWorkingVisibleIds:
           reorderWorkingVisibleIds ?? this.reorderWorkingVisibleIds,
+
+      selectionLoading: selectionLoading ?? this.selectionLoading,
+      selectionSaving: selectionSaving ?? this.selectionSaving,
+      selectionOriginalStatusById:
+          selectionOriginalStatusById ?? this.selectionOriginalStatusById,
     );
   }
 
   /// widgets ที่ "แสดงบนหน้า home"
-  /// - ตัด inactive ออก (inactive = เก็บเข้าลิ้นชัก)
-  /// - sort ให้ stable
+  /// - include = status != 'inactive'
+  /// - sort ตาม widgetId (ascending) ตาม requirement
   List<DeviceWidget> get visibleWidgets {
     final base = widgets.where((w) => w.status != 'inactive').toList();
-
-    base.sort((a, b) {
-      final byOrder = a.order.compareTo(b.order);
-      if (byOrder != 0) return byOrder;
-      // fallback stable
-      return a.widgetId.compareTo(b.widgetId);
-    });
-
+    base.sort((a, b) => a.widgetId.compareTo(b.widgetId));
     return base;
   }
 
-  /// widgets ที่ "อยู่ในลิ้นชัก"
+  /// widgets ที่ "exclude/อยู่ในลิ้นชัก"
   List<DeviceWidget> get drawerWidgets {
     final base = widgets.where((w) => w.status == 'inactive').toList();
-    base.sort((a, b) => a.order.compareTo(b.order));
+    base.sort((a, b) => a.widgetId.compareTo(b.widgetId));
     return base;
   }
 

@@ -6,10 +6,19 @@
 // - Include ด้านบน / Exclude ด้านล่าง (แยก Sensors/Devices/Adjust)
 // - แตะการ์ดใน Include = ย้ายลง Exclude
 // - แตะการ์ดใน Exclude = ย้ายขึ้น Include
-// - return: List<int> widgetIds ที่ “อยู่ใน Include” หลัง Save
+//
+// ✅ ปรับให้ “กด Save แล้วบันทึก include/exclude ไป backend ผ่าน DevicesBloc”
+//    - ตอนกด Save: dispatch WidgetIncludeToggled ให้ทุก widgetId ตามสถานะที่เลือก
+//    - แล้ว dispatch WidgetSelectionSaved
+//    - เมื่อ save สำเร็จ: pop ออกและ return รายการ widgetIds ที่อยู่ใน Include
+//    - ระหว่าง save: ปุ่ม Save disabled + แสดง Saving...
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../bloc/devices_bloc.dart';
+import '../../../bloc/devices_event.dart';
+import '../../../bloc/devices_state.dart';
 import '../../view_models/home_view_model.dart';
 
 Future<List<int>?> showWidgetPickerSheet({
@@ -25,7 +34,14 @@ Future<List<int>?> showWidgetPickerSheet({
   /// หัวแบบในรูป (optional)
   String headerTitle = '',
   String headerSubtitle = '',
+
+  /// ถ้า selection ผูกกับ room ให้ส่ง roomId (ถ้าไม่ผูก ส่ง null)
+  int? roomId,
 }) {
+  // โหลดสถานะ selection ล่าสุด (ถ้าคุณต้องการให้ sheet นี้เป็นตัวเริ่มโหลด)
+  // ถ้าไม่ต้องการโหลดตรงนี้ สามารถลบบรรทัดนี้ออกได้
+  context.read<DevicesBloc>().add(WidgetSelectionLoaded(roomId: roomId));
+
   return showModalBottomSheet<List<int>>(
     context: context,
     isScrollControlled: true,
@@ -47,6 +63,7 @@ Future<List<int>?> showWidgetPickerSheet({
             lockIncluded: lockIncluded,
             headerTitle: headerTitle,
             headerSubtitle: headerSubtitle,
+            roomId: roomId,
           );
         },
       );
@@ -66,6 +83,8 @@ class _WidgetPickerSheet extends StatefulWidget {
   final String headerTitle;
   final String headerSubtitle;
 
+  final int? roomId;
+
   const _WidgetPickerSheet({
     required this.scrollController,
     required this.title,
@@ -75,6 +94,7 @@ class _WidgetPickerSheet extends StatefulWidget {
     required this.lockIncluded,
     required this.headerTitle,
     required this.headerSubtitle,
+    required this.roomId,
   });
 
   @override
@@ -82,10 +102,35 @@ class _WidgetPickerSheet extends StatefulWidget {
 }
 
 class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
-  late final Set<int> _included = widget.includedItems.map((e) => e.widgetId).toSet();
+  late final Set<int> _included =
+      widget.includedItems.map((e) => e.widgetId).toSet();
 
   void _include(int id) => setState(() => _included.add(id));
   void _exclude(int id) => setState(() => _included.remove(id));
+
+  void _saveSelection() {
+    // 1) dispatch include state for each tile
+    final all = <HomeWidgetTileVM>[
+      ...widget.includedItems,
+      ...widget.excludedItems,
+    ];
+
+    final byId = <int, HomeWidgetTileVM>{};
+    for (final t in all) {
+      byId[t.widgetId] = t;
+    }
+    final uniq = byId.values.toList(growable: false);
+
+    final bloc = context.read<DevicesBloc>();
+
+    for (final t in uniq) {
+      final included = _included.contains(t.widgetId);
+      bloc.add(WidgetIncludeToggled(widgetId: t.widgetId, included: included));
+    }
+
+    // 2) save to backend
+    bloc.add(WidgetSelectionSaved(roomId: widget.roomId));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,149 +147,203 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
     }
     final uniq = byId.values.toList(growable: false);
 
-    final included = uniq.where((e) => _included.contains(e.widgetId)).toList(growable: false);
-    final excluded = uniq.where((e) => !_included.contains(e.widgetId)).toList(growable: false);
+    final included =
+        uniq.where((e) => _included.contains(e.widgetId)).toList(growable: false);
+    final excluded =
+        uniq.where((e) => !_included.contains(e.widgetId)).toList(growable: false);
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-      child: Container(
-        color: const Color(0xFFF6F7FB),
-        child: SingleChildScrollView(
-          controller: widget.scrollController,
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ===== Header (optional) =====
-              if (widget.headerTitle.trim().isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.home_rounded, color: Color(0xFF3AA7FF), size: 24),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.headerTitle,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                        ),
-                        if (widget.headerSubtitle.trim().isNotEmpty)
+    return BlocListener<DevicesBloc, DevicesState>(
+      listenWhen: (prev, curr) {
+        // ฟังตอน save จบ (true -> false) หรือมี error เปลี่ยน
+        final finishedSaving = prev.selectionSaving && !curr.selectionSaving;
+        final errorChanged = prev.error != curr.error && curr.error != null;
+        return finishedSaving || errorChanged;
+      },
+      listener: (context, state) {
+        if (state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error!)),
+          );
+          return;
+        }
+
+        // save สำเร็จ (ไม่มี error) -> ปิด sheet และคืนรายการ include
+        Navigator.pop(context, _included.toList());
+      },
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+        child: Container(
+          color: const Color(0xFFF6F7FB),
+          child: SingleChildScrollView(
+            controller: widget.scrollController,
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ===== Header (optional) =====
+                if (widget.headerTitle.trim().isNotEmpty) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.home_rounded,
+                          color: Color(0xFF3AA7FF), size: 24),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            widget.headerSubtitle,
+                            widget.headerTitle,
                             style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black45,
-                            ),
+                                fontSize: 16, fontWeight: FontWeight.w900),
                           ),
+                          if (widget.headerSubtitle.trim().isNotEmpty)
+                            Text(
+                              widget.headerSubtitle,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black45,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // ===== Top bar: title + Cancel + Save =====
+                BlocBuilder<DevicesBloc, DevicesState>(
+                  buildWhen: (p, c) =>
+                      p.selectionSaving != c.selectionSaving ||
+                      p.selectionLoading != c.selectionLoading,
+                  builder: (context, state) {
+                    final saving = state.selectionSaving;
+                    final loading = state.selectionLoading;
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.title,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w900, fontSize: 16),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: saving ? null : () => Navigator.pop(context, null),
+                          child: const Text('ยกเลิก'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3AA7FF),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            elevation: 0,
+                          ),
+                          onPressed: (saving || loading) ? null : _saveSelection,
+                          child: Text(
+                            saving ? 'Saving...' : widget.confirmText,
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
                       ],
-                    ),
-                  ],
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // ===== Include =====
+                Text(
+                  'Include (${included.length})',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, color: Colors.black87),
+                ),
+                const SizedBox(height: 10),
+
+                _Group(
+                  title: 'Devices',
+                  items: included
+                      .where((t) => t.kind == HomeTileKind.toggle)
+                      .toList(growable: false),
+                  onTap: (t) {
+                    if (widget.lockIncluded) return;
+                    _exclude(t.widgetId);
+                  },
                 ),
                 const SizedBox(height: 12),
-              ],
+                _Group(
+                  title: 'Sensors',
+                  items: included
+                      .where((t) => t.kind == HomeTileKind.sensor)
+                      .toList(growable: false),
+                  onTap: (t) {
+                    if (widget.lockIncluded) return;
+                    _exclude(t.widgetId);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _Group(
+                  title: 'Adjust',
+                  items: included
+                      .where((t) => t.kind == HomeTileKind.adjust)
+                      .toList(growable: false),
+                  onTap: (t) {
+                    if (widget.lockIncluded) return;
+                    _exclude(t.widgetId);
+                  },
+                ),
 
-              // ===== Top bar: title + Cancel + Save =====
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                const SizedBox(height: 18),
+
+                // ===== Exclude =====
+                const Text(
+                  'Exclude',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w900, color: Colors.black87),
+                ),
+                const SizedBox(height: 10),
+
+                _Group(
+                  title: 'Sensors',
+                  items: excluded
+                      .where((t) => t.kind == HomeTileKind.sensor)
+                      .toList(growable: false),
+                  onTap: (t) => _include(t.widgetId),
+                ),
+                const SizedBox(height: 12),
+                _Group(
+                  title: 'Devices',
+                  items: excluded
+                      .where((t) => t.kind == HomeTileKind.toggle)
+                      .toList(growable: false),
+                  onTap: (t) => _include(t.widgetId),
+                ),
+                const SizedBox(height: 12),
+                _Group(
+                  title: 'Adjust',
+                  items: excluded
+                      .where((t) => t.kind == HomeTileKind.adjust)
+                      .toList(growable: false),
+                  onTap: (t) => _include(t.widgetId),
+                ),
+
+                if (excluded.isEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Center(
+                      child: Text('No widgets available.',
+                          style: TextStyle(color: Colors.black54)),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, null),
-                    child: const Text('ยกเลิก'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3AA7FF),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      elevation: 0,
-                    ),
-                    onPressed: () => Navigator.pop(context, _included.toList()),
-                    child: Text(widget.confirmText, style: const TextStyle(fontWeight: FontWeight.w900)),
                   ),
                 ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // ===== Include =====
-              Text(
-                'Include (${included.length})',
-                style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black87),
-              ),
-              const SizedBox(height: 10),
-
-              _Group(
-                title: 'Devices',
-                items: included.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false),
-                onTap: (t) {
-                  if (widget.lockIncluded) return;
-                  _exclude(t.widgetId);
-                },
-              ),
-              const SizedBox(height: 12),
-              _Group(
-                title: 'Sensors',
-                items: included.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false),
-                onTap: (t) {
-                  if (widget.lockIncluded) return;
-                  _exclude(t.widgetId);
-                },
-              ),
-              const SizedBox(height: 12),
-              _Group(
-                title: 'Adjust',
-                items: included.where((t) => t.kind == HomeTileKind.adjust).toList(growable: false),
-                onTap: (t) {
-                  if (widget.lockIncluded) return;
-                  _exclude(t.widgetId);
-                },
-              ),
-
-              const SizedBox(height: 18),
-
-              // ===== Exclude =====
-              const Text(
-                'Exclude',
-                style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black87),
-              ),
-              const SizedBox(height: 10),
-
-              _Group(
-                title: 'Sensors',
-                items: excluded.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false),
-                onTap: (t) => _include(t.widgetId),
-              ),
-              const SizedBox(height: 12),
-              _Group(
-                title: 'Devices',
-                items: excluded.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false),
-                onTap: (t) => _include(t.widgetId),
-              ),
-              const SizedBox(height: 12),
-              _Group(
-                title: 'Adjust',
-                items: excluded.where((t) => t.kind == HomeTileKind.adjust).toList(growable: false),
-                onTap: (t) => _include(t.widgetId),
-              ),
-
-              if (excluded.isEmpty) ...[
-                const SizedBox(height: 8),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Center(
-                    child: Text('No widgets available.', style: TextStyle(color: Colors.black54)),
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -270,7 +369,9 @@ class _Group extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black54)),
+        Text(title,
+            style:
+                const TextStyle(fontWeight: FontWeight.w900, color: Colors.black54)),
         const SizedBox(height: 10),
         _TileGrid(items: items, onTap: onTap),
       ],
@@ -345,12 +446,14 @@ class _WidgetPreviewCard extends StatelessWidget {
                   tile.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+                  style:
+                      const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
                 ),
               ),
               const Padding(
                 padding: EdgeInsets.only(left: 6),
-                child: Icon(Icons.drag_indicator_rounded, color: Colors.black26, size: 18),
+                child: Icon(Icons.drag_indicator_rounded,
+                    color: Colors.black26, size: 18),
               ),
             ],
           ),
@@ -384,5 +487,29 @@ class _WidgetPreviewCard extends StatelessWidget {
       case HomeTileKind.adjust:
         return t.unit.isEmpty ? '${t.value}' : '${t.value}${t.unit}';
     }
+  }
+
+  static Widget _sensorBody(HomeWidgetTileVM tile) {
+    return Text(
+      _valueText(tile),
+      style: const TextStyle(
+          fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
+    );
+  }
+
+  static Widget _toggleBody(HomeWidgetTileVM tile) {
+    return Text(
+      _valueText(tile),
+      style: const TextStyle(
+          fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
+    );
+  }
+
+  static Widget _adjustBody(HomeWidgetTileVM tile) {
+    return Text(
+      _valueText(tile),
+      style: const TextStyle(
+          fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
+    );
   }
 }
