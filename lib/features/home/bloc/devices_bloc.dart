@@ -359,7 +359,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
     try {
       // backend expects list of include widgetIds in new order
-      await widgetRepo.changeWidgetsOrder(workingIds);
+      await widgetRepo.changeWidgetsOrder(
+        roomId: state.selectedRoomId!,
+        widgetOrders: workingIds
+      );
 
       emit(state.copyWith(
         reorderEnabled: false,
