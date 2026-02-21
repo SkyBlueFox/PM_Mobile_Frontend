@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'manage_homes_page.dart';
+import '../room/manage_homes_page.dart';
 
 class MePage extends StatelessWidget {
   final String displayName;

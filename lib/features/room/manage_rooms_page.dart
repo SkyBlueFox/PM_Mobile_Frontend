@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../bloc/devices_bloc.dart';
-import '../../bloc/devices_event.dart';
-import '../../bloc/devices_state.dart';
+import '../home/bloc/devices_bloc.dart';
+import '../home/bloc/devices_event.dart';
+import '../home/bloc/devices_state.dart';
 
 import 'room_settings_page.dart';
 

@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../models/device_widget.dart';
-import '../models/room.dart';
-import '../models/device.dart';
+import '../features/home/models/device_widget.dart';
+import '../features/home/models/room.dart';
+import '../features/home/models/device.dart';
 
 class RoomRepository {
   final String baseUrl;

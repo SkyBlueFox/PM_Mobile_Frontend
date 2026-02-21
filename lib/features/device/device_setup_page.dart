@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../models/device.dart';
-import '../../models/room.dart';
+import '../home/models/device.dart';
+import '../home/models/room.dart';
 
 class DeviceSetupPage extends StatefulWidget {
   final Device device;

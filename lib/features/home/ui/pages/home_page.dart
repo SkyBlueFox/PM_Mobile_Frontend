@@ -10,9 +10,10 @@ import '../../../auth/bloc/auth_event.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_event.dart';
 import '../../bloc/devices_state.dart';
-import '../../data/device_repository.dart';
-import '../../data/room_repository.dart';
-import '../../data/widget_repository.dart';
+
+import '../../../../data/device_repository.dart';
+import '../../../../data/room_repository.dart';
+import '../../../../data/widget_repository.dart';
 
 import '../view_models/home_view_model.dart';
 
@@ -23,10 +24,9 @@ import '../widgets/bottom_sheets/home_actions_sheet.dart';
 import '../widgets/bottom_sheets/widget_picker_sheet.dart';
 
 import 'add_device_page.dart';
-
-// ✅ เพิ่ม
-import 'manage_homes_page.dart';
+import '../../../room/manage_homes_page.dart';
 import 'sensor_detail_page.dart';
+import '../../../me/me_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -35,16 +35,23 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider(create: (_) => WidgetRepository(baseUrl: dotenv.get('BACKEND_API_URL'))),
-        RepositoryProvider(create: (_) => RoomRepository(baseUrl: dotenv.get('BACKEND_API_URL'))),
-        RepositoryProvider(create: (_) => DeviceRepository(baseUrl: dotenv.get('BACKEND_API_URL'))),
+        RepositoryProvider(
+          create: (_) => WidgetRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
+        ),
+        RepositoryProvider(
+          create: (_) => RoomRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
+        ),
+        RepositoryProvider(
+          create: (_) => DeviceRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
+        ),
       ],
       child: BlocProvider(
         create: (context) => DevicesBloc(
           widgetRepo: context.read<WidgetRepository>(),
           roomRepo: context.read<RoomRepository>(),
           deviceRepo: context.read<DeviceRepository>(),
-        )..add(const DevicesStarted()),
+        )..add(const DevicesStarted())
+         ..add(const WidgetsPollingStarted(roomId: null, interval: Duration(seconds: 5))),
         child: const _HomeView(),
       ),
     );
@@ -63,12 +70,6 @@ class _HomeViewState extends State<_HomeView> {
 
   void _logout() {
     context.read<AuthBloc>().add(const AuthLogoutRequested());
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    context.read<DevicesBloc>().add(const WidgetsPollingStarted());
   }
 
   @override
@@ -135,10 +136,18 @@ class _HomeViewState extends State<_HomeView> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _bottomIndex,
-        onTap: (i) => setState(() => _bottomIndex = i),
+        onTap: (i) {
+          setState(() => _bottomIndex = i);
+
+          final bloc = context.read<DevicesBloc>();
+          if (i == 0) {
+            bloc.add(WidgetsPollingStarted(roomId: bloc.state.selectedRoomId, interval: const Duration(seconds: 5)));
+          } else {
+            bloc.add(WidgetsPollingStopped());
+          }
+        },
         selectedItemColor: blue,
         unselectedItemColor: Colors.black38,
         items: const [
@@ -154,7 +163,6 @@ class _HomeViewState extends State<_HomeView> {
                   p.reorderEnabled != c.reorderEnabled || p.reorderSaving != c.reorderSaving,
               builder: (context, st) {
                 final enabled = st.reorderEnabled;
-
                 return FloatingActionButton(
                   backgroundColor: blue,
                   onPressed: enabled
@@ -163,8 +171,7 @@ class _HomeViewState extends State<_HomeView> {
                   child: Icon(enabled ? Icons.check_rounded : Icons.more_horiz_rounded),
                 );
               },
-            )
-          : null,
+            ),
 
       body: SafeArea(
         child: _bottomIndex == 0
@@ -178,21 +185,11 @@ class _HomeViewState extends State<_HomeView> {
                     // Header
                     Row(
                       children: [
-                        const Icon(Icons.home_rounded, color: Color(0xFF3AA7FF), size: 28),
+                        const Icon(Icons.home_rounded, color: blue, size: 28),
                         const SizedBox(width: 10),
                         const Text(
                           'บ้านเกม 1',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                        ),
-                        const Spacer(),
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert_rounded, color: Colors.black45),
-                          onSelected: (v) {
-                            if (v == 'logout') _logout();
-                          },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(value: 'logout', child: Text('Logout')),
-                          ],
                         ),
                       ],
                     ),
@@ -207,12 +204,12 @@ class _HomeViewState extends State<_HomeView> {
                         return TopTab(
                           rooms: st.rooms,
                           selectedRoomId: st.selectedRoomId,
-                          onChanged: (roomId) =>{
-                              context.read<DevicesBloc>().add(DevicesRoomChanged(roomId)),
-                              context.read<DevicesBloc>().add(
-                                WidgetsPollingStarted(roomId: roomId),
-                              )
-                              },
+                          onChanged: (roomId) {
+                            context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
+                            context.read<DevicesBloc>().add(
+                                  WidgetsPollingStarted(roomId: roomId),
+                                );
+                          },
                         );
                       },
                     ),
@@ -238,37 +235,34 @@ class _HomeViewState extends State<_HomeView> {
                             return _ErrorState(message: st.error!);
                           }
 
-                  final vm = HomeViewModel.fromState(st);
+                          final vm = HomeViewModel.fromState(st);
 
-                  if (vm.tiles.isEmpty) {
-                    return const _EmptyState(
-                      title: 'No widgets in this room',
-                      subtitle: 'Tap the blue button to add widgets.',
-                    );
-                  }
+                          if (vm.tiles.isEmpty) {
+                            return const _EmptyState(
+                              title: 'No widgets in this room',
+                              subtitle: 'Tap the blue button to add widgets.',
+                            );
+                          }
 
                           return HomeWidgetGrid(
                             tiles: vm.tiles,
                             reorderEnabled: st.reorderEnabled,
-
                             onToggle: (widgetId) =>
                                 context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
-
                             onAdjust: (widgetId, value) {
                               context.read<DevicesBloc>().add(
                                     WidgetValueChanged(widgetId, value.toDouble()),
                                   );
                             },
-
                             onOrderChanged: (newOrderWidgetIds) {
-                              context
-                                  .read<DevicesBloc>()
-                                  .add(WidgetsOrderChanged(newOrderWidgetIds));
+                              context.read<DevicesBloc>().add(
+                                    WidgetsOrderChanged(newOrderWidgetIds),
+                                  );
                             },
-
-                            onOpenSensor: (HomeWidgetTileVM value) {
-                               final sensorWidget = st.widgets.firstWhere((w) => w.widgetId == value.widgetId);
-
+                            onOpenSensor: (tile) {
+                              final sensorWidget = st.widgets.firstWhere(
+                                (w) => w.widgetId == tile.widgetId,
+                              );
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -298,7 +292,6 @@ class _HomeViewState extends State<_HomeView> {
                     ),
                   );
                 },
-
                 onManageDevices: () {
                   // TODO
                 },
@@ -350,7 +343,11 @@ class _EmptyState extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
             ),
             const SizedBox(height: 6),
-            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
           ],
         ),
       ),
@@ -374,7 +371,11 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 10),
             const Text('Unable to load data', style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
           ],
         ),
       ),

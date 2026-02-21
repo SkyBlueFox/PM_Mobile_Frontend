@@ -5,7 +5,7 @@ import '../../models/device.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_state.dart';
 import '../../models/room.dart';
-import 'device_setup_page.dart';
+import '../../../device/device_setup_page.dart';
 
 class AddDevicePage extends StatefulWidget {
   const AddDevicePage({super.key});
