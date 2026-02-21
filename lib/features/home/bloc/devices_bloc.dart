@@ -54,7 +54,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<CommitReorderPressed>(_onCommitReorderPressed);
     on<DevicesRequested>(_onDevicesRequested);
 
-    on<RoomCreateRequested>(_onRoomCreateRequested);
     on<WidgetsPollingStarted>(_onWidgetsPollingStarted);
     on<WidgetsPollingStopped>(_onWidgetsPollingStopped);
 
@@ -390,33 +389,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-  Future<void> _onRoomCreateRequested(
-    RoomCreateRequested event,
-    Emitter<DevicesState> emit,
-  ) async {
-    final name = event.roomName.trim();
-    if (name.isEmpty) return;
-
-    emit(state.copyWith(isLoading: true, error: null));
-
-    try {
-      await roomRepo.createRoom(roomName: name);
-
-      final rooms = await roomRepo.fetchRooms();
-
-      emit(state.copyWith(
-        isLoading: false,
-        rooms: rooms,
-        error: null,
-      ));
-    } catch (e, st) {
-      debugPrint('[DevicesBloc] create room failed: $e\n$st');
-      emit(state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      ));
-    }
-  }
 
   Future<void> _onWidgetsPollingStarted(
     WidgetsPollingStarted event,
@@ -467,7 +439,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
         return sw;
       }).toList();
-
+      print('Polled widgets at ${DateTime.now()}: ${merged.length} items (pending: ${_pendingValueByWidgetId.length})');
       // Optional: avoid rebuild if nothing changed
       // (implement a cheap comparison if you want)
       emit(state.copyWith(widgets: merged, error: null));

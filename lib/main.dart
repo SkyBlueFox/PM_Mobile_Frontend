@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'data/device_repository.dart';
+import 'data/room_repository.dart';
+import 'data/widget_repository.dart';
+
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_event.dart';
 import 'features/auth/bloc/auth_state.dart';
@@ -13,6 +17,12 @@ import 'features/auth/data/token_storage.dart';
 import 'features/auth/ui/pages/sign_in_page.dart';
 import 'features/home/ui/pages/home_page.dart';
 
+import 'features/home/bloc/devices_bloc.dart';
+import 'features/home/bloc/devices_event.dart';
+
+import 'features/room/bloc/rooms_bloc.dart';
+import 'features/room/bloc/rooms_event.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
@@ -22,26 +32,63 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // สีหลัก
   static const Color _blue = Color(0xFF3AA7FF);
 
   @override
   Widget build(BuildContext context) {
-    // สร้าง dependency "ครั้งเดียว"
-    final api = AuthApi(
-      baseUrl: dotenv.get('BACKEND_API_URL'),
-    );
-    final repo = AuthRepository(
+    final baseUrl = dotenv.get('BACKEND_API_URL');
+
+    // auth deps (create once)
+    final api = AuthApi(baseUrl: baseUrl);
+    final authRepo = AuthRepository(
       api: api,
       storage: const TokenStorage(),
     );
 
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<AuthRepository>.value(value: repo),
+        RepositoryProvider<AuthRepository>.value(value: authRepo),
+
+        // ✅ app-wide repos (create once)
+        RepositoryProvider<WidgetRepository>(
+          create: (_) => WidgetRepository(baseUrl: baseUrl),
+        ),
+        RepositoryProvider<RoomRepository>(
+          create: (_) => RoomRepository(baseUrl: baseUrl),
+        ),
+        RepositoryProvider<DeviceRepository>(
+          create: (_) => DeviceRepository(baseUrl: baseUrl),
+        ),
       ],
-      child: BlocProvider<AuthBloc>(
-        create: (ctx) => AuthBloc(repo: ctx.read<AuthRepository>())..add(const AuthStarted()),
+      child: MultiBlocProvider(
+        providers: [
+          // ✅ Auth gate
+          BlocProvider<AuthBloc>(
+            create: (ctx) => AuthBloc(repo: ctx.read<AuthRepository>())
+              ..add(const AuthStarted()),
+          ),
+
+          // ✅ RoomsBloc available globally
+          BlocProvider<RoomsBloc>(
+            create: (ctx) => RoomsBloc(
+              roomRepo: ctx.read<RoomRepository>(),
+            )..add(const RoomsStarted()),
+          ),
+
+          // ✅ DevicesBloc available globally
+          BlocProvider<DevicesBloc>(
+            create: (ctx) => DevicesBloc(
+              widgetRepo: ctx.read<WidgetRepository>(),
+              roomRepo: ctx.read<RoomRepository>(),
+              deviceRepo: ctx.read<DeviceRepository>(),
+            )
+              ..add(const DevicesStarted())
+              ..add(const WidgetsPollingStarted(
+                roomId: null,
+                interval: Duration(seconds: 5),
+              )),
+          ),
+        ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Auth UI',
@@ -49,21 +96,15 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(seedColor: _blue),
             scaffoldBackgroundColor: Colors.white,
-
-            // cursor/selection
             textSelectionTheme: const TextSelectionThemeData(
               cursorColor: _blue,
               selectionColor: Color(0x553AA7FF),
               selectionHandleColor: _blue,
             ),
-
-            // สไตล์ TextField
             inputDecorationTheme: const InputDecorationTheme(
               hintStyle: TextStyle(color: Color(0xFF7A7A7A)),
             ),
           ),
-
-          // ✅ gate ตัดสินใจไปหน้าไหน
           home: const AuthGate(),
         ),
       ),
@@ -84,7 +125,6 @@ class AuthGate extends StatelessWidget {
         if (st is AuthUnauthenticated) {
           return const SignInPage();
         }
-        // Unknown/loading  
         return const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         );

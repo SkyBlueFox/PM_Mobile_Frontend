@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../bloc/devices_event.dart';
 import '../../models/device.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_state.dart';

@@ -73,6 +73,8 @@ class RoomRepository {
             id: e['device_id'] as String,
             name: e['device_name'] as String,
             type: e['device_type'] as String,
+            roomId: (e['room_id'] as num).toInt(),
+            lastHeartBeat: DateTime.parse(e['last_heartbeat'] as String),
           ),
         )
         .toList();
@@ -117,6 +119,34 @@ class RoomRepository {
       throw Exception(
         'Failed to add device to room: ${res.statusCode} ${res.body}',
       );
+    }
+  }
+
+  /// ✅ PUT /api/rooms/{room_id}
+  Future<void> updateRoom({
+    required int roomId,
+    required String roomName,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/rooms/$roomId');
+
+    final res = await _client.put(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'room_name': roomName}),
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Failed to update room: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  /// ✅ DELETE /api/rooms/{room_id}
+  Future<void> deleteRoom({required int roomId}) async {
+    final uri = Uri.parse('$baseUrl/api/rooms/$roomId');
+    final res = await _client.delete(uri);
+
+    if (res.statusCode != 204 && res.statusCode != 200) {
+      throw Exception('Failed to delete room: ${res.statusCode} ${res.body}');
     }
   }
 

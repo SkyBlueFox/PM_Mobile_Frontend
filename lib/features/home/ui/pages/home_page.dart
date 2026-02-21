@@ -1,19 +1,16 @@
 // lib/features/home/ui/pages/home_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../../auth/bloc/auth_bloc.dart';
 import '../../../auth/bloc/auth_event.dart';
 
+import '../../../room/bloc/rooms_bloc.dart';
+import '../../../room/bloc/rooms_event.dart';
+
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_event.dart';
 import '../../bloc/devices_state.dart';
-
-import '../../../../data/device_repository.dart';
-import '../../../../data/room_repository.dart';
-import '../../../../data/widget_repository.dart';
 
 import '../view_models/home_view_model.dart';
 import '../widgets/components/top_tabs.dart';
@@ -21,12 +18,11 @@ import '../widgets/components/home_widget_grid.dart';
 import '../widgets/bottom_sheets/home_actions_sheet.dart';
 import '../widgets/bottom_sheets/widget_picker_sheet.dart';
 
-// ✅ new UI helpers
 import '../widgets/dialogs/text_command_dialog.dart';
 import '../widgets/bottom_sheets/mode_picker_sheet.dart';
 
 import 'add_device_page.dart';
-import '../../../room/manage_homes_page.dart';
+import '../../../room/ui/manage_homes_page.dart';
 import 'sensor_detail_page.dart';
 import '../../../me/me_page.dart';
 
@@ -35,28 +31,8 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
-      providers: [
-        RepositoryProvider(
-          create: (_) => WidgetRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
-        ),
-        RepositoryProvider(
-          create: (_) => RoomRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
-        ),
-        RepositoryProvider(
-          create: (_) => DeviceRepository(baseUrl: dotenv.get('BACKEND_API_URL')),
-        ),
-      ],
-      child: BlocProvider(
-        create: (context) => DevicesBloc(
-          widgetRepo: context.read<WidgetRepository>(),
-          roomRepo: context.read<RoomRepository>(),
-          deviceRepo: context.read<DeviceRepository>(),
-        )..add(const DevicesStarted())
-         ..add(const WidgetsPollingStarted(roomId: null, interval: Duration(seconds: 5))),
-        child: const _HomeView(),
-      ),
-    );
+    // ✅ blocs are already provided in main.dart
+    return const _HomeView();
   }
 }
 
@@ -71,11 +47,22 @@ class _HomeViewState extends State<_HomeView> {
   int _bottomIndex = 0;
 
   static const Color blue = Color(0xFF3AA7FF);
-  static const Color sky = Color(0xFFBFE6FF); // header ฟ้าอ่อนแบบรูป
-  static const Color pageBg = Color(0xFFF6F7FB); // พื้นหลังเทาอ่อน
+  static const Color sky = Color(0xFFBFE6FF);
+  static const Color pageBg = Color(0xFFF6F7FB);
 
   void _logout() {
+    // ✅ stop polling BEFORE logout (optional but recommended)
+    context.read<DevicesBloc>().add(const WidgetsPollingStopped());
     context.read<AuthBloc>().add(const AuthLogoutRequested());
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ ensure initial data is loaded (if needed)
+    context.read<DevicesBloc>().add(const DevicesStarted());
+    context.read<RoomsBloc>().add(const RoomsStarted());
   }
 
   @override
@@ -102,6 +89,7 @@ class _HomeViewState extends State<_HomeView> {
 
         if (!mounted) return;
         final roomId = context.read<DevicesBloc>().state.selectedRoomId;
+
         context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
         context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
         break;
@@ -134,7 +122,6 @@ class _HomeViewState extends State<_HomeView> {
 
     if (!mounted || result == null) return;
 
-    // refresh หลัง save
     context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
     context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
   }
@@ -168,6 +155,16 @@ class _HomeViewState extends State<_HomeView> {
     context.read<DevicesBloc>().add(WidgetTextSubmitted(tile.widgetId, text));
   }
 
+  void _startPollingIfHomeTab() {
+    final bloc = context.read<DevicesBloc>();
+    if (_bottomIndex == 0) {
+      bloc.add(WidgetsPollingStarted(
+        roomId: bloc.state.selectedRoomId,
+        interval: const Duration(seconds: 5),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,12 +173,10 @@ class _HomeViewState extends State<_HomeView> {
         currentIndex: _bottomIndex,
         onTap: (i) {
           setState(() => _bottomIndex = i);
-
-          final bloc = context.read<DevicesBloc>();
           if (i == 0) {
-            bloc.add(WidgetsPollingStarted(roomId: bloc.state.selectedRoomId, interval: const Duration(seconds: 5)));
+            _startPollingIfHomeTab();
           } else {
-            bloc.add(WidgetsPollingStopped());
+            context.read<DevicesBloc>().add(const WidgetsPollingStopped());
           }
         },
         selectedItemColor: blue,
@@ -211,7 +206,6 @@ class _HomeViewState extends State<_HomeView> {
         child: _bottomIndex == 0
             ? Column(
                 children: [
-                  // ===== TOP BLUE HEADER AREA =====
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
@@ -237,16 +231,9 @@ class _HomeViewState extends State<_HomeView> {
                               ),
                             ),
                             const Spacer(),
-                            TextButton(
-                              onPressed: () {
-                                if (context.read<DevicesBloc>().state.reorderEnabled) {
-                                  context.read<DevicesBloc>().add(const ReorderModeChanged(false));
-                                }
-                              },
-                              child: const Text(
-                                'ยกเลิก',
-                                style: TextStyle(fontWeight: FontWeight.w800, color: blue),
-                              ),
+                            IconButton(
+                              onPressed: _logout,
+                              icon: const Icon(Icons.logout, color: Colors.black45),
                             ),
                           ],
                         ),
@@ -267,7 +254,6 @@ class _HomeViewState extends State<_HomeView> {
                     ),
                   ),
 
-                  // ===== CONTENT AREA =====
                   Expanded(
                     child: Container(
                       width: double.infinity,
@@ -289,13 +275,11 @@ class _HomeViewState extends State<_HomeView> {
                             if (st.isLoading && st.widgets.isEmpty) {
                               return const Center(child: CircularProgressIndicator());
                             }
-
                             if (st.error != null && st.widgets.isEmpty) {
                               return _ErrorState(message: st.error!);
                             }
 
                             final vm = HomeViewModel.fromState(st);
-
                             if (vm.tiles.isEmpty) {
                               return const _EmptyState(
                                 title: 'ไม่มี widget ในห้องนี้',
@@ -308,26 +292,19 @@ class _HomeViewState extends State<_HomeView> {
                               reorderEnabled: st.reorderEnabled,
                               onToggle: (widgetId) =>
                                   context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
-                              onAdjust: (widgetId, value) {
-                                context
-                                    .read<DevicesBloc>()
-                                    .add(WidgetValueChanged(widgetId, value.toDouble()));
-                              },
-                              onOrderChanged: (newOrderWidgetIds) {
-                                context.read<DevicesBloc>().add(WidgetsOrderChanged(newOrderWidgetIds));
-                              },
-                              onOpenSensor: (HomeWidgetTileVM value) {
-                                final sensorWidget =
-                                    st.widgets.firstWhere((w) => w.widgetId == value.widgetId);
+                              onAdjust: (widgetId, value) =>
+                                  context.read<DevicesBloc>().add(WidgetValueChanged(widgetId, value.toDouble())),
+                              onOrderChanged: (newOrderWidgetIds) =>
+                                  context.read<DevicesBloc>().add(WidgetsOrderChanged(newOrderWidgetIds)),
+                              onOpenSensor: (tile) {
+                                final sensorWidget = st.widgets.firstWhere((w) => w.widgetId == tile.widgetId);
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) => SensorDetailPage(sensorWidget: sensorWidget),
-                                  ),
+                                  MaterialPageRoute(builder: (_) => SensorDetailPage(sensorWidget: sensorWidget)),
                                 );
                               },
-                              onOpenMode: (tile) => _openModePicker(tile),
-                              onOpenText: (tile) => _openTextDialog(tile),
+                              onOpenMode: _openModePicker,
+                              onOpenText: _openTextDialog,
                               onPressButton: (widgetId) =>
                                   context.read<DevicesBloc>().add(WidgetButtonPressed(widgetId)),
                             );
@@ -341,23 +318,29 @@ class _HomeViewState extends State<_HomeView> {
             : MePage(
                 displayName: 'FirstName LastName',
                 roleText: 'Role',
-                onManageHome: () {
-                  final devicesBloc = context.read<DevicesBloc>();
-                  Navigator.push(
+                onManageHome: () async {
+                  // ✅ IMPORTANT: return from ManageHomesPage and refresh rooms in DevicesBloc
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => BlocProvider.value(value: devicesBloc, child: const ManageHomesPage()),
+                      builder: (_) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(value: context.read<DevicesBloc>()),
+                          BlocProvider.value(value: context.read<RoomsBloc>()),
+                        ],
+                        child: const ManageHomesPage(),
+                      ),
                     ),
                   );
+
+                  if (!mounted) return;
+
+                  // ✅ refresh after create/delete/rename
+                  context.read<RoomsBloc>().add(const RoomsRefreshRequested());
+                  context.read<DevicesBloc>().add(const DevicesStarted());
                 },
                 onManageDevices: () {},
                 onSecurity: () {},
-                onManageDevices: () {
-                  // TODO
-                },
-                onSecurity: () {
-                  // TODO
-                },
                 onLogout: _logout,
               ),
       ),

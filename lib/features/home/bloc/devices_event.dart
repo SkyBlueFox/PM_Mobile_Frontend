@@ -76,11 +76,6 @@ class DevicesRequested extends DevicesEvent {
   const DevicesRequested({this.connectedOnly = false});
 }
 
-class RoomCreateRequested extends DevicesEvent {
-  final String roomName;
-  const RoomCreateRequested(this.roomName);
-}
-
 class WidgetsPollingStarted extends DevicesEvent {
   final int? roomId; // null = all
   final Duration interval;

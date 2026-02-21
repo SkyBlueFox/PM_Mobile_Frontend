@@ -23,7 +23,8 @@ class DeviceRepository {
     if (res.statusCode != 200) {
       throw Exception('Failed to load devices: ${res.statusCode}');
     }
-
+    print('GET $uri -> ${res.statusCode}');
+    print('devices raw body: ${res.body}');
     final decoded = jsonDecode(res.body);
 
     final List list = decoded is Map<String, dynamic>

@@ -2,6 +2,8 @@ import '../models/device_widget.dart';
 import '../models/room.dart';
 import '../models/device.dart';
 
+enum RoomActionStatus { idle, saving, success, failure }
+
 class DevicesState {
   final bool isLoading;
   final List<Room> rooms;
@@ -15,6 +17,9 @@ class DevicesState {
   final List<int> reorderOriginalVisibleIds;
   final List<int> reorderWorkingVisibleIds;
 
+  final RoomActionStatus roomActionStatus;
+  final String? roomActionError;
+
   const DevicesState({
     this.isLoading = false,
     this.rooms = const [],
@@ -26,6 +31,8 @@ class DevicesState {
     this.reorderSaving = false,
     this.reorderOriginalVisibleIds = const [],
     this.reorderWorkingVisibleIds = const [],
+    this.roomActionStatus = RoomActionStatus.idle,
+    this.roomActionError,
   });
 
   DevicesState copyWith({
@@ -39,6 +46,9 @@ class DevicesState {
     bool? reorderSaving,
     List<int>? reorderOriginalVisibleIds,
     List<int>? reorderWorkingVisibleIds,
+    RoomActionStatus? roomActionStatus,
+    String? roomActionError,
+    bool clearRoomActionError = false,
   }) {
     return DevicesState(
       isLoading: isLoading ?? this.isLoading,
@@ -51,6 +61,8 @@ class DevicesState {
       reorderSaving: reorderSaving ?? this.reorderSaving,
       reorderOriginalVisibleIds: reorderOriginalVisibleIds ?? this.reorderOriginalVisibleIds,
       reorderWorkingVisibleIds: reorderWorkingVisibleIds ?? this.reorderWorkingVisibleIds,
+      roomActionStatus: roomActionStatus ?? this.roomActionStatus,
+      roomActionError: clearRoomActionError ? null : (roomActionError ?? this.roomActionError),
     );
   }
 
