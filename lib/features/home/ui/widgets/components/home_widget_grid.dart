@@ -22,6 +22,11 @@ class HomeWidgetGrid extends StatefulWidget {
   final void Function(int widgetId, int value) onAdjust;
   final ValueChanged<HomeWidgetTileVM> onOpenSensor;
 
+  // ✅ new kinds
+  final ValueChanged<HomeWidgetTileVM> onOpenMode;
+  final ValueChanged<HomeWidgetTileVM> onOpenText;
+  final ValueChanged<int> onPressButton;
+
   const HomeWidgetGrid({
     super.key,
     required this.tiles,
@@ -30,6 +35,9 @@ class HomeWidgetGrid extends StatefulWidget {
     required this.onToggle,
     required this.onAdjust,
     required this.onOpenSensor,
+    required this.onOpenMode,
+    required this.onOpenText,
+    required this.onPressButton,
   });
 
   @override
@@ -45,7 +53,7 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
   @override
   void initState() {
     super.initState();
-    _tiles = _deriveTiles(widget.tiles, widget.reorderEnabled);
+    _tiles = List<HomeWidgetTileVM>.from(widget.tiles);
   }
 
   @override
@@ -54,15 +62,6 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
       t.cancel();
     }
     super.dispose();
-  }
-
-  List<HomeWidgetTileVM> _deriveTiles(List<HomeWidgetTileVM> input, bool reorderEnabled) {
-    final list = List<HomeWidgetTileVM>.from(input);
-    // ✅ requirement: หน้า Home เรียงตาม widgetId (เมื่อไม่ได้ reorder)
-    if (!reorderEnabled) {
-      list.sort((a, b) => a.widgetId.compareTo(b.widgetId));
-    }
-    return list;
   }
 
   void _debouncedAdjust(int widgetId, int value) {
@@ -78,10 +77,10 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
 
     // ✅ sync จาก bloc -> UI
     // - ถ้า tiles เปลี่ยน (เช่น save include/exclude แล้วกลับหน้า home) ให้ replace
-    // - ถ้า switch เข้า/ออกโหมด reorder ก็ต้อง re-derive (เรียงตาม widgetId เมื่อไม่ได้ reorder)
+    // - ถ้า switch เข้า/ออกโหมด reorder ก็ยังใช้ลำดับจาก bloc (ห้าม sort ที่นี่)
     if (!identical(oldWidget.tiles, widget.tiles) ||
         oldWidget.reorderEnabled != widget.reorderEnabled) {
-      _tiles = _deriveTiles(widget.tiles, widget.reorderEnabled);
+      _tiles = List<HomeWidgetTileVM>.from(widget.tiles);
     }
   }
 
@@ -96,6 +95,25 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
     });
 
     widget.onOrderChanged(_tiles.map((e) => e.widgetId).toList());
+  }
+
+  HomeWidgetTileVM _copyWithValue(HomeWidgetTileVM t, String newValue) {
+    return HomeWidgetTileVM(
+      widgetId: t.widgetId,
+      title: t.title,
+      subtitle: t.subtitle,
+      span: t.span,
+      kind: t.kind,
+      isOn: t.isOn,
+      value: newValue,
+      unit: t.unit,
+      min: t.min,
+      max: t.max,
+      showColorBar: t.showColorBar,
+      modeOptions: t.modeOptions,
+      hintText: t.hintText,
+      buttonLabel: t.buttonLabel,
+    );
   }
 
   @override
@@ -120,21 +138,8 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
                   ? _draftAdjustValues[t.widgetId]!.toString()
                   : t.value;
 
-              // copy tile ใหม่เฉพาะ adjust widget
               final effectiveTile = (t.kind == HomeTileKind.adjust)
-                  ? HomeWidgetTileVM(
-                      widgetId: t.widgetId,
-                      title: t.title,
-                      subtitle: t.subtitle,
-                      span: t.span,
-                      kind: t.kind,
-                      isOn: t.isOn,
-                      value: effectiveValue,
-                      unit: t.unit,
-                      min: t.min,
-                      max: t.max,
-                      showColorBar: t.showColorBar,
-                    )
+                  ? _copyWithValue(t, effectiveValue)
                   : t;
 
               final card = SizedBox(
@@ -152,6 +157,9 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
                           _debouncedAdjust(t.widgetId, v);
                         },
                   onOpenSensor: locked ? () {} : () => widget.onOpenSensor(t),
+                  onOpenMode: locked ? () {} : () => widget.onOpenMode(t),
+                  onOpenText: locked ? () {} : () => widget.onOpenText(t),
+                  onPressButton: locked ? () {} : () => widget.onPressButton(t.widgetId),
                 ),
               );
 

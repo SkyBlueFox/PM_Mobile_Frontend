@@ -28,6 +28,29 @@ class WidgetValueChanged extends DevicesEvent {
   const WidgetValueChanged(this.widgetId, this.value);
 }
 
+/// mode change (capability = mode) = สั่งงานอุปกรณ์
+class WidgetModeChanged extends DevicesEvent {
+  final int widgetId;
+  final String mode; // e.g. auto/cool/dry/fan/heat
+  const WidgetModeChanged(this.widgetId, this.mode);
+}
+
+/// text submit (capability = text) = ส่งข้อความไป device
+class WidgetTextSubmitted extends DevicesEvent {
+  final int widgetId;
+  final String text;
+  const WidgetTextSubmitted(this.widgetId, this.text);
+}
+
+/// button press (capability = button) = กดครั้งเดียว (กริ่ง/trigger)
+class WidgetButtonPressed extends DevicesEvent {
+  final int widgetId;
+
+  /// เผื่อ backend ต้องการค่าเฉพาะ (เช่น "press"/"1")
+  final String value;
+  const WidgetButtonPressed(this.widgetId, {this.value = 'press'});
+}
+
 /// optional: toggle all in current room (ถ้าใช้)
 class DevicesAllToggled extends DevicesEvent {
   final bool turnOn;

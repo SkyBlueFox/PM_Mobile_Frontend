@@ -20,6 +20,10 @@ import '../widgets/components/home_widget_grid.dart';
 import '../widgets/bottom_sheets/home_actions_sheet.dart';
 import '../widgets/bottom_sheets/widget_picker_sheet.dart';
 
+// ✅ new UI helpers
+import '../widgets/dialogs/text_command_dialog.dart';
+import '../widgets/bottom_sheets/mode_picker_sheet.dart';
+
 import 'add_device_page.dart';
 import 'manage_homes_page.dart';
 import 'sensor_detail_page.dart';
@@ -61,7 +65,6 @@ class _HomeViewState extends State<_HomeView> {
   static const Color blue = Color(0xFF3AA7FF);
   static const Color sky = Color(0xFFBFE6FF); // header ฟ้าอ่อนแบบรูป
   static const Color pageBg = Color(0xFFF6F7FB); // พื้นหลังเทาอ่อน
-  static const Color cardBg = Colors.white;
 
   void _logout() {
     context.read<AuthBloc>().add(const AuthLogoutRequested());
@@ -125,7 +128,6 @@ class _HomeViewState extends State<_HomeView> {
       lockIncluded: false,
       headerTitle: 'บ้านเกม 1',
       headerSubtitle: '',
-      roomId: roomId,
     );
 
     if (!mounted || result == null) return;
@@ -135,11 +137,39 @@ class _HomeViewState extends State<_HomeView> {
     context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
   }
 
+  Future<void> _openModePicker(HomeWidgetTileVM tile) async {
+    final options = tile.modeOptions.isEmpty
+        ? const ['auto', 'cool', 'dry', 'fan', 'heat']
+        : tile.modeOptions;
+
+    final selected = await showModePickerSheet(
+      context: context,
+      title: tile.title,
+      current: tile.value,
+      options: options,
+    );
+
+    if (!mounted || selected == null) return;
+    context.read<DevicesBloc>().add(WidgetModeChanged(tile.widgetId, selected));
+  }
+
+  Future<void> _openTextDialog(HomeWidgetTileVM tile) async {
+    final text = await showTextCommandDialog(
+      context: context,
+      title: tile.title,
+      initialText: tile.value,
+      hintText: tile.hintText.isEmpty ? 'Enter text' : tile.hintText,
+      confirmText: 'Send',
+    );
+
+    if (!mounted || text == null) return;
+    context.read<DevicesBloc>().add(WidgetTextSubmitted(tile.widgetId, text));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: pageBg,
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _bottomIndex,
         onTap: (i) => setState(() => _bottomIndex = i),
@@ -150,11 +180,11 @@ class _HomeViewState extends State<_HomeView> {
           BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'ฉัน'),
         ],
       ),
-
       floatingActionButton: _bottomIndex != 0
           ? null
           : BlocBuilder<DevicesBloc, DevicesState>(
-              buildWhen: (p, c) => p.reorderEnabled != c.reorderEnabled || p.reorderSaving != c.reorderSaving,
+              buildWhen: (p, c) =>
+                  p.reorderEnabled != c.reorderEnabled || p.reorderSaving != c.reorderSaving,
               builder: (context, st) {
                 final enabled = st.reorderEnabled;
                 return FloatingActionButton(
@@ -166,12 +196,11 @@ class _HomeViewState extends State<_HomeView> {
                 );
               },
             ),
-
       body: SafeArea(
         child: _bottomIndex == 0
             ? Column(
                 children: [
-                  // ===== TOP BLUE HEADER AREA (เหมือนรูป) =====
+                  // ===== TOP BLUE HEADER AREA =====
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
@@ -199,7 +228,6 @@ class _HomeViewState extends State<_HomeView> {
                             const Spacer(),
                             TextButton(
                               onPressed: () {
-                                // ให้พฤติกรรมเหมือนรูป (ยกเลิก/ออกจากโหมด reorder)
                                 if (context.read<DevicesBloc>().state.reorderEnabled) {
                                   context.read<DevicesBloc>().add(const ReorderModeChanged(false));
                                 }
@@ -211,8 +239,6 @@ class _HomeViewState extends State<_HomeView> {
                             ),
                           ],
                         ),
-
-                        // Tabs อยู่ในส่วนฟ้า
                         BlocBuilder<DevicesBloc, DevicesState>(
                           buildWhen: (p, c) => p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
                           builder: (context, st) {
@@ -230,7 +256,7 @@ class _HomeViewState extends State<_HomeView> {
                     ),
                   ),
 
-                  // ===== WHITE CONTENT AREA WITH ROUNDED TOP (เหมือนรูป) =====
+                  // ===== CONTENT AREA =====
                   Expanded(
                     child: Container(
                       width: double.infinity,
@@ -269,15 +295,19 @@ class _HomeViewState extends State<_HomeView> {
                             return HomeWidgetGrid(
                               tiles: vm.tiles,
                               reorderEnabled: st.reorderEnabled,
-                              onToggle: (widgetId) => context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
+                              onToggle: (widgetId) =>
+                                  context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
                               onAdjust: (widgetId, value) {
-                                context.read<DevicesBloc>().add(WidgetValueChanged(widgetId, value.toDouble()));
+                                context
+                                    .read<DevicesBloc>()
+                                    .add(WidgetValueChanged(widgetId, value.toDouble()));
                               },
                               onOrderChanged: (newOrderWidgetIds) {
                                 context.read<DevicesBloc>().add(WidgetsOrderChanged(newOrderWidgetIds));
                               },
                               onOpenSensor: (HomeWidgetTileVM value) {
-                                final sensorWidget = st.widgets.firstWhere((w) => w.widgetId == value.widgetId);
+                                final sensorWidget =
+                                    st.widgets.firstWhere((w) => w.widgetId == value.widgetId);
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -285,6 +315,10 @@ class _HomeViewState extends State<_HomeView> {
                                   ),
                                 );
                               },
+                              onOpenMode: (tile) => _openModePicker(tile),
+                              onOpenText: (tile) => _openTextDialog(tile),
+                              onPressButton: (widgetId) =>
+                                  context.read<DevicesBloc>().add(WidgetButtonPressed(widgetId)),
                             );
                           },
                         ),
