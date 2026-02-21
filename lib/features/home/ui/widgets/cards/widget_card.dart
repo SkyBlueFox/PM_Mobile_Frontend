@@ -1,4 +1,4 @@
-// lib/features/home/ui/widgets/widget_card.dart
+// lib/features/home/ui/widgets/cards/widget_card.dart
 
 import 'package:flutter/material.dart';
 
@@ -7,7 +7,7 @@ import '../../view_models/home_view_model.dart';
 /// Card ต่อ widget 1 ตัว
 /// - sensor: half + tap เข้า detail
 /// - toggle: half
-/// - adjust: full + แสดงตัวเลข + slider + (color bar ถ้าชื่อมีคำว่า color)
+/// - adjust: full + แสดงตัวเลข + slider + (color bar ตาม tile.showColorBar)
 class WidgetCard extends StatelessWidget {
   final HomeWidgetTileVM tile;
   final bool showDragHint;
@@ -25,6 +25,8 @@ class WidgetCard extends StatelessWidget {
     required this.onOpenSensor,
   });
 
+  static const Color blue = Color(0xFF3AA7FF);
+
   @override
   Widget build(BuildContext context) {
     final isSensor = tile.kind == HomeTileKind.sensor;
@@ -32,7 +34,6 @@ class WidgetCard extends StatelessWidget {
     final isAdjust = tile.kind == HomeTileKind.adjust;
 
     return InkWell(
-      // sensor ต้องกดเข้า detail
       onTap: isSensor ? onOpenSensor : null,
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -85,7 +86,7 @@ class WidgetCard extends StatelessWidget {
   Widget _sensorBody() {
     return Row(
       children: [
-        const Icon(Icons.sensors_rounded, size: 18, color: Color(0xFF3AA7FF)),
+        const Icon(Icons.sensors_rounded, size: 18, color: blue),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -97,7 +98,7 @@ class WidgetCard extends StatelessWidget {
             '${tile.displayValue}${tile.unit}',
             style: const TextStyle(
               fontWeight: FontWeight.w900,
-              color: Color(0xFF3AA7FF),
+              color: blue,
             ),
           ),
         ),
@@ -110,7 +111,7 @@ class WidgetCard extends StatelessWidget {
   Widget _toggleBody() {
     return Row(
       children: [
-        Text('Power', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+        const Text('Power', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
         const Spacer(),
         Switch(
           value: tile.isOn,
@@ -121,33 +122,32 @@ class WidgetCard extends StatelessWidget {
   }
 
   Widget _adjustBody() {
-    final name = tile.title.toLowerCase();
-    final isColor = name.contains('color');
+    // ✅ ใช้จาก VM (ไม่เดาจากชื่อ)
+    final isColor = tile.showColorBar;
 
-    // ค่าที่โชว์เป็นจำนวนเต็ม
+    final min = tile.min.toDouble();
+    final max = tile.max.toDouble();
+
     final valueText = tile.unit.isEmpty ? '${tile.displayValue}' : '${tile.displayValue}${tile.unit}';
 
-    // Slider ต้องเป็น double และ clamp ได้ -> แปลง String เป็น double ก่อน
-    final sliderValue = (double.tryParse(tile.displayValue) ?? 0.0)
-        .clamp(0.0, 100.0)
-        .toDouble();
+    final raw = double.tryParse(tile.displayValue) ?? min;
+    final sliderValue = raw.clamp(min, max);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text('Adjust', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+            const Text('Adjust', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
             const Spacer(),
             Text(
               valueText,
-              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
+              style: const TextStyle(fontWeight: FontWeight.w900, color: blue),
             ),
           ],
         ),
         const SizedBox(height: 10),
 
-        // color bar (แสดง “ข้อมูล” ของ adjust ตาม requirement)
         if (isColor) ...[
           Container(
             height: 8,
@@ -168,8 +168,8 @@ class WidgetCard extends StatelessWidget {
 
         Slider(
           value: sliderValue,
-          min: 0.0,
-          max: 100.0,
+          min: min,
+          max: max,
           onChanged: (v) => onAdjust(v.round()),
         ),
       ],
@@ -177,9 +177,9 @@ class WidgetCard extends StatelessWidget {
   }
 
   Widget _unknownBody() {
-    return Text(
+    return const Text(
       'Unsupported widget',
-      style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
+      style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
     );
   }
 }
