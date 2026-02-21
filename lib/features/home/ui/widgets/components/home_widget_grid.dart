@@ -1,9 +1,8 @@
-// lib/features/home/ui/widgets/home_widget_grid.dart
+// lib/features/home/ui/widgets/components/home_widget_grid.dart
 
-import 'dart:ffi';
-
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
+
 import '../../view_models/home_view_model.dart';
 import '../cards/widget_card.dart';
 
@@ -23,6 +22,11 @@ class HomeWidgetGrid extends StatefulWidget {
   final void Function(int widgetId, int value) onAdjust;
   final ValueChanged<HomeWidgetTileVM> onOpenSensor;
 
+  // ✅ new kinds
+  final ValueChanged<HomeWidgetTileVM> onOpenMode;
+  final ValueChanged<HomeWidgetTileVM> onOpenText;
+  final ValueChanged<int> onPressButton;
+
   const HomeWidgetGrid({
     super.key,
     required this.tiles,
@@ -31,6 +35,9 @@ class HomeWidgetGrid extends StatefulWidget {
     required this.onToggle,
     required this.onAdjust,
     required this.onOpenSensor,
+    required this.onOpenMode,
+    required this.onOpenText,
+    required this.onPressButton,
   });
 
   @override
@@ -39,6 +46,7 @@ class HomeWidgetGrid extends StatefulWidget {
 
 class _HomeWidgetGridState extends State<HomeWidgetGrid> {
   late List<HomeWidgetTileVM> _tiles;
+
   final Map<int, Timer> _debounceTimers = {};
   final Map<int, int> _draftAdjustValues = {};
 
@@ -55,24 +63,23 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
     }
     super.dispose();
   }
-  
-  void _debouncedAdjust(int widgetId, int value) {
-    // cancel previous timer
-    _debounceTimers[widgetId]?.cancel();
 
-    // wait 400ms after last change
+  void _debouncedAdjust(int widgetId, int value) {
+    _debounceTimers[widgetId]?.cancel();
     _debounceTimers[widgetId] = Timer(const Duration(milliseconds: 400), () {
       widget.onAdjust(widgetId, value);
     });
   }
 
-
   @override
   void didUpdateWidget(covariant HomeWidgetGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // sync จาก bloc -> UI (กัน reorder ค้าง)
-    if (oldWidget.tiles != widget.tiles) {
+    // ✅ sync จาก bloc -> UI
+    // - ถ้า tiles เปลี่ยน (เช่น save include/exclude แล้วกลับหน้า home) ให้ replace
+    // - ถ้า switch เข้า/ออกโหมด reorder ก็ยังใช้ลำดับจาก bloc (ห้าม sort ที่นี่)
+    if (!identical(oldWidget.tiles, widget.tiles) ||
+        oldWidget.reorderEnabled != widget.reorderEnabled) {
       _tiles = List<HomeWidgetTileVM>.from(widget.tiles);
     }
   }
@@ -88,6 +95,25 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
     });
 
     widget.onOrderChanged(_tiles.map((e) => e.widgetId).toList());
+  }
+
+  HomeWidgetTileVM _copyWithValue(HomeWidgetTileVM t, String newValue) {
+    return HomeWidgetTileVM(
+      widgetId: t.widgetId,
+      title: t.title,
+      subtitle: t.subtitle,
+      span: t.span,
+      kind: t.kind,
+      isOn: t.isOn,
+      value: newValue,
+      unit: t.unit,
+      min: t.min,
+      max: t.max,
+      showColorBar: t.showColorBar,
+      modeOptions: t.modeOptions,
+      hintText: t.hintText,
+      buttonLabel: t.buttonLabel,
+    );
   }
 
   @override
@@ -107,44 +133,33 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
             children: _tiles.map((t) {
               final width = (t.span == HomeTileSpan.full) ? fullW : halfW;
               final locked = widget.reorderEnabled;
-              final effectiveValue = _draftAdjustValues.containsKey(t.widgetId)
-                ? _draftAdjustValues[t.widgetId]!.toString()
-                : t.value;
 
-              // copy tile ใหม่เฉพาะ adjust widget
+              final effectiveValue = _draftAdjustValues.containsKey(t.widgetId)
+                  ? _draftAdjustValues[t.widgetId]!.toString()
+                  : t.value;
+
               final effectiveTile = (t.kind == HomeTileKind.adjust)
-                  ? HomeWidgetTileVM(
-                      widgetId: t.widgetId,
-                      title: t.title,
-                      subtitle: t.subtitle,
-                      span: t.span,
-                      kind: t.kind,
-                      isOn: t.isOn,
-                      value: effectiveValue, // ⭐ สำคัญมาก
-                      unit: t.unit,
-                      min: t.min,
-                      max: t.max,
-                      showColorBar: t.showColorBar,
-                    )
+                  ? _copyWithValue(t, effectiveValue)
                   : t;
 
               final card = SizedBox(
                 width: width,
                 child: WidgetCard(
-                  tile: effectiveTile, // 👈 ใช้ effectiveTile แทน t
+                  tile: effectiveTile,
                   showDragHint: widget.reorderEnabled,
                   onToggle: locked ? () {} : () => widget.onToggle(t.widgetId),
-
                   onAdjust: locked
                       ? (_) {}
                       : (v) {
                           setState(() {
-                            _draftAdjustValues[t.widgetId] = v; // ให้ slider ขยับทันที
+                            _draftAdjustValues[t.widgetId] = v;
                           });
-                          _debouncedAdjust(t.widgetId, v); // ส่งไป bloc แบบ debounce
+                          _debouncedAdjust(t.widgetId, v);
                         },
-
                   onOpenSensor: locked ? () {} : () => widget.onOpenSensor(t),
+                  onOpenMode: locked ? () {} : () => widget.onOpenMode(t),
+                  onOpenText: locked ? () {} : () => widget.onOpenText(t),
+                  onPressButton: locked ? () {} : () => widget.onPressButton(t.widgetId),
                 ),
               );
 

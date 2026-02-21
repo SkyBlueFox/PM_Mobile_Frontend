@@ -1,10 +1,10 @@
 // lib/features/home/ui/widgets/bottom_sheets/widget_picker_sheet.dart
 //
-// Manage widgets (Add/Delete) — ตาม UI
+// Manage widgets (Include/Exclude) — ตาม UI
 // - ไม่มี checkbox
 // - ปุ่มขวาบนเป็น Save
-// - Include ด้านบน / Exclude ด้านล่าง (แยก Sensors/Devices/Adjust)
-// - แตะการ์ดใน Include = ย้ายลง Exclude
+// - Include ด้านบน / Exclude ด้านล่าง (แยก Sensors/Devices/Adjust/Mode/Text/Button)
+// - แตะการ์ดใน Include = ย้ายลง Exclude (ถ้า lockIncluded=false)
 // - แตะการ์ดใน Exclude = ย้ายขึ้น Include
 // - return: List<int> widgetIds ที่ “อยู่ใน Include” หลัง Save
 
@@ -82,33 +82,80 @@ class _WidgetPickerSheet extends StatefulWidget {
 }
 
 class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
-  late final Set<int> _included = widget.includedItems.map((e) => e.widgetId).toSet();
+  late final Map<int, HomeWidgetTileVM> _byId;
+  late final Set<int> _included;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // รวมทั้งหมด + ป้องกันซ้ำ (อิง widgetId) แบบ deterministic:
+    // - ถ้ามีซ้ำ: ให้ "included" ชนะ (เพื่อคงสถานะที่ UI เห็นอยู่จริง)
+    final map = <int, HomeWidgetTileVM>{};
+    for (final t in widget.excludedItems) {
+      map[t.widgetId] = t;
+    }
+    for (final t in widget.includedItems) {
+      map[t.widgetId] = t;
+    }
+    _byId = Map<int, HomeWidgetTileVM>.unmodifiable(map);
+
+    _included = widget.includedItems.map((e) => e.widgetId).toSet();
+  }
 
   void _include(int id) => setState(() => _included.add(id));
   void _exclude(int id) => setState(() => _included.remove(id));
 
   @override
   Widget build(BuildContext context) {
-    // รวมทั้งหมดเพื่อให้ย้ายไปมาได้
-    final all = <HomeWidgetTileVM>[
-      ...widget.includedItems,
-      ...widget.excludedItems,
-    ];
+    final all = _byId.values.toList(growable: false);
 
-    // ป้องกันซ้ำ (อิง widgetId)
-    final byId = <int, HomeWidgetTileVM>{};
-    for (final t in all) {
-      byId[t.widgetId] = t;
+    // ทำให้เสถียร: sort ด้วย kind -> title -> widgetId
+    int kindOrder(HomeTileKind k) {
+      switch (k) {
+        case HomeTileKind.toggle:
+          return 0;
+        case HomeTileKind.sensor:
+          return 1;
+        case HomeTileKind.adjust:
+          return 2;
+        case HomeTileKind.mode:
+          return 3;
+        case HomeTileKind.text:
+          return 4;
+        case HomeTileKind.button:
+          return 5;
+      }
     }
-    final uniq = byId.values.toList(growable: false);
 
-    final included = uniq.where((e) => _included.contains(e.widgetId)).toList(growable: false);
-    final excluded = uniq.where((e) => !_included.contains(e.widgetId)).toList(growable: false);
+    int cmpTile(HomeWidgetTileVM a, HomeWidgetTileVM b) {
+      final ko = kindOrder(a.kind).compareTo(kindOrder(b.kind));
+      if (ko != 0) return ko;
+      final t = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      if (t != 0) return t;
+      return a.widgetId.compareTo(b.widgetId);
+    }
+
+    final included = all.where((e) => _included.contains(e.widgetId)).toList(growable: false)..sort(cmpTile);
+    final excluded = all.where((e) => !_included.contains(e.widgetId)).toList(growable: false)..sort(cmpTile);
+
+    List<HomeWidgetTileVM> onlyKind(List<HomeWidgetTileVM> list, HomeTileKind k) =>
+        list.where((t) => t.kind == k).toList(growable: false);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
       child: Container(
-        color: const Color(0xFFF6F7FB),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFEAF5FF),
+              Color(0xFFF7FBFF),
+              Color(0xFFFFFFFF),
+            ],
+          ),
+        ),
         child: SingleChildScrollView(
           controller: widget.scrollController,
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
@@ -134,7 +181,7 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: Colors.black45,
+                              color: Color(0xFF5E87A3),
                             ),
                           ),
                       ],
@@ -155,7 +202,13 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, null),
-                    child: const Text('ยกเลิก'),
+                    child: const Text(
+                      'ยกเลิก',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF3AA7FF),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -166,7 +219,7 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       elevation: 0,
                     ),
-                    onPressed: () => Navigator.pop(context, _included.toList()),
+                    onPressed: () => Navigator.pop(context, _included.toList(growable: false)),
                     child: Text(widget.confirmText, style: const TextStyle(fontWeight: FontWeight.w900)),
                   ),
                 ],
@@ -177,13 +230,13 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
               // ===== Include =====
               Text(
                 'Include (${included.length})',
-                style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black87),
+                style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0E3A5A)),
               ),
               const SizedBox(height: 10),
 
               _Group(
                 title: 'Devices',
-                items: included.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false),
+                items: onlyKind(included, HomeTileKind.toggle),
                 onTap: (t) {
                   if (widget.lockIncluded) return;
                   _exclude(t.widgetId);
@@ -192,7 +245,7 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
               const SizedBox(height: 12),
               _Group(
                 title: 'Sensors',
-                items: included.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false),
+                items: onlyKind(included, HomeTileKind.sensor),
                 onTap: (t) {
                   if (widget.lockIncluded) return;
                   _exclude(t.widgetId);
@@ -201,7 +254,34 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
               const SizedBox(height: 12),
               _Group(
                 title: 'Adjust',
-                items: included.where((t) => t.kind == HomeTileKind.adjust).toList(growable: false),
+                items: onlyKind(included, HomeTileKind.adjust),
+                onTap: (t) {
+                  if (widget.lockIncluded) return;
+                  _exclude(t.widgetId);
+                },
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Mode',
+                items: onlyKind(included, HomeTileKind.mode),
+                onTap: (t) {
+                  if (widget.lockIncluded) return;
+                  _exclude(t.widgetId);
+                },
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Text',
+                items: onlyKind(included, HomeTileKind.text),
+                onTap: (t) {
+                  if (widget.lockIncluded) return;
+                  _exclude(t.widgetId);
+                },
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Button',
+                items: onlyKind(included, HomeTileKind.button),
                 onTap: (t) {
                   if (widget.lockIncluded) return;
                   _exclude(t.widgetId);
@@ -213,25 +293,43 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
               // ===== Exclude =====
               const Text(
                 'Exclude',
-                style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black87),
+                style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0E3A5A)),
               ),
               const SizedBox(height: 10),
 
               _Group(
                 title: 'Sensors',
-                items: excluded.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false),
+                items: onlyKind(excluded, HomeTileKind.sensor),
                 onTap: (t) => _include(t.widgetId),
               ),
               const SizedBox(height: 12),
               _Group(
                 title: 'Devices',
-                items: excluded.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false),
+                items: onlyKind(excluded, HomeTileKind.toggle),
                 onTap: (t) => _include(t.widgetId),
               ),
               const SizedBox(height: 12),
               _Group(
                 title: 'Adjust',
-                items: excluded.where((t) => t.kind == HomeTileKind.adjust).toList(growable: false),
+                items: onlyKind(excluded, HomeTileKind.adjust),
+                onTap: (t) => _include(t.widgetId),
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Mode',
+                items: onlyKind(excluded, HomeTileKind.mode),
+                onTap: (t) => _include(t.widgetId),
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Text',
+                items: onlyKind(excluded, HomeTileKind.text),
+                onTap: (t) => _include(t.widgetId),
+              ),
+              const SizedBox(height: 12),
+              _Group(
+                title: 'Button',
+                items: onlyKind(excluded, HomeTileKind.button),
                 onTap: (t) => _include(t.widgetId),
               ),
 
@@ -240,7 +338,7 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 14),
                   child: Center(
-                    child: Text('No widgets available.', style: TextStyle(color: Colors.black54)),
+                    child: Text('No widgets available.', style: TextStyle(color: Color(0xFF5E87A3))),
                   ),
                 ),
               ],
@@ -270,7 +368,10 @@ class _Group extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black54)),
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF5E87A3)),
+        ),
         const SizedBox(height: 10),
         _TileGrid(items: items, onTap: onTap),
       ],
@@ -333,6 +434,7 @@ class _WidgetPreviewCard extends StatelessWidget {
             offset: Offset(0, 8),
           ),
         ],
+        border: Border.all(color: const Color(0x1100A3FF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,12 +447,12 @@ class _WidgetPreviewCard extends StatelessWidget {
                   tile.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0E3A5A)),
                 ),
               ),
               const Padding(
                 padding: EdgeInsets.only(left: 6),
-                child: Icon(Icons.drag_indicator_rounded, color: Colors.black26, size: 18),
+                child: Icon(Icons.drag_indicator_rounded, color: Color(0x553AA7FF), size: 18),
               ),
             ],
           ),
@@ -360,19 +462,28 @@ class _WidgetPreviewCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Colors.black45,
+              color: Color(0xFF5E87A3),
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 10),
 
-          // body (preview)
-          if (tile.kind == HomeTileKind.sensor) _sensorBody(tile),
-          if (tile.kind == HomeTileKind.toggle) _toggleBody(tile),
-          if (tile.kind == HomeTileKind.adjust) _adjustBody(tile),
+          // body (preview) — รองรับทุก kind (ไม่ throw)
+          _previewBody(tile),
         ],
       ),
+    );
+  }
+
+  static Widget _previewBody(HomeWidgetTileVM t) {
+    final text = _valueText(t);
+
+    return Text(
+      text,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
     );
   }
 
@@ -380,9 +491,24 @@ class _WidgetPreviewCard extends StatelessWidget {
     switch (t.kind) {
       case HomeTileKind.toggle:
         return t.isOn ? 'ON' : 'OFF';
+
       case HomeTileKind.sensor:
       case HomeTileKind.adjust:
         return t.unit.isEmpty ? '${t.value}' : '${t.value}${t.unit}';
+
+      case HomeTileKind.mode: {
+        final v = t.value.trim();
+        return v.isEmpty ? 'MODE' : v.toUpperCase();
+      }
+
+      case HomeTileKind.text: {
+        final v = t.value.trim();
+        if (v.isEmpty) return 'TEXT';
+        return v;
+      }
+
+      case HomeTileKind.button:
+        return (t.buttonLabel.trim().isEmpty) ? 'PRESS' : t.buttonLabel.trim().toUpperCase();
     }
   }
 }

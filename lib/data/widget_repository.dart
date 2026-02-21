@@ -1,3 +1,5 @@
+// lib/features/home/data/widget_repository.dart
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -13,7 +15,7 @@ class WidgetRepository {
   }) : _client = client ?? http.Client();
 
   /// GET /api/widgets
-  /// NOTE: backend บางครั้งคืน {"data":null} => ต้องแปลงเป็น [] เพื่อไม่พัง
+  /// NOTE: backend บางครั้งคืน {"data":null} หรือ data ไม่ใช่ list => ต้องแปลงเป็น [] เพื่อไม่พัง
   Future<List<DeviceWidget>> fetchWidgets() async {
     final res = await _client.get(Uri.parse('$baseUrl/api/widgets'));
 
@@ -24,17 +26,17 @@ class WidgetRepository {
     final decoded = jsonDecode(res.body);
 
     // supports:
-    // { "data": [ ... ] } OR { "data": null } OR [ ... ]
-    final List list = decoded is Map<String, dynamic>
-        ? (decoded['data'] as List? ?? const [])
-        : (decoded as List);
+    // { "data": [ ... ] } OR { "data": null } OR [ ... ] OR anything else -> []
+    final dynamic raw = decoded is Map<String, dynamic> ? decoded['data'] : decoded;
+    final List list = raw is List ? raw : const [];
 
     return list
-        .map((e) => DeviceWidget.fromJson(e as Map<String, dynamic>))
+        .whereType<Map<String, dynamic>>()
+        .map(DeviceWidget.fromJson)
         .toList();
   }
 
-  /// ส่งคำสั่งไป backend (toggle/adjust)
+  /// ส่งคำสั่งไป backend (toggle/adjust/mode/text/button ใช้ endpoint เดียวกันได้)
   Future<void> sendWidgetCommand({
     required int widgetId,
     required int capabilityId,
@@ -48,17 +50,17 @@ class WidgetRepository {
         'value': value,
       }),
     );
-    print("Widget command sent: widgetId=$widgetId, capabilityId=$capabilityId, value=$value");
-    print("Response status: ${res.statusCode}, body: ${res.body}");
+
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Failed to send command');
     }
   }
 
   /// PATCH /api/widgets/{widget_id}/status
+  /// status: 'include' | 'exclude'
   Future<void> changeWidgetStatus({
     required int widgetId,
-    required String widgetStatus, // 'active' | 'inactive'
+    required String widgetStatus, // 'include' | 'exclude'
   }) async {
     final res = await _client.patch(
       Uri.parse('$baseUrl/api/widgets/$widgetId/status'),
@@ -71,15 +73,15 @@ class WidgetRepository {
     }
   }
 
-  /// PATCH /api/widgets/order
+  /// PUT /api/widgets/order
+  /// ส่งเป็น "widget_ids ที่ include" เรียงตามลำดับใหม่
   Future<void> changeWidgetsOrder(List<int> widgetOrders) async {
     final res = await _client.put(
       Uri.parse('$baseUrl/api/widgets/order'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'widget_orders': widgetOrders}),
     );
-    print("widgetOrders sent to server: $widgetOrders");
-    print("response status: ${res.statusCode}, body: ${res.body}");
+
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Failed to change widget order');
     }

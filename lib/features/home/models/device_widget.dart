@@ -6,8 +6,12 @@ class DeviceWidget {
   final Device device;
   final Capability capability;
 
-  final String status; // include / exclude
+  /// backend: 'include' | 'exclude'
+  final String status;
+
   final int order;
+
+  /// backend อาจส่ง null/number => เก็บเป็น String เสมอ
   final String value;
 
   const DeviceWidget({
@@ -18,6 +22,8 @@ class DeviceWidget {
     required this.order,
     required this.value,
   });
+
+  bool get included => status.trim().toLowerCase() == 'include';
 
   DeviceWidget copyWith({
     int? widgetId,
@@ -37,14 +43,20 @@ class DeviceWidget {
     );
   }
 
+  DeviceWidget copyWithIncluded(bool included) {
+    return copyWith(status: included ? 'include' : 'exclude');
+  }
+
   factory DeviceWidget.fromJson(Map<String, dynamic> json) {
+    final rawValue = json['value'];
+
     return DeviceWidget(
-      widgetId: json['widget_id'] as int,
+      widgetId: (json['widget_id'] as num).toInt(),
       device: Device.fromJson(json['device'] as Map<String, dynamic>),
       capability: Capability.fromJson(json['capability'] as Map<String, dynamic>),
-      status: json['widget_status'] as String,
-      order: json['widget_order'] as int,
-      value: json['value'] as String,
+      status: (json['widget_status'] ?? 'exclude').toString(), // default exclude
+      order: (json['widget_order'] as num?)?.toInt() ?? 0,
+      value: rawValue == null ? '' : rawValue.toString(),
     );
   }
 }
@@ -55,7 +67,11 @@ class WidgetsResponse {
   const WidgetsResponse({required this.data});
 
   factory WidgetsResponse.fromJson(Map<String, dynamic> json) {
-    final list = (json['data'] as List).cast<Map<String, dynamic>>();
-    return WidgetsResponse(data: list.map(DeviceWidget.fromJson).toList());
+    final raw = json['data'];
+    final list = (raw is List) ? raw : const [];
+
+    return WidgetsResponse(
+      data: list.whereType<Map<String, dynamic>>().map(DeviceWidget.fromJson).toList(),
+    );
   }
 }

@@ -1,4 +1,4 @@
-// lib/features/home/ui/widgets/widget_card.dart
+// lib/features/home/ui/widgets/cards/widget_card.dart
 
 import 'package:flutter/material.dart';
 
@@ -7,14 +7,23 @@ import '../../view_models/home_view_model.dart';
 /// Card ต่อ widget 1 ตัว
 /// - sensor: half + tap เข้า detail
 /// - toggle: half
-/// - adjust: full + แสดงตัวเลข + slider + (color bar ถ้าชื่อมีคำว่า color)
+/// - adjust: full + แสดงตัวเลข + slider + (color bar ตาม tile.showColorBar)
+/// - mode: half + เลือกโหมด
+/// - text: full + ปุ่มส่งข้อความ
+/// - button: half + ปุ่มกดครั้งเดียว
 class WidgetCard extends StatelessWidget {
   final HomeWidgetTileVM tile;
   final bool showDragHint;
 
+  // actions
   final VoidCallback onToggle;
   final ValueChanged<int> onAdjust; // ส่ง int (จำนวนเต็ม)
   final VoidCallback onOpenSensor;
+
+  // new kinds
+  final VoidCallback onOpenMode;
+  final VoidCallback onOpenText;
+  final VoidCallback onPressButton;
 
   const WidgetCard({
     super.key,
@@ -23,17 +32,27 @@ class WidgetCard extends StatelessWidget {
     required this.onToggle,
     required this.onAdjust,
     required this.onOpenSensor,
+    required this.onOpenMode,
+    required this.onOpenText,
+    required this.onPressButton,
   });
+
+  static const Color blue = Color(0xFF3AA7FF);
 
   @override
   Widget build(BuildContext context) {
     final isSensor = tile.kind == HomeTileKind.sensor;
     final isToggle = tile.kind == HomeTileKind.toggle;
     final isAdjust = tile.kind == HomeTileKind.adjust;
+    final isMode = tile.kind == HomeTileKind.mode;
+    final isText = tile.kind == HomeTileKind.text;
+    final isButton = tile.kind == HomeTileKind.button;
+
+    final VoidCallback? tap =
+        isSensor ? onOpenSensor : (isMode ? onOpenMode : (isText ? onOpenText : null));
 
     return InkWell(
-      // sensor ต้องกดเข้า detail
-      onTap: isSensor ? onOpenSensor : null,
+      onTap: tap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
@@ -75,7 +94,10 @@ class WidgetCard extends StatelessWidget {
             if (isSensor) _sensorBody(),
             if (isToggle) _toggleBody(),
             if (isAdjust) _adjustBody(),
-            if (!isSensor && !isToggle && !isAdjust) _unknownBody(),
+            if (isMode) _modeBody(),
+            if (isText) _textBody(),
+            if (isButton) _buttonBody(),
+            if (!isSensor && !isToggle && !isAdjust && !isMode && !isText && !isButton) _unknownBody(),
           ],
         ),
       ),
@@ -85,7 +107,7 @@ class WidgetCard extends StatelessWidget {
   Widget _sensorBody() {
     return Row(
       children: [
-        const Icon(Icons.sensors_rounded, size: 18, color: Color(0xFF3AA7FF)),
+        const Icon(Icons.sensors_rounded, size: 18, color: blue),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -97,7 +119,7 @@ class WidgetCard extends StatelessWidget {
             '${tile.displayValue}${tile.unit}',
             style: const TextStyle(
               fontWeight: FontWeight.w900,
-              color: Color(0xFF3AA7FF),
+              color: blue,
             ),
           ),
         ),
@@ -110,7 +132,7 @@ class WidgetCard extends StatelessWidget {
   Widget _toggleBody() {
     return Row(
       children: [
-        Text('Power', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+        const Text('Power', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
         const Spacer(),
         Switch(
           value: tile.isOn,
@@ -121,33 +143,30 @@ class WidgetCard extends StatelessWidget {
   }
 
   Widget _adjustBody() {
-    final name = tile.title.toLowerCase();
-    final isColor = name.contains('color');
+    final isColor = tile.showColorBar;
 
-    // ค่าที่โชว์เป็นจำนวนเต็ม
+    final min = tile.min.toDouble();
+    final max = tile.max.toDouble();
+
     final valueText = tile.unit.isEmpty ? '${tile.displayValue}' : '${tile.displayValue}${tile.unit}';
 
-    // Slider ต้องเป็น double และ clamp ได้ -> แปลง String เป็น double ก่อน
-    final sliderValue = (double.tryParse(tile.displayValue) ?? 0.0)
-        .clamp(0.0, 100.0)
-        .toDouble();
+    final raw = double.tryParse(tile.displayValue) ?? min;
+    final sliderValue = raw.clamp(min, max);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text('Adjust', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+            const Text('Adjust', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
             const Spacer(),
             Text(
               valueText,
-              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
+              style: const TextStyle(fontWeight: FontWeight.w900, color: blue),
             ),
           ],
         ),
         const SizedBox(height: 10),
-
-        // color bar (แสดง “ข้อมูล” ของ adjust ตาม requirement)
         if (isColor) ...[
           Container(
             height: 8,
@@ -165,21 +184,121 @@ class WidgetCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
-
         Slider(
           value: sliderValue,
-          min: 0.0,
-          max: 100.0,
+          min: min,
+          max: max,
           onChanged: (v) => onAdjust(v.round()),
         ),
       ],
     );
   }
 
+  Widget _modeBody() {
+    final current = (tile.displayValue).trim();
+    final label = current.isEmpty ? 'Select mode' : current.toUpperCase();
+
+    return Row(
+      children: [
+        const Icon(Icons.ac_unit_rounded, size: 18, color: blue),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w900, color: blue),
+          ),
+        ),
+        const SizedBox(width: 8),
+        OutlinedButton(
+          onPressed: onOpenMode,
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Color(0xFFBFE6FF)),
+            foregroundColor: blue,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: const Text('Change', style: TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      ],
+    );
+  }
+
+  Widget _textBody() {
+    final preview = tile.displayValue.trim();
+    final shown = preview.isEmpty ? 'No text' : preview;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.edit_note_rounded, size: 18, color: blue),
+            const SizedBox(width: 8),
+            const Text('Text', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+            const Spacer(),
+            OutlinedButton(
+              onPressed: onOpenText,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFBFE6FF)),
+                foregroundColor: blue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Send', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F6FF),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            shown,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0B4A7A)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buttonBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Button', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: onPressButton,
+            icon: const Icon(Icons.notifications_active_rounded),
+            label: Text(
+              tile.buttonLabel.isEmpty ? 'Press' : tile.buttonLabel,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _unknownBody() {
-    return Text(
+    return const Text(
       'Unsupported widget',
-      style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
+      style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
     );
   }
 }

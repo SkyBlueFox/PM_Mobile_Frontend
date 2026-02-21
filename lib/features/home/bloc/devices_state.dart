@@ -1,9 +1,3 @@
-// lib/features/home/bloc/devices_state.dart
-//
-// State for DevicesBloc.
-// หลักการ: state เป็น immutable, copyWith ชัดเจน (KISS)
-// เอา class ซ้ำออก (ของเดิมคุณมีซ้ำ 2 ชุด)
-
 import '../models/device_widget.dart';
 import '../models/room.dart';
 import '../models/device.dart';
@@ -37,14 +31,14 @@ class DevicesState {
   DevicesState copyWith({
     bool? isLoading,
     List<Room>? rooms,
-    int? selectedRoomId, // allow null
+    int? selectedRoomId,
     List<DeviceWidget>? widgets,
     String? error,
     List<Device>? devices,
     bool? reorderEnabled,
     bool? reorderSaving,
     List<int>? reorderOriginalVisibleIds,
-    List<int>? reorderWorkingVisibleIds,    
+    List<int>? reorderWorkingVisibleIds,
   }) {
     return DevicesState(
       isLoading: isLoading ?? this.isLoading,
@@ -55,33 +49,34 @@ class DevicesState {
       devices: devices ?? this.devices,
       reorderEnabled: reorderEnabled ?? this.reorderEnabled,
       reorderSaving: reorderSaving ?? this.reorderSaving,
-      reorderOriginalVisibleIds:
-          reorderOriginalVisibleIds ?? this.reorderOriginalVisibleIds,
-      reorderWorkingVisibleIds:
-          reorderWorkingVisibleIds ?? this.reorderWorkingVisibleIds,
+      reorderOriginalVisibleIds: reorderOriginalVisibleIds ?? this.reorderOriginalVisibleIds,
+      reorderWorkingVisibleIds: reorderWorkingVisibleIds ?? this.reorderWorkingVisibleIds,
     );
   }
 
-  /// widgets ที่ "แสดงบนหน้า home"
-  /// - ตัด inactive ออก (inactive = เก็บเข้าลิ้นชัก)
-  /// - sort ให้ stable
+  bool _isInclude(DeviceWidget w) => w.status.trim().toLowerCase() == 'include';
+
+  /// widgets ที่ "แสดงบนหน้า home" = include เท่านั้น
   List<DeviceWidget> get visibleWidgets {
-    final base = widgets.where((w) => w.status != 'inactive').toList();
+    final base = widgets.where(_isInclude).toList();
 
     base.sort((a, b) {
       final byOrder = a.order.compareTo(b.order);
       if (byOrder != 0) return byOrder;
-      // fallback stable
       return a.widgetId.compareTo(b.widgetId);
     });
 
     return base;
   }
 
-  /// widgets ที่ "อยู่ในลิ้นชัก"
+  /// widgets ที่ "อยู่ในลิ้นชัก" = exclude
   List<DeviceWidget> get drawerWidgets {
-    final base = widgets.where((w) => w.status == 'inactive').toList();
-    base.sort((a, b) => a.order.compareTo(b.order));
+    final base = widgets.where((w) => !_isInclude(w)).toList();
+    base.sort((a, b) {
+      final byOrder = a.order.compareTo(b.order);
+      if (byOrder != 0) return byOrder;
+      return a.widgetId.compareTo(b.widgetId);
+    });
     return base;
   }
 
