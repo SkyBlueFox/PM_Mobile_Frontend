@@ -27,6 +27,8 @@ import '../../../room/ui/manage_homes_page.dart';
 import 'sensor_detail_page.dart';
 import '../../../me/me_page.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -50,6 +52,7 @@ class _HomeViewState extends State<_HomeView> {
   static const Color blue = Color(0xFF3AA7FF);
   static const Color sky = Color(0xFFBFE6FF);
   static const Color pageBg = Color(0xFFF6F7FB);
+  final user = FirebaseAuth.instance.currentUser;
 
   void _logout() {
     // ✅ stop polling BEFORE logout (optional but recommended)
@@ -317,8 +320,9 @@ class _HomeViewState extends State<_HomeView> {
                 ],
               )
             : MePage(
-                displayName: 'FirstName LastName',
+                displayName: user?.displayName ?? 'No Name',
                 roleText: 'Role',
+                photoUrl: user?.photoURL,
                 onManageHome: () async {
                   // ✅ IMPORTANT: return from ManageHomesPage and refresh rooms in DevicesBloc
                   await Navigator.push(

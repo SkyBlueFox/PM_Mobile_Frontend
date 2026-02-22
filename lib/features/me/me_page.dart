@@ -5,16 +5,14 @@ import '../home/bloc/devices_bloc.dart';
 import '../home/bloc/devices_event.dart';
 import '../room/bloc/rooms_bloc.dart';
 import '../room/bloc/rooms_event.dart';
-
-// ✅ change path to where you put it
 import '../device/manage_devices_page.dart';
 
 class MePage extends StatelessWidget {
   final String displayName;
   final String roleText;
+  final String? photoUrl;
 
   final VoidCallback onManageHome;
-  // ✅ you can keep this, but we’ll provide a default navigation if you want
   final VoidCallback? onManageDevices;
   final VoidCallback onSecurity;
   final VoidCallback onLogout;
@@ -23,14 +21,14 @@ class MePage extends StatelessWidget {
     super.key,
     required this.displayName,
     required this.roleText,
+    required this.photoUrl,
     required this.onManageHome,
-    this.onManageDevices, // ✅ optional now
+    this.onManageDevices,
     required this.onSecurity,
     required this.onLogout,
   });
 
   void _goManageDevices(BuildContext context) {
-    // load latest rooms+devices for mapping device -> room
     context.read<DevicesBloc>().add(const DevicesRequested());
     context.read<RoomsBloc>().add(const RoomsStarted());
 
@@ -50,6 +48,9 @@ class MePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final highResPhoto =
+        photoUrl != null && photoUrl!.isNotEmpty ? "${photoUrl!}?sz=200" : null;
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -68,21 +69,36 @@ class MePage extends StatelessWidget {
             children: [
               const SizedBox(height: 18),
 
-              // Avatar
               Container(
-                width: 92,
-                height: 92,
+                width: 96,
+                height: 96,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD9D9D9),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: highResPhoto != null
+                      ? Image.network(
+                          highResPhoto,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fallbackAvatar(),
+                        )
+                      : _fallbackAvatar(),
                 ),
               ),
+
               const SizedBox(height: 14),
 
-              // Name pill
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF3AA7FF),
                   borderRadius: BorderRadius.circular(999),
@@ -95,6 +111,7 @@ class MePage extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(height: 6),
 
               Text(
@@ -104,9 +121,9 @@ class MePage extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 18),
 
-              // Menu card
+              const SizedBox(height: 20),
+
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -122,7 +139,8 @@ class MePage extends StatelessWidget {
                     const Divider(height: 1),
                     _MenuRow(
                       title: 'จัดการอุปกรณ์',
-                      onTap: onManageDevices ?? () => _goManageDevices(context),
+                      onTap:
+                          onManageDevices ?? () => _goManageDevices(context),
                     ),
                     const Divider(height: 1),
                     _MenuRow(
@@ -133,9 +151,8 @@ class MePage extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
 
-              // Logout
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
@@ -159,6 +176,17 @@ class MePage extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _fallbackAvatar() {
+    return Container(
+      color: const Color(0xFFE0E0E0),
+      child: const Icon(
+        Icons.person,
+        size: 40,
+        color: Colors.white,
       ),
     );
   }
@@ -188,7 +216,8 @@ class _MenuRow extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.black38),
+            const Icon(Icons.chevron_right_rounded,
+                color: Colors.black38),
           ],
         ),
       ),

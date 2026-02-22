@@ -23,9 +23,17 @@ import 'features/home/bloc/devices_event.dart';
 import 'features/room/bloc/rooms_bloc.dart';
 import 'features/room/bloc/rooms_event.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
@@ -117,17 +125,20 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, st) {
-        if (st is AuthAuthenticated) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasData) {
           return const HomePage();
         }
-        if (st is AuthUnauthenticated) {
-          return const SignInPage();
-        }
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
+
+        return const SignInPage();
       },
     );
   }
