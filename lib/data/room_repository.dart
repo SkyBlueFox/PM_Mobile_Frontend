@@ -65,16 +65,15 @@ class RoomRepository {
     }
 
     final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final List list = body['data'] as List;
-
+    final List list = body['data'] as List? ?? const [];
     return list
         .map(
           (e) => Device(
             id: e['device_id'] as String,
             name: e['device_name'] as String,
             type: e['device_type'] as String,
-            roomId: (e['room_id'] as num).toInt(),
-            lastHeartBeat: DateTime.parse(e['last_heartbeat'] as String),
+            roomId: roomId,                  //(e['room_id'] as num).toInt(),
+            lastHeartBeat: DateTime.parse(e['device_last_heartbeat'] as String),
           ),
         )
         .toList();

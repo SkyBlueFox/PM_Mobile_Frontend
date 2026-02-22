@@ -75,7 +75,7 @@ class WidgetRepository {
           uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'capability_id': capabilityId,
+            'actor': "test@gmail.com", //TODO: get from user.email
             'value': value,
           }),
         )

@@ -65,5 +65,35 @@ class DeviceRepository {
     }
   }
 
+  /// PUT /api/devices/{device_id}
+  Future<void> updateDeviceName({
+    required String deviceId,
+    required String deviceName,
+  }) async {
+    final res = await _client.put(
+      Uri.parse('$baseUrl/api/devices/$deviceId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'device_name': deviceName,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to update device name');
+    }
+  }
+
+  /// POST /api/devices/{device_id}/unpair
+  Future<void> unpairDevice(String deviceId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/api/devices/$deviceId/unpair'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    print('Unpair response: ${res.statusCode} ${res.body}'); // debug log
+    if (res.statusCode != 200) {
+      throw Exception('Failed to unpair device');
+    }
+  }
+
   void dispose() => _client.close();
 }

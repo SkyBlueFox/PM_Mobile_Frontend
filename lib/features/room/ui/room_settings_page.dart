@@ -31,10 +31,14 @@ class RoomSettingsPage extends StatefulWidget {
 class _RoomSettingsPageState extends State<RoomSettingsPage> {
   late String _name = widget.roomName;
 
+  bool _didPop = false;
   bool _showDevices = false;
   bool _devicesLoading = false;
   String? _devicesError;
   List<Device> _devices = const [];
+
+  // ✅ NEW: track if we already loaded devices once successfully
+  bool _devicesLoaded = false;
 
   Future<void> _openRename() async {
     final newName = await Navigator.push<String?>(
@@ -70,12 +74,14 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
       setState(() {
         _devices = list;
         _devicesLoading = false;
+        _devicesLoaded = true; // ✅ important: even if empty, it's a success
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _devicesLoading = false;
         _devicesError = e.toString();
+        _devicesLoaded = false; // allow retry
       });
     }
   }
@@ -83,8 +89,8 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   Future<void> _toggleDevices() async {
     setState(() => _showDevices = !_showDevices);
 
-    // fetch only when opening and we haven't loaded yet (or last time had error)
-    if (_showDevices && (_devices.isEmpty || _devicesError != null)) {
+    // ✅ fetch only when opening and we haven't loaded yet OR last time had error
+    if (_showDevices && (!_devicesLoaded || _devicesError != null)) {
       await _loadDevicesInRoom();
     }
   }
@@ -124,6 +130,8 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
       listenWhen: (p, c) =>
           p.status != c.status || p.error != c.error || p.rooms != c.rooms,
       listener: (context, st) {
+        if (!mounted) return;
+
         // error
         if (st.status == RoomsStatus.failure &&
             st.error != null &&
@@ -134,10 +142,14 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
           return;
         }
 
-        // success delete: room no longer exists in list
+        // ✅ success delete: room no longer exists in list
         final exists = st.rooms.any((r) => r.id == widget.roomId);
-        if (!exists && st.status == RoomsStatus.ready) {
-          Navigator.pop(context, true); // deleted
+        if (!_didPop && !exists && st.status == RoomsStatus.ready) {
+          _didPop = true;
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context).pop(true);
+          });
         }
       },
       child: Scaffold(
@@ -168,7 +180,8 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                     // ✅ Tap to expand list
                     _RowTile(
                       title: 'อุปกรณ์',
-                      trailing: '${_showDevices ? _devices.length : widget.deviceCount}',
+                      trailing:
+                          '${_showDevices ? _devices.length : widget.deviceCount}',
                       onTap: _toggleDevices,
                       trailingIcon: _showDevices
                           ? Icons.expand_less_rounded
@@ -263,16 +276,31 @@ class _DevicesSection extends StatelessWidget {
       );
     }
 
+    // ✅ EMPTY STATE (no error)
     if (devices.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Text('ไม่มีอุปกรณ์ในห้องนี้', style: TextStyle(color: Colors.black54)),
+      return SizedBox(
+        height: 120,
+        child: RefreshIndicator(
+          onRefresh: onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 18),
+              Center(
+                child: Text(
+                  'ไม่มีอุปกรณ์ในห้องนี้',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    // RefreshIndicator needs scrollable widget
+    // ✅ normal list
     return SizedBox(
-      height: 220, // ✅ fixed height for inline list (adjust if you want)
+      height: 220, // fixed height for inline list
       child: RefreshIndicator(
         onRefresh: onRefresh,
         child: ListView.separated(
@@ -283,9 +311,18 @@ class _DevicesSection extends StatelessWidget {
             final d = devices[i];
             return ListTile(
               dense: true,
-              leading: const Icon(Icons.devices_other_rounded, color: Color(0xFF3AA7FF)),
-              title: Text(d.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text(d.type, style: const TextStyle(color: Colors.black45)),
+              leading: const Icon(
+                Icons.devices_other_rounded,
+                color: Color(0xFF3AA7FF),
+              ),
+              title: Text(
+                d.name,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                d.type,
+                style: const TextStyle(color: Colors.black45),
+              ),
             );
           },
         ),
@@ -332,14 +369,21 @@ class _RowTile extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             Text(
               trailing,
-              style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.black45,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(width: 6),
-            Icon(trailingIcon ?? Icons.chevron_right_rounded, color: Colors.black38),
+            Icon(trailingIcon ?? Icons.chevron_right_rounded,
+                color: Colors.black38),
           ],
         ),
       ),

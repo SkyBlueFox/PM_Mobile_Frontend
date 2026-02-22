@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/bloc/auth_bloc.dart';
 import '../../../auth/bloc/auth_event.dart';
 
+import '../../../device/manage_devices_page.dart';
 import '../../../room/bloc/rooms_bloc.dart';
 import '../../../room/bloc/rooms_event.dart';
 
@@ -339,7 +340,33 @@ class _HomeViewState extends State<_HomeView> {
                   context.read<RoomsBloc>().add(const RoomsRefreshRequested());
                   context.read<DevicesBloc>().add(const DevicesStarted());
                 },
-                onManageDevices: () {},
+
+                // ✅ IMPLEMENT THIS: go to ManageDevicesPage
+                onManageDevices: () async {
+                  // make sure we have latest data for device->room mapping
+                  context.read<DevicesBloc>().add(const DevicesRequested());
+                  context.read<RoomsBloc>().add(const RoomsStarted()); // or RoomsRefreshRequested()
+
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(value: context.read<DevicesBloc>()),
+                          BlocProvider.value(value: context.read<RoomsBloc>()),
+                        ],
+                        child: const ManageDevicesPage(),
+                      ),
+                    ),
+                  );
+
+                  if (!mounted) return;
+
+                  // ✅ refresh when coming back (in case setup changed something)
+                  context.read<DevicesBloc>().add(const DevicesRequested());
+                  context.read<RoomsBloc>().add(const RoomsRefreshRequested());
+                },
+
                 onSecurity: () {},
                 onLogout: _logout,
               ),

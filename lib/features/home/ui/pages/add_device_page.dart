@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pm_mobile_frontend/features/home/bloc/devices_event.dart';
 import '../../models/device.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_state.dart';
@@ -204,12 +205,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
         deviceId: _selectedDevice!.id,
       );
       if (!mounted) return;
+      context.read<DevicesBloc>().add(const DevicesStarted());
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => DeviceSetupPage(
             device: _selectedDevice!,
-            room: _selectedRoom!,
           ),
         ),
       );

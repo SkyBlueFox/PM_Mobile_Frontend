@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../home/bloc/devices_bloc.dart';
+import '../home/bloc/devices_event.dart';
+import '../room/bloc/rooms_bloc.dart';
+import '../room/bloc/rooms_event.dart';
+
+// ✅ change path to where you put it
+import '../device/manage_devices_page.dart';
 
 class MePage extends StatelessWidget {
   final String displayName;
   final String roleText;
 
   final VoidCallback onManageHome;
-  final VoidCallback onManageDevices;
+  // ✅ you can keep this, but we’ll provide a default navigation if you want
+  final VoidCallback? onManageDevices;
   final VoidCallback onSecurity;
   final VoidCallback onLogout;
 
@@ -15,10 +24,29 @@ class MePage extends StatelessWidget {
     required this.displayName,
     required this.roleText,
     required this.onManageHome,
-    required this.onManageDevices,
+    this.onManageDevices, // ✅ optional now
     required this.onSecurity,
     required this.onLogout,
   });
+
+  void _goManageDevices(BuildContext context) {
+    // load latest rooms+devices for mapping device -> room
+    context.read<DevicesBloc>().add(const DevicesRequested());
+    context.read<RoomsBloc>().add(const RoomsStarted());
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<DevicesBloc>()),
+            BlocProvider.value(value: context.read<RoomsBloc>()),
+          ],
+          child: const ManageDevicesPage(),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +122,7 @@ class MePage extends StatelessWidget {
                     const Divider(height: 1),
                     _MenuRow(
                       title: 'จัดการอุปกรณ์',
-                      onTap: onManageDevices,
+                      onTap: onManageDevices ?? () => _goManageDevices(context),
                     ),
                     const Divider(height: 1),
                     _MenuRow(

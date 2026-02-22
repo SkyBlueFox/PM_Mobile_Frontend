@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../data/device_repository.dart';
 import '../home/models/device.dart';
-import '../home/models/room.dart';
 
 class DeviceSetupPage extends StatefulWidget {
   final Device device;
-  final Room room;
 
   const DeviceSetupPage({
     super.key,
     required this.device,
-    required this.room,
   });
 
   @override
@@ -23,11 +22,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
   @override
   void initState() {
     super.initState();
-
-    // ✅ วิธีที่ 2: ใช้ชื่อ device เป็นค่าเริ่มต้น (แทน nickname)
     _nameCtrl = TextEditingController(text: widget.device.name);
-    // ถ้าฟิลด์ของคุณชื่อ deviceName ให้เปลี่ยนเป็น:
-    // _nameCtrl = TextEditingController(text: widget.device.deviceName);
   }
 
   @override
@@ -36,9 +31,60 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
     super.dispose();
   }
 
-  void _save() {
-    // mock: ยังไม่บันทึกจริง (ส่งค่าที่ผู้ใช้แก้กลับไปได้)
-    Navigator.pop(context, _nameCtrl.text.trim());
+  Future<void> _save() async {
+    final newName = _nameCtrl.text.trim();
+    if (newName.isEmpty) return;
+
+    try {
+      final repo = context.read<DeviceRepository>();
+      await repo.updateDeviceName(
+        deviceId: widget.device.id,
+        deviceName: newName,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context, newName); // return new name
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _confirmUnpair() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unpair Device'),
+        content: const Text('ต้องการยกเลิกการเชื่อมต่ออุปกรณ์นี้หรือไม่?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('ยกเลิก'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('ยกเลิกการเชื่อมต่อ'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (ok != true) return;
+
+    try {
+      final repo = context.read<DeviceRepository>();
+      await repo.unpairDevice(widget.device.id);
+
+      if (!mounted) return;
+      Navigator.pop(context, 'unpair');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unpair failed: $e')),
+      );
+    }
   }
 
   @override
@@ -47,7 +93,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('เพิ่มอุปกรณ์'),
+        title: const Text('ตั้งค่าอุปกรณ์'),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -61,7 +107,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
             const SizedBox(height: 8),
             _InputCard(
               child: TextField(
-                controller: _nameCtrl, // ✅ ต้องเป็น controller
+                controller: _nameCtrl,
                 textAlign: TextAlign.center,
                 decoration: const InputDecoration(border: InputBorder.none),
               ),
@@ -77,10 +123,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
             _InfoCard(
               left: 'Device’s Name',
               right: widget.device.name,
-              // ถ้าฟิลด์ชื่อ deviceName ให้ใช้ widget.device.deviceName
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 30),
 
             SizedBox(
               height: 54,
@@ -95,6 +140,29 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
                 child: const Text(
                   'เสร็จสิ้น',
                   style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // 🔴 UNPAIR BUTTON
+            SizedBox(
+              height: 54,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: _confirmUnpair,
+                child: const Text(
+                  'ยกเลิกการเชื่อมต่ออุปกรณ์',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),

@@ -34,10 +34,15 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   static const String _msgCommandFailed = 'Unable to send command. Please try again.';
   static const String _msgSaveFailed = 'Unable to save. Please try again.';
 
-  Timer? _pollTimer;
-  bool _pollInFlight = false;
+  Timer? _sensorPollTimer;
+  Timer? _fullPollTimer;
+
+  Duration _sensorInterval = const Duration(seconds: 1);
+  Duration _fullInterval = const Duration(seconds: 10);
+
   int? _pollRoomId;
-  Duration _pollInterval = const Duration(seconds: 5);
+  bool _sensorPollInFlight = false;
+  bool _fullPollInFlight = false;
 
   // กัน polling overwrite ค่าที่ user เพิ่งสั่ง (snap-back)
   final Map<int, String> _pendingValueByWidgetId = {};
@@ -424,30 +429,69 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     Emitter<DevicesState> emit,
   ) async {
     _pollRoomId = event.roomId;
-    _pollInterval = event.interval;
 
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(_pollInterval, (_) async {
-      await _pollOnce();
+    // choose intervals (you can pass from UI too)
+    _fullInterval = event.interval; // e.g. 10s
+    _sensorInterval = const Duration(seconds: 1);
+
+    _sensorPollTimer?.cancel();
+    _fullPollTimer?.cancel();
+
+    _sensorPollTimer = Timer.periodic(_sensorInterval, (_) async {
+      await _pollSensorsOnce();
     });
 
-    await _pollOnce(); // immediate
+    _fullPollTimer = Timer.periodic(_fullInterval, (_) async {
+      await _pollFullOnce();
+    });
+
+    await _pollFullOnce();     // initial full load
+    await _pollSensorsOnce();  // immediate sensor refresh
   }
 
   Future<void> _onWidgetsPollingStopped(
     WidgetsPollingStopped event,
     Emitter<DevicesState> emit,
   ) async {
-    _pollTimer?.cancel();
-    _pollTimer = null;
+    _sensorPollTimer?.cancel();
+    _sensorPollTimer = null;
+
+    _fullPollTimer?.cancel();
+    _fullPollTimer = null;
   }
 
-  Future<void> _pollOnce() async {
-    if (_pollInFlight) return;
-    _pollInFlight = true;
+  Future<void> _pollFullOnce() async {
+  if (_fullPollInFlight) return;
+  _fullPollInFlight = true;
+
+  try {
+    if (state.reorderEnabled || state.reorderSaving) return;
+
+    _cleanupExpiredPending();
+
+    final serverWidgets = (_pollRoomId == null)
+        ? await widgetRepo.fetchWidgets()
+        : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
+
+    // Merge pending values ON TOP of server
+    final merged = serverWidgets.map((sw) {
+      final pending = _pendingValueByWidgetId[sw.widgetId];
+      return pending != null ? sw.copyWith(value: pending) : sw;
+    }).toList(growable: false);
+
+    emit(state.copyWith(widgets: merged, error: null));
+  } catch (e) {
+    // emit(state.copyWith(error: e.toString()));
+  } finally {
+    _fullPollInFlight = false;
+  }
+}
+
+  Future<void> _pollSensorsOnce() async {
+    if (_sensorPollInFlight) return;
+    _sensorPollInFlight = true;
 
     try {
-      // ถ้า reorder อยู่ ให้ skip (กัน UI กระพริบ/สลับลำดับ)
       if (state.reorderEnabled || state.reorderSaving) return;
 
       _cleanupExpiredPending();
@@ -456,14 +500,48 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
           ? await widgetRepo.fetchWidgets()
           : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
 
-      final merged = _mergePending(serverWidgets);
+      // Build map for quick lookup
+      final serverById = {for (final w in serverWidgets) w.widgetId: w};
 
-      // ✅ emit ได้โดยตรงใน Bloc (ไม่ต้องมี Emitter ใน scope)
-      emit(state.copyWith(widgets: merged, error: null));
+      final updated = <DeviceWidget>[];
+      var anyChanged = false;
+
+      for (final local in state.widgets) {
+        final server = serverById[local.widgetId];
+        if (server == null) {
+          updated.add(local);
+          continue;
+        }
+
+        // If pending, never overwrite value
+        final pending = _pendingValueByWidgetId[local.widgetId];
+        if (pending != null) {
+          updated.add(local.copyWith(value: pending));
+          continue;
+        }
+
+        // Only update sensor values
+        if (_isSensor(local)) {
+          if (local.value != server.value) {
+            anyChanged = true;
+            updated.add(local.copyWith(value: server.value));
+          } else {
+            updated.add(local);
+          }
+        } else {
+          // non-sensor: keep as-is (prevents snap-back)
+          updated.add(local);
+        }
+      }
+
+      if (anyChanged) {
+        emit(state.copyWith(widgets: updated, error: null));
+      }
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      // optional: don't spam UI with sensor polling errors
+      // emit(state.copyWith(error: e.toString()));
     } finally {
-      _pollInFlight = false;
+      _sensorPollInFlight = false;
     }
   }
 
@@ -549,8 +627,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
   @override
   Future<void> close() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
+    _sensorPollTimer?.cancel();
+    _fullPollTimer?.cancel();
     return super.close();
   }
 
@@ -579,4 +657,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       _clearPending(id);
     }
   }
+
+  bool _isSensor(DeviceWidget w) =>
+    w.capability.type == CapabilityType.sensor;
 }
