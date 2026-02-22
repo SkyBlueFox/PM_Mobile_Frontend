@@ -1,8 +1,14 @@
+// lib/features/device/data/device_repository.dart
+//
+// จุดที่แก้เพื่อเสถียร:
+// - import path ให้ถูก
+// - ตัด print ที่ noisy ออก (ถ้าต้อง debug ค่อยเปิด)
+// - parse response แบบกัน data:null / ไม่ใช่ list
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../features/home/models/device.dart';
-
 class DeviceRepository {
   final String baseUrl;
   final http.Client _client;
@@ -13,27 +19,29 @@ class DeviceRepository {
   }) : _client = client ?? http.Client();
 
   Future<List<Device>> fetchDevices({bool? connected}) async {
+    // ถ้าต้องการ query connected ให้เปิดกลับมาได้
     // final uri = Uri.parse('$baseUrl/api/devices').replace(
     //   queryParameters: {
-    //     if (connected != null) 'connected': connected.toString(), // true/false
+    //     if (connected != null) 'connected': connected.toString(),
     //   },
     // );
+
     final uri = Uri.parse('$baseUrl/api/devices');
     final res = await _client.get(uri);
+
     if (res.statusCode != 200) {
       throw Exception('Failed to load devices: ${res.statusCode}');
     }
-    print('GET $uri -> ${res.statusCode}');
-    print('devices raw body: ${res.body}');
+
     final decoded = jsonDecode(res.body);
 
-    final List list = decoded is Map<String, dynamic>
-        ? (decoded['data'] as List? ?? const [])
-        : (decoded as List);
+    final dynamic raw = decoded is Map<String, dynamic> ? decoded['data'] : decoded;
+    final List list = raw is List ? raw : const [];
 
     return list
-        .map((e) => Device.fromJson(e as Map<String, dynamic>))
-        .toList();
+        .whereType<Map<String, dynamic>>()
+        .map(Device.fromJson)
+        .toList(growable: false);
   }
 
   Future<void> pairDevice({
@@ -51,10 +59,11 @@ class DeviceRepository {
         'device_key': deviceKey,
       }),
     );
-    print('pairDevice request: POST $uri with body ${jsonEncode({'device_key': deviceKey})}');
-    print('pairDevice response: ${res.statusCode} ${res.body}');
+
     if (res.statusCode != 200 && res.statusCode != 204) {
       throw Exception('Failed to pair device: ${res.statusCode} ${res.body}');
     }
   }
+
+  void dispose() => _client.close();
 }

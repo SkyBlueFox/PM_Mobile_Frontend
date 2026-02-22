@@ -5,6 +5,8 @@ class Device {
   final String name;
   final String type;
   final int? roomId;
+
+  /// ✅ backend ส่งมาเป็น device_last_heartbeat (จากโค้ดคุณ)
   final DateTime? lastHeartBeat;
 
   const Device({
@@ -32,23 +34,34 @@ class Device {
   }
 
   factory Device.fromJson(Map<String, dynamic> json) {
-    final roomRaw = json['room_id']; // can be null
-    final hbRaw = json['device_last_heartbeat'];
+    // ✅ กันชนิดแปลก/ค่าว่าง
+    final roomRaw = json['room_id'];
+    final hbRaw =
+        json['device_last_heartbeat'] ?? json['last_heartbeat'] ?? json['heartbeat'];
+
+    DateTime? hb;
+    if (hbRaw is String && hbRaw.isNotEmpty) {
+      hb = DateTime.tryParse(hbRaw);
+    }
+
     return Device(
-      id: json['device_id'] as String,
-      name: json['device_name'] as String,
-      type: json['device_type'] as String,
+      id: (json['device_id'] ?? '').toString(),
+      name: (json['device_name'] ?? '').toString(),
+      type: (json['device_type'] ?? '').toString(),
       roomId: roomRaw == null ? null : (roomRaw as num).toInt(),
-      lastHeartBeat: hbRaw == null ? null : DateTime.parse(hbRaw as String),
+      lastHeartBeat: hb,
     );
   }
+
+  get online => null;
 
   Map<String, dynamic> toJson() => {
         'device_id': id,
         'device_name': name,
         'device_type': type,
         'room_id': roomId,
-        'last_heartbeat': lastHeartBeat?.toIso8601String(),
+        // ✅ ใช้ key ให้เข้ากับ backend ที่คุณ parse (device_last_heartbeat)
+        'device_last_heartbeat': lastHeartBeat?.toIso8601String(),
       };
 }
 
@@ -58,7 +71,13 @@ class DevicesResponse {
   const DevicesResponse({required this.data});
 
   factory DevicesResponse.fromJson(Map<String, dynamic> json) {
-    final list = (json['data'] as List).cast<Map<String, dynamic>>();
-    return DevicesResponse(data: list.map(Device.fromJson).toList());
+    final raw = json['data'];
+    final List list = raw is List ? raw : const [];
+    return DevicesResponse(
+      data: list
+          .whereType<Map>()
+          .map((e) => Device.fromJson(e.cast<String, dynamic>()))
+          .toList(),
+    );
   }
 }

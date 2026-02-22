@@ -1,4 +1,16 @@
 // lib/features/home/bloc/devices_bloc.dart
+//
+// แก้ “ให้ไม่ error / คอมไพล์ผ่าน / ทำงานปกติ”
+//
+// จุดที่แก้หลัก ๆ (เพื่อความเสถียร):
+// 1) ลบโค้ด serialize/deserialize ที่ทำให้ error แน่ ๆ (toMap/fromMap/toJson/hashCode/==)
+//    เพราะ Repository/Timer ไม่มี toMap/fromMap และโดยปกติ BLoC ไม่ควรถูก serialize
+// 2) ปรับ constructor ให้เรียบง่าย (ไม่รับ pollInFlight/pollTimer จากภายนอก)
+// 3) _pollOnce() ใช้ `emit(...)` ได้โดยตรงภายใน Bloc (ไม่ต้องมี Emitter ใน scope) และกันซ้อนด้วย _pollInFlight
+// 4) commit reorder: กัน selectedRoomId == null (ไม่ crash)
+// 5) ลบ import dart:convert ที่ไม่จำเป็นหลังลบ serialize
+
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 
 import 'dart:async';
 
@@ -7,7 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/device_repository.dart';
 import '../../../data/room_repository.dart';
-import '../../../data/widget_repository.dart';
+import '../data/widget_repository.dart';
 import '../models/capability.dart';
 import '../models/device_widget.dart';
 import 'devices_event.dart';
@@ -27,6 +39,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   int? _pollRoomId;
   Duration _pollInterval = const Duration(seconds: 5);
 
+  // กัน polling overwrite ค่าที่ user เพิ่งสั่ง (snap-back)
   final Map<int, String> _pendingValueByWidgetId = {};
   final Map<int, DateTime> _pendingAtByWidgetId = {};
   static const _pendingTtl = Duration(seconds: 10);
@@ -42,7 +55,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<WidgetToggled>(_onWidgetToggled);
     on<WidgetValueChanged>(_onWidgetValueChanged);
 
-    // ✅ เพิ่มให้รองรับครบ
+    // รองรับ mode/text/button
     on<WidgetModeChanged>(_onWidgetModeChanged);
     on<WidgetTextSubmitted>(_onWidgetTextSubmitted);
     on<WidgetButtonPressed>(_onWidgetButtonPressed);
@@ -57,7 +70,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<WidgetsPollingStarted>(_onWidgetsPollingStarted);
     on<WidgetsPollingStopped>(_onWidgetsPollingStopped);
 
-    // ✅ include/exclude (selection) ที่คุณมี event อยู่แล้ว แต่เดิมไม่ได้ on(...)
+    // include/exclude selection
     on<WidgetSelectionLoaded>(_onWidgetSelectionLoaded);
     on<WidgetIncludeToggled>(_onWidgetIncludeToggled);
     on<WidgetSelectionSaved>(_onWidgetSelectionSaved);
@@ -101,7 +114,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
           ? await widgetRepo.fetchWidgets()
           : await roomRepo.fetchWidgetsByRoomId(roomId);
 
-      emit(state.copyWith(isLoading: false, widgets: widgets, error: null));
+      // merge pending (กัน snap-back) ตอนเปลี่ยนห้องด้วย
+      final merged = _mergePending(widgets);
+
+      emit(state.copyWith(isLoading: false, widgets: merged, error: null));
     } catch (e, st) {
       debugPrint('[DevicesBloc] roomChanged failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
@@ -138,9 +154,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         value: w.value,
       );
 
-      // success: clear pending (optional: poll once to sync)
       _clearPending(event.widgetId);
-      // await _pollOnce();
     } catch (e, st) {
       debugPrint('[DevicesBloc] toggle send failed: $e\n$st');
       _clearPending(event.widgetId);
@@ -161,11 +175,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     final int v = (event.value as num).round();
     final newValueStr = v.toString();
 
-    // mark pending before sending
     _markPending(event.widgetId, newValueStr);
 
     final updated = List<DeviceWidget>.from(before);
-    updated[idx] = target.copyWith(value: v.toString());
+    updated[idx] = target.copyWith(value: newValueStr);
 
     emit(state.copyWith(widgets: updated, error: null));
 
@@ -178,7 +191,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       );
 
       _clearPending(event.widgetId);
-      // await _pollOnce();
     } catch (e, st) {
       debugPrint('[DevicesBloc] adjust send failed: $e\n$st');
       _clearPending(event.widgetId);
@@ -199,6 +211,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     final mode = event.mode.trim();
     if (mode.isEmpty) return;
 
+    _markPending(event.widgetId, mode);
+
     final updated = List<DeviceWidget>.from(before);
     updated[idx] = target.copyWith(value: mode);
 
@@ -211,8 +225,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         capabilityId: w.capability.id,
         value: w.value,
       );
+      _clearPending(event.widgetId);
     } catch (e, st) {
       debugPrint('[DevicesBloc] mode send failed: $e\n$st');
+      _clearPending(event.widgetId);
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
   }
@@ -227,7 +243,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     final target = before[idx];
     if (target.capability.type != CapabilityType.text) return;
 
-    final text = event.text; // อนุญาตให้เป็น "" ได้ (บาง device ต้องการล้างข้อความ)
+    final text = event.text; // อนุญาตให้เป็น "" ได้
+
+    _markPending(event.widgetId, text);
 
     final updated = List<DeviceWidget>.from(before);
     updated[idx] = target.copyWith(value: text);
@@ -241,28 +259,28 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         capabilityId: w.capability.id,
         value: w.value,
       );
+      _clearPending(event.widgetId);
     } catch (e, st) {
       debugPrint('[DevicesBloc] text send failed: $e\n$st');
+      _clearPending(event.widgetId);
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
   }
 
   Future<void> _onWidgetButtonPressed(WidgetButtonPressed event, Emitter<DevicesState> emit) async {
     if (state.reorderLocked) return;
-    final before = state.widgets;
 
-    final idx = before.indexWhere((w) => w.widgetId == event.widgetId);
-    if (idx < 0) return;
+    final target = state.widgets.where((w) => w.widgetId == event.widgetId).toList();
+    if (target.isEmpty) return;
 
-    final target = before[idx];
-    if (target.capability.type != CapabilityType.button) return;
+    final w = target.first;
+    if (w.capability.type != CapabilityType.button) return;
 
-    // ปุ่มกดครั้งเดียว: ปกติไม่จำเป็นต้องเปลี่ยน value ใน state (เพราะเป็น momentary)
     try {
       await widgetRepo.sendWidgetCommand(
-        widgetId: target.widgetId,
-        capabilityId: target.capability.id,
-        value: event.value,
+        widgetId: w.widgetId,
+        capabilityId: w.capability.id,
+        value: event.value, // ปกติส่ง "1" หรือ "press"
       );
     } catch (e, st) {
       debugPrint('[DevicesBloc] button press failed: $e\n$st');
@@ -327,6 +345,16 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     if (!state.reorderEnabled) return;
 
+    // ✅ กัน null roomId (ถ้า reorder ใน All)
+    final roomId = state.selectedRoomId;
+    if (roomId == null) {
+      emit(state.copyWith(
+        reorderSaving: false,
+        error: 'Please select a room before saving order.',
+      ));
+      return;
+    }
+
     if (!state.reorderDirty) {
       emit(state.copyWith(
         reorderEnabled: false,
@@ -357,10 +385,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     emit(state.copyWith(widgets: updatedWidgets));
 
     try {
-      // backend expects list of include widgetIds in new order
       await widgetRepo.changeWidgetsOrder(
-        roomId: state.selectedRoomId!,
-        widgetOrders: workingIds
+        roomId: roomId,
+        widgetOrders: workingIds,
       );
 
       emit(state.copyWith(
@@ -374,7 +401,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       debugPrint('[DevicesBloc] commit reorder failed: $e\n$st');
       emit(state.copyWith(
         reorderSaving: false,
-        error: e.toString(),
+        error: _msgSaveFailed,
       ));
     }
   }
@@ -392,7 +419,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-
   Future<void> _onWidgetsPollingStarted(
     WidgetsPollingStarted event,
     Emitter<DevicesState> emit,
@@ -405,8 +431,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       await _pollOnce();
     });
 
-    // immediate fetch
-    await _pollOnce();
+    await _pollOnce(); // immediate
   }
 
   Future<void> _onWidgetsPollingStopped(
@@ -415,7 +440,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     _pollTimer?.cancel();
     _pollTimer = null;
-    print( 'Stopped polling widgets at ${DateTime.now()}');
   }
 
   Future<void> _pollOnce() async {
@@ -423,6 +447,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     _pollInFlight = true;
 
     try {
+      // ถ้า reorder อยู่ ให้ skip (กัน UI กระพริบ/สลับลำดับ)
       if (state.reorderEnabled || state.reorderSaving) return;
 
       _cleanupExpiredPending();
@@ -431,20 +456,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
           ? await widgetRepo.fetchWidgets()
           : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
 
-      final merged = serverWidgets.map((sw) {
-        final pending = _pendingValueByWidgetId[sw.widgetId];
+      final merged = _mergePending(serverWidgets);
 
-        // If user has an in-flight command for this widget,
-        // keep the pending value (prevents snapping back).
-        if (pending != null) {
-          return sw.copyWith(value: pending);
-        }
-
-        return sw;
-      }).toList();
-      print('Polled widgets at ${DateTime.now()}: ${merged.length} items (pending: ${_pendingValueByWidgetId.length})');
-      // Optional: avoid rebuild if nothing changed
-      // (implement a cheap comparison if you want)
+      // ✅ emit ได้โดยตรงใน Bloc (ไม่ต้องมี Emitter ใน scope)
       emit(state.copyWith(widgets: merged, error: null));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
@@ -453,15 +467,24 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-  /// ------------------------------
-  /// include/exclude selection
-  /// ------------------------------
+  List<DeviceWidget> _mergePending(List<DeviceWidget> serverWidgets) {
+    return serverWidgets.map((sw) {
+      final pending = _pendingValueByWidgetId[sw.widgetId];
+      if (pending != null) {
+        return sw.copyWith(value: pending);
+      }
+      return sw;
+    }).toList(growable: false);
+  }
+
+  // ------------------------------
+  // include/exclude selection
+  // ------------------------------
 
   Future<void> _onWidgetSelectionLoaded(
     WidgetSelectionLoaded event,
     Emitter<DevicesState> emit,
   ) async {
-    // โหลด list ล่าสุด (สำหรับเปิด drawer/picker ให้ไม่ stale)
     emit(state.copyWith(isLoading: true, error: null));
     try {
       final roomId = event.roomId ?? state.selectedRoomId;
@@ -508,8 +531,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     WidgetSelectionSaved event,
     Emitter<DevicesState> emit,
   ) async {
-    // ถ้าคุณ update status ทีละตัวแล้วใน _onWidgetIncludeToggled
-    // อันนี้ไม่จำเป็นต้องยิง backend เพิ่ม แค่ refresh ให้ชัวร์ก็พอ
+    // ถ้าคุณยิง backend ทีละตัวแล้ว อันนี้แค่ refresh ให้ชัวร์
     emit(state.copyWith(isLoading: true, error: null));
     try {
       final roomId = event.roomId ?? state.selectedRoomId;
@@ -531,6 +553,10 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     _pollTimer = null;
     return super.close();
   }
+
+  // ------------------------------
+  // pending helpers
+  // ------------------------------
 
   void _markPending(int widgetId, String value) {
     _pendingValueByWidgetId[widgetId] = value;

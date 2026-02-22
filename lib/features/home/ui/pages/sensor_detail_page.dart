@@ -11,13 +11,19 @@ class SensorDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final widget = sensorWidget;
-    final device = sensorWidget.device;
-    final title = device.name; // ปรับ field ตาม Device ของคุณ
-    final subtitle = 'cap';     // หรือ sensorWidget.capability.name ถ้ามี
+    // ❗️หลีกเลี่ยงตั้งชื่อตัวแปรว่า `widget` เพราะชนกับคำที่ Flutter ใช้บ่อย
+    final dw = sensorWidget;
+    final device = dw.device;
 
-    // ค่าปัจจุบันของ sensor (เช่น heartbeat/sensor value)
-    final valueText = sensorWidget.value.toString();
+    // ✅ ป้องกัน crash ถ้า name เป็นค่าว่าง/ไม่มี
+    final title = (device.name).trim().isEmpty ? 'Sensor' : device.name;
+
+    // ✅ ถ้ามี capability name ในโมเดลของคุณให้ใช้จริง (ตัวอย่าง)
+    // final subtitle = dw.capability?.name ?? 'sensor';
+    final subtitle = 'sensor';
+
+    // ✅ กัน null/ชนิดแปลก
+    final valueText = (dw.value == null) ? '-' : dw.value.toString();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
@@ -33,9 +39,13 @@ class SensorDetailPage extends StatelessWidget {
           children: [
             Text(subtitle, style: const TextStyle(color: Colors.black54)),
             const SizedBox(height: 10),
-            Text(valueText, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
+            Text(
+              valueText,
+              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
+            ),
             const SizedBox(height: 14),
 
+            // TODO: คุณสามารถเอา history/log มา plot กราฟได้
             Container(
               height: 220,
               width: double.infinity,
@@ -49,8 +59,14 @@ class SensorDetailPage extends StatelessWidget {
               alignment: Alignment.center,
               child: const Text('Chart (TODO)', style: TextStyle(color: Colors.black45)),
             ),
-            Text('Widget value: ${widget.value}', style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+
+            Text(
+              'Widget value: ${dw.value ?? '-'}',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 16),
+
             const Text('Log', style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
 
