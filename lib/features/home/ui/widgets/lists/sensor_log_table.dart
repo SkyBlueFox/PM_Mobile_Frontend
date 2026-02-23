@@ -78,7 +78,7 @@ class SensorLogTable extends StatelessWidget {
             return DataRow(
               cells: [
                 DataCell(Text(dateText)),
-                DataCell(Text(valueText)),
+                DataCell(Text(valueText!)),
               ],
             );
           }).toList(growable: false),

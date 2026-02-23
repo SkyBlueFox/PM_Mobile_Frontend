@@ -1,16 +1,11 @@
 // lib/features/home/data/widget_repository.dart
 //
-// ✅ เพิ่มเมธอดใหม่: saveRoomWidgetsVisibility()
-// - ใช้ endpoint ที่มีอยู่แล้ว: PATCH /api/widgets/{widgetId}/status
-// - ทำงานแบบ loop ทีละ widgetId เพื่อ set เป็น include/exclude ให้ตรงกับ list ที่ user เลือก
+// ✅ FIX: ทำ fetchSensorLogs() ให้มีจริง (ไม่เป็น stub)
+// - ใช้ pattern เดียวกับ fetchSensorHistory()
+// - รองรับ endpoint หลายแบบ: /logs, /log, /events
+// - รองรับ response เป็น {data:[...]} หรือเป็น List ตรง ๆ
 //
-// เหตุผลที่ทำแบบนี้:
-// - backend ปัจจุบันของคุณมี endpoint เปลี่ยน status ทีละตัวแล้ว (changeWidgetStatus)
-// - ยังไม่มี bulk endpoint -> จึงทำ bulk ใน client แบบ loop (ปลอดภัยสุด)
-//
-// ถ้าอนาคต backend มี bulk endpoint:
-// - เปลี่ยน implementation ภายใน saveRoomWidgetsVisibility() ได้เลย
-// - UI/Bloc ไม่ต้องเปลี่ยน
+// หมายเหตุ: ถ้า backend ของคุณมี endpoint ชัดเจนอยู่แล้ว ให้ตัด fallback ที่ไม่ใช้ได้
 
 import 'dart:convert';
 import 'dart:io';
@@ -19,6 +14,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/device_widget.dart';
 import '../models/sensor_history.dart';
+import '../models/sensor_log.dart';
 
 class WidgetRepository {
   final String baseUrl;
@@ -34,7 +30,6 @@ class WidgetRepository {
   }
 
   dynamic _decodeBody(http.Response res) {
-    // กัน response ว่าง/ไม่ใช่ json
     final body = res.body.trim();
     if (body.isEmpty) return null;
     try {
@@ -45,8 +40,6 @@ class WidgetRepository {
   }
 
   List<Map<String, dynamic>> _extractListMap(dynamic decoded) {
-    // supports:
-    // { "data": [ ... ] } OR { "data": null } OR [ ... ] OR anything else -> []
     final dynamic raw = decoded is Map<String, dynamic> ? decoded['data'] : decoded;
     final List list = raw is List ? raw : const [];
     return list.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
@@ -85,7 +78,7 @@ class WidgetRepository {
           uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'actor': "test@gmail.com", //TODO: get from user.email
+            'actor': "test@gmail.com", // TODO: replace with user.email
             'value': value,
           }),
         )
@@ -140,33 +133,7 @@ class WidgetRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // ✅ NEW: Save include/exclude ของทั้งห้อง ตามรายการที่ user เลือกใน picker
-  //
-  // required:
-  // - roomWidgetIds: widgetId ทั้งหมดที่ "อยู่ในห้องนี้"
-  // - includedWidgetIds: widgetId ที่ user ต้องการ "ให้แสดง"
-  //
-  // logic:
-  // - ถ้า id อยู่ใน included => status = include
-  // - ถ้าไม่อยู่ => status = exclude
-  // ---------------------------------------------------------------------------
-  Future<void> saveRoomWidgetsVisibility({
-    required List<int> roomWidgetIds,
-    required List<int> includedWidgetIds,
-  }) async {
-    final includeSet = includedWidgetIds.toSet();
-
-    // กันซ้ำ + ทำให้ deterministic
-    final all = roomWidgetIds.toSet().toList()..sort();
-
-    for (final id in all) {
-      final status = includeSet.contains(id) ? 'include' : 'exclude';
-      await changeWidgetStatus(widgetId: id, widgetStatus: status);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Sensor history (เดิม)
+  // Sensor history
   // ---------------------------------------------------------------------------
   Future<List<SensorHistoryPoint>> fetchSensorHistory({
     required int widgetId,
@@ -201,13 +168,62 @@ class WidgetRepository {
     final maps = _extractListMap(decoded);
 
     final points = maps.map(SensorHistoryPoint.fromJson).toList();
-
-    // กันข้อมูลสลับลำดับ
     points.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     return points;
   }
 
-  void dispose() => _client.close();
+  // ---------------------------------------------------------------------------
+  // ✅ NEW: Sensor logs
+  // ---------------------------------------------------------------------------
+  Future<List<SensorLogEntry>> fetchSensorLogs({
+    required int widgetId,
+    required int limit,
+  }) async {
+    Future<http.Response> _get(Uri uri) => _client.get(uri).timeout(const Duration(seconds: 15));
 
-  fetchSensorLogs({required int widgetId, required int limit}) {}
+    final q = <String, String>{
+      'limit': '$limit',
+    };
+
+    // ลอง endpoint ที่พบบ่อย (เลือกใช้ตาม backend)
+    final candidates = <String>[
+      '/api/widgets/$widgetId/logs',
+      '/api/widgets/$widgetId/log',
+      '/api/widgets/$widgetId/events',
+    ];
+
+    http.Response? res;
+    Uri? used;
+
+    for (final path in candidates) {
+      final uri = _u(path, q);
+      final r = await _get(uri);
+
+      // ถ้าไม่ใช่ 404 ถือว่า “เจอ endpoint แล้ว”
+      if (r.statusCode != 404) {
+        res = r;
+        used = uri;
+        break;
+      }
+    }
+
+    if (res == null) {
+      throw Exception('Failed to load sensor logs: endpoint not found (404)');
+    }
+
+    if (res.statusCode != 200) {
+      final decoded = _decodeBody(res);
+      throw Exception('Failed to load sensor logs: ${res.statusCode} ${decoded ?? res.body} (uri=$used)');
+    }
+
+    final decoded = _decodeBody(res);
+    final maps = _extractListMap(decoded);
+
+    final logs = maps.map(SensorLogEntry.fromJson).toList();
+    // newest first (เพื่อ UI)
+    logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return logs;
+  }
+
+  void dispose() => _client.close();
 }

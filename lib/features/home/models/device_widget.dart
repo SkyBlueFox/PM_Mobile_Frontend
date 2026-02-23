@@ -1,3 +1,14 @@
+// lib/features/home/models/device_widget.dart
+//
+// ✅ ปรับเพื่อความเสถียร:
+// - value เป็น String เสมอ (ไม่ null)
+// - status/order default กัน null
+// - included getter ใช้งานง่าย
+//
+// ข้อแนะนำ:
+// - capability.name/unit ต้องมีใน Capability model
+// - device.id ต้องเป็น String (ใช้ใน SensorDetailBloc heartbeat lookup)
+
 import 'capability.dart';
 import 'device.dart';
 
@@ -52,9 +63,9 @@ class DeviceWidget {
 
     return DeviceWidget(
       widgetId: (json['widget_id'] as num).toInt(),
-      device: Device.fromJson(json['device'] as Map<String, dynamic>),
-      capability: Capability.fromJson(json['capability'] as Map<String, dynamic>),
-      status: (json['widget_status'] ?? 'exclude').toString(), // default exclude
+      device: Device.fromJson((json['device'] as Map).cast<String, dynamic>()),
+      capability: Capability.fromJson((json['capability'] as Map).cast<String, dynamic>()),
+      status: (json['widget_status'] ?? 'exclude').toString(),
       order: (json['widget_order'] as num?)?.toInt() ?? 0,
       value: rawValue == null ? '' : rawValue.toString(),
     );
@@ -71,7 +82,7 @@ class WidgetsResponse {
     final list = (raw is List) ? raw : const [];
 
     return WidgetsResponse(
-      data: list.whereType<Map<String, dynamic>>().map(DeviceWidget.fromJson).toList(),
+      data: list.whereType<Map>().map((m) => DeviceWidget.fromJson(m.cast<String, dynamic>())).toList(),
     );
   }
 }

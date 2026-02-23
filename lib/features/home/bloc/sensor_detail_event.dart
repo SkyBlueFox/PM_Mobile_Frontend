@@ -1,4 +1,7 @@
 // lib/features/home/bloc/sensor_detail_event.dart
+//
+// Event สำหรับหน้า Sensor Detail
+// แยกจาก DevicesBloc เพื่อไม่ให้ state ชนกัน
 
 sealed class SensorDetailEvent {
   const SensorDetailEvent();
@@ -7,7 +10,7 @@ sealed class SensorDetailEvent {
 /// โหลดครั้งแรก (history + log + heartbeat)
 class SensorDetailStarted extends SensorDetailEvent {
   final int widgetId;
-  final String deviceId; // ✅ ใช้ lookup ใน DeviceRepository
+  final String deviceId;
   final String? unit;
 
   const SensorDetailStarted({
@@ -21,20 +24,28 @@ class SensorDetailStarted extends SensorDetailEvent {
 class SensorRangeChanged extends SensorDetailEvent {
   final DateTime from;
   final DateTime to;
-  const SensorRangeChanged({required this.from, required this.to});
+
+  const SensorRangeChanged({
+    required this.from,
+    required this.to,
+  });
 }
 
-/// refresh ทันที
+/// refresh manual
 class SensorDetailRefreshRequested extends SensorDetailEvent {
   const SensorDetailRefreshRequested();
 }
 
-/// polling
+/// เริ่ม polling
 class SensorDetailPollingStarted extends SensorDetailEvent {
   final Duration interval;
-  const SensorDetailPollingStarted({this.interval = const Duration(seconds: 5)});
+
+  const SensorDetailPollingStarted({
+    this.interval = const Duration(seconds: 5),
+  });
 }
 
+/// หยุด polling
 class SensorDetailPollingStopped extends SensorDetailEvent {
   const SensorDetailPollingStopped();
 }

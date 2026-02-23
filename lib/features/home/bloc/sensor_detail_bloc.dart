@@ -1,19 +1,22 @@
 // lib/features/home/bloc/sensor_detail_bloc.dart
 //
-// เวอร์ชัน “มี DeviceRepository แล้ว”
-// จุดที่ทำให้เสถียร:
-// - polling กันซ้อนด้วย _inFlight
-// - history/log: เรียกจาก WidgetRepository ที่เราเพิ่มเมธอดให้แล้ว
-// - heartbeat: ใช้ DeviceRepository.fetchDevices() แล้วอ่าน Device.lastHeartBeat/online
-// - sort กราฟตามเวลา และ log newest first
+// ✅ FIX compile + ทำให้ heartbeat เสถียร
+// - แก้ firstWhere(orElse: () => null) ที่ทำให้ error
+// - เอา import device_repository ซ้ำออก
+// - เอา extension แปลก ๆ (on Object? { get id => null; }) ออก
+//
+// แนวทาง heartbeat ที่ปลอดภัย:
+// - fetchDevices() -> List<Device>
+// - หา device ด้วยการวนลูปให้ได้ Device? (nullable) แล้วค่อยใช้
+// - online priority: d.online (ถ้ามี) > เทียบเวลา lastHeartBeat กับ threshold
 
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pm_mobile_frontend/data/device_repository.dart';
-import 'package:pm_mobile_frontend/features/home/data/widget_repository.dart';
+
 import '../../../data/device_repository.dart';
+import '../data/widget_repository.dart';
 
 import '../models/sensor_history.dart';
 import '../models/sensor_log.dart';
@@ -112,13 +115,16 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     try {
       await _loadAll(emit);
     } catch (_) {
-      // polling error: ไม่ทำให้หน้าพัง
+      // polling error: ไม่ทำให้หน้าพัง (ไม่ set error)
     } finally {
       _inFlight = false;
     }
   }
 
   Future<void> _loadAll(Emitter<SensorDetailState> emit) async {
+    // ถ้ายังไม่ได้ set widgetId/deviceId ก็ไม่ต้องยิง
+    if (state.widgetId == 0) return;
+
     await Future.wait([
       _loadHistory(emit),
       _loadLogs(emit),
@@ -157,7 +163,7 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     );
 
     final sorted = List<SensorLogEntry>.from(logs)
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp)); // newest first
 
     emit(state.copyWith(logs: sorted));
   }
@@ -166,21 +172,34 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     final did = state.deviceId.trim();
     if (did.isEmpty) return;
 
+    // deviceRepo.fetchDevices() ควร return List<Device>
     final devices = await deviceRepo.fetchDevices();
-    final match = devices.where((d) => d?.id == did).toList();
-    if (match.isEmpty) return;
 
-    final d = match.first;
-
-    final last = d.lastHeartBeat;
-    final onlineFlag = d.online;
+    // ✅ FIX: หาแบบ nullable โดยไม่ใช้ firstWhere(orElse: null)
+    // ทำให้ไม่ error และอ่านง่าย/เสถียร
+    dynamic found; // ใช้ dynamic ชั่วคราวถ้า model Device ของคุณยังไม่ถูก type ชัดในไฟล์นี้
+    for (final d in devices) {
+      // d ต้องมี field id เป็น String
+      if (d.id == did) {
+        found = d;
+        break;
+      }
+    }
+    if (found == null) return;
 
     final now = DateTime.now();
-    final isOnline = onlineFlag ??
-        (last != null ? now.difference(last).abs() <= onlineThreshold : state.isOnline);
+
+    // ต้องมี field:
+    // - DateTime? lastHeartBeat
+    // - bool? online
+    final DateTime? last = found.lastHeartBeat;
+    final bool? onlineFlag = found.online;
+
+    final bool isOnline = onlineFlag ??
+        (last != null ? now.difference(last).abs() <= onlineThreshold : false);
 
     emit(state.copyWith(
-      lastHeartbeatAt: last ?? state.lastHeartbeatAt,
+      lastHeartbeatAt: last,
       isOnline: isOnline,
     ));
   }
@@ -191,8 +210,4 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     _pollTimer = null;
     return super.close();
   }
-}
-
-extension on Object? {
-  get id => null;
 }

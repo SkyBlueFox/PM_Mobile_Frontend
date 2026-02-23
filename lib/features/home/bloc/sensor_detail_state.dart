@@ -1,4 +1,7 @@
 // lib/features/home/bloc/sensor_detail_state.dart
+//
+// State สำหรับหน้า Sensor Detail
+// แยกชัดเจนระหว่าง loading ครั้งแรก กับ refreshing
 
 import '../models/sensor_history.dart';
 import '../models/sensor_log.dart';
