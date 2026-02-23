@@ -2,7 +2,7 @@
 //
 // ✅ FIX: เพิ่มการ save include/exclude จาก "widget picker" ให้ยิง API จริง
 //
-// โดยใช้ flow:
+// flow:
 // HomePage -> showWidgetPickerSheet() -> result(List<int> includeIds)
 // -> dispatch WidgetsVisibilitySaved(roomId, includeIds)
 // -> DevicesBloc handler เรียก widgetRepo.saveRoomWidgetsVisibility()
@@ -82,7 +82,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<WidgetIncludeToggled>(_onWidgetIncludeToggled);
     on<WidgetSelectionSaved>(_onWidgetSelectionSaved);
 
-    // ✅ NEW: save include/exclude จาก picker (bulk by loop)
+    // ✅ NEW: save include/exclude จาก picker (bulk)
     on<WidgetsVisibilitySaved>(_onWidgetsVisibilitySaved);
   }
 
@@ -672,7 +672,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
           ? await widgetRepo.fetchWidgets()
           : await roomRepo.fetchWidgetsByRoomId(roomId);
 
-      final roomWidgetIds = roomWidgets.map((w) => w.widgetId).toList(growable: false);
+      final roomWidgetIds =
+          roomWidgets.map((w) => w.widgetId).toList(growable: false);
 
       // ✅ ยิง PATCH status ให้ครบทุกตัว ตาม included list
       await widgetRepo.saveRoomWidgetsVisibility(

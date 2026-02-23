@@ -250,7 +250,8 @@ class _HomeViewState extends State<_HomeView> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.home_rounded, color: blue, size: 24),
+                            const Icon(Icons.home_rounded,
+                                color: blue, size: 24),
                             const SizedBox(width: 10),
                             const Text(
                               'บ้านเกม 1',
@@ -263,7 +264,8 @@ class _HomeViewState extends State<_HomeView> {
                             const Spacer(),
                             IconButton(
                               onPressed: _logout,
-                              icon: const Icon(Icons.logout, color: Colors.black45),
+                              icon: const Icon(Icons.logout,
+                                  color: Colors.black45),
                             ),
                           ],
                         ),
@@ -294,7 +296,8 @@ class _HomeViewState extends State<_HomeView> {
                       width: double.infinity,
                       decoration: const BoxDecoration(
                         color: pageBg,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(18)),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -308,7 +311,8 @@ class _HomeViewState extends State<_HomeView> {
                               p.reorderSaving != c.reorderSaving,
                           builder: (context, st) {
                             if (st.isLoading && st.widgets.isEmpty) {
-                              return const Center(child: CircularProgressIndicator());
+                              return const Center(
+                                  child: CircularProgressIndicator());
                             }
                             if (st.error != null && st.widgets.isEmpty) {
                               return _ErrorState(message: st.error!);
@@ -330,18 +334,19 @@ class _HomeViewState extends State<_HomeView> {
                                   .add(WidgetToggled(widgetId)),
                               onAdjust: (widgetId, value) => context
                                   .read<DevicesBloc>()
-                                  .add(WidgetValueChanged(widgetId, value.toDouble())),
+                                  .add(WidgetValueChanged(
+                                      widgetId, value.toDouble())),
                               onOrderChanged: (newOrderWidgetIds) => context
                                   .read<DevicesBloc>()
                                   .add(WidgetsOrderChanged(newOrderWidgetIds)),
                               onOpenSensor: (tile) {
-                                final sensorWidget = st.widgets
-                                    .firstWhere((w) => w.widgetId == tile.widgetId);
+                                final sensorWidget = st.widgets.firstWhere(
+                                    (w) => w.widgetId == tile.widgetId);
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        SensorDetailPage(sensorWidget: sensorWidget),
+                                    builder: (_) => SensorDetailPage(
+                                        sensorWidget: sensorWidget),
                                   ),
                                 );
                               },
@@ -430,7 +435,10 @@ class _EmptyState extends StatelessWidget {
             Text(
               'ไม่มี widget ในห้องนี้',
               textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0B4A7A)),
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF0B4A7A),
+              ),
             ),
             SizedBox(height: 6),
             Text(
@@ -457,11 +465,15 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 44, color: Color(0xFF3AA7FF)),
+            const Icon(Icons.cloud_off_rounded,
+                size: 44, color: Color(0xFF3AA7FF)),
             const SizedBox(height: 10),
             const Text(
               'โหลดข้อมูลไม่สำเร็จ',
-              style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0B4A7A)),
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF0B4A7A),
+              ),
             ),
             const SizedBox(height: 6),
             Text(

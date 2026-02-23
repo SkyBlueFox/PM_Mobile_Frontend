@@ -108,7 +108,7 @@ class WidgetsPollingStopped extends DevicesEvent {
 
 /// ------------------------------
 /// include/exclude selection (เดิม: ใช้ยิงทีละตัว / โหลดข้อมูลก่อนเปิดหน้า)
-// ------------------------------
+/// ------------------------------
 
 /// โหลดรายการเพื่อทำ include/exclude (ใช้ก่อนเปิด picker)
 class WidgetSelectionLoaded extends DevicesEvent {
@@ -134,7 +134,7 @@ class WidgetSelectionSaved extends DevicesEvent {
 
 /// ------------------------------
 /// ✅ NEW: Save include/exclude จาก widget picker (bulk)
-// ------------------------------
+/// ------------------------------
 /// HomePage -> showWidgetPickerSheet() -> result(List<int> includeIds)
 /// -> dispatch WidgetsVisibilitySaved(roomId, includeIds)
 /// -> DevicesBloc: widgetRepo.saveRoomWidgetsVisibility(...)
