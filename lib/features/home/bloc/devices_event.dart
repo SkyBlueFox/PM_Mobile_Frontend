@@ -1,11 +1,12 @@
 // lib/features/home/bloc/devices_event.dart
 //
-// ✅ เพิ่ม event ใหม่: WidgetsVisibilitySaved
-// เพื่อรองรับการบันทึก Include/Exclude แบบ “เลือกใน sheet แล้วกด Save ทีเดียว”
+// ✅ devices_event.dart (ครบทั้งไฟล์)
+// - รวม event เดิมทั้งหมด
+// - ✅ เพิ่ม WidgetsVisibilitySaved สำหรับบันทึก include/exclude จาก widget picker (bulk)
 //
-// โครงสร้างเดิมยังอยู่ (WidgetIncludeToggled, WidgetSelectionSaved)
-// - WidgetIncludeToggled: เหมาะกับกรณี UI มี toggle ต่อ widget แล้วยิงทีละตัว
-// - WidgetsVisibilitySaved: เหมาะกับกรณี picker คืน list แล้วบันทึกทีเดียว (bulk by loop)
+// หมายเหตุ:
+// - WidgetSelectionLoaded / WidgetIncludeToggled / WidgetSelectionSaved = เดิม (ยิงทีละตัว/โหลดหน้าเลือก)
+// - WidgetsVisibilitySaved = ใหม่ (ยิงทีเดียวหลังปิด picker)
 
 sealed class DevicesEvent {
   const DevicesEvent();
@@ -64,6 +65,9 @@ class DevicesAllToggled extends DevicesEvent {
   const DevicesAllToggled(this.turnOn);
 }
 
+// ------------------------------
+// Reorder widgets
+// ------------------------------
 class ReorderModeChanged extends DevicesEvent {
   final bool enabled;
   const ReorderModeChanged(this.enabled);
@@ -78,11 +82,17 @@ class CommitReorderPressed extends DevicesEvent {
   const CommitReorderPressed();
 }
 
+// ------------------------------
+// Devices list
+// ------------------------------
 class DevicesRequested extends DevicesEvent {
   final bool connectedOnly;
   const DevicesRequested({this.connectedOnly = false});
 }
 
+// ------------------------------
+// Polling
+// ------------------------------
 class WidgetsPollingStarted extends DevicesEvent {
   final int? roomId; // null = all
   final Duration interval;
@@ -97,8 +107,8 @@ class WidgetsPollingStopped extends DevicesEvent {
 }
 
 /// ------------------------------
-/// include/exclude selection
-/// ------------------------------
+/// include/exclude selection (เดิม: ใช้ยิงทีละตัว / โหลดข้อมูลก่อนเปิดหน้า)
+// ------------------------------
 
 /// โหลดรายการเพื่อทำ include/exclude (ใช้ก่อนเปิด picker)
 class WidgetSelectionLoaded extends DevicesEvent {
@@ -106,7 +116,7 @@ class WidgetSelectionLoaded extends DevicesEvent {
   const WidgetSelectionLoaded({this.roomId});
 }
 
-/// toggle include/exclude (แสดง/ไม่แสดงบนหน้า Home) — ยิงทีละตัว
+/// toggle include/exclude (แสดง/ไม่แสดงบนหน้า Home) - ยิงทีละตัว
 class WidgetIncludeToggled extends DevicesEvent {
   final int widgetId;
   final bool included;
@@ -116,19 +126,26 @@ class WidgetIncludeToggled extends DevicesEvent {
   });
 }
 
-/// กดบันทึก include/exclude (เดิม: ใช้เพื่อ refresh)
+/// กดบันทึก include/exclude (เดิม: ใช้ refresh หลังยิงทีละตัว)
 class WidgetSelectionSaved extends DevicesEvent {
   final int? roomId;
   const WidgetSelectionSaved({this.roomId});
 }
 
-/// ✅ NEW: บันทึก include/exclude จาก “picker” แบบครั้งเดียว
+/// ------------------------------
+/// ✅ NEW: Save include/exclude จาก widget picker (bulk)
+// ------------------------------
+/// HomePage -> showWidgetPickerSheet() -> result(List<int> includeIds)
+/// -> dispatch WidgetsVisibilitySaved(roomId, includeIds)
+/// -> DevicesBloc: widgetRepo.saveRoomWidgetsVisibility(...)
 class WidgetsVisibilitySaved extends DevicesEvent {
-  final int? roomId; // null = All
+  final int? roomId;
+
+  /// รายการ widgetId ที่ผู้ใช้เลือกให้ "Include"
   final List<int> includedWidgetIds;
 
   const WidgetsVisibilitySaved({
-    required this.roomId,
+    this.roomId,
     required this.includedWidgetIds,
   });
 }

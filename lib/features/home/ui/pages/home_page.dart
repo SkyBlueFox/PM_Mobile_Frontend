@@ -5,11 +5,12 @@
 // - ใหม่: ส่ง event WidgetsVisibilitySaved ไปที่ DevicesBloc เพื่อให้ Bloc เรียก repo ยิง API save
 //
 // หมายเหตุ:
-// - widget_picker_sheet.dart ยังเป็น UI ล้วน (คืนค่า ids) ไม่ผูก API
+// - widget_picker_sheet.dart เป็น UI ล้วน (คืนค่า ids) ไม่ผูก API
 // - การยิง API/save อยู่ใน Bloc + Repository (clean architecture)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../auth/bloc/auth_bloc.dart';
 import '../../../auth/bloc/auth_event.dart';
@@ -36,8 +37,6 @@ import '../../../room/ui/manage_homes_page.dart';
 import 'sensor_detail_page.dart';
 import '../../../me/me_page.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -61,6 +60,7 @@ class _HomeViewState extends State<_HomeView> {
   static const Color blue = Color(0xFF3AA7FF);
   static const Color sky = Color(0xFFBFE6FF);
   static const Color pageBg = Color(0xFFF6F7FB);
+
   final user = FirebaseAuth.instance.currentUser;
 
   void _logout() {
@@ -146,14 +146,14 @@ class _HomeViewState extends State<_HomeView> {
           ),
         );
 
-    // ❗ไม่ต้องสั่ง refresh/polling ตรงนี้แล้วก็ได้
+    // ❗ไม่ต้องสั่ง refresh/polling ตรงนี้แล้ว
     // เพราะ bloc handler จะ refresh + restart polling ให้เอง
-    // (ถ้าคุณไม่อยากให้ bloc ทำ ก็ย้ายกลับมาที่นี่ได้)
   }
 
   Future<void> _openModePicker(HomeWidgetTileVM tile) async {
-    final options =
-        tile.modeOptions.isEmpty ? const ['auto', 'cool', 'dry', 'fan', 'heat'] : tile.modeOptions;
+    final options = tile.modeOptions.isEmpty
+        ? const ['auto', 'cool', 'dry', 'fan', 'heat']
+        : tile.modeOptions;
 
     final selected = await showModePickerSheet(
       context: context,
@@ -214,16 +214,21 @@ class _HomeViewState extends State<_HomeView> {
           ? null
           : BlocBuilder<DevicesBloc, DevicesState>(
               buildWhen: (p, c) =>
-                  p.reorderEnabled != c.reorderEnabled || p.reorderSaving != c.reorderSaving,
+                  p.reorderEnabled != c.reorderEnabled ||
+                  p.reorderSaving != c.reorderSaving,
               builder: (context, st) {
                 final enabled = st.reorderEnabled;
                 return FloatingActionButton(
                   backgroundColor: blue,
                   onPressed: enabled
-                      ? () => context.read<DevicesBloc>().add(const CommitReorderPressed())
+                      ? () => context
+                          .read<DevicesBloc>()
+                          .add(const CommitReorderPressed())
                       : () => _openActionsSheet(st),
-                  child: Icon(enabled ? Icons.check_rounded : Icons.more_horiz_rounded,
-                      color: Colors.white),
+                  child: Icon(
+                    enabled ? Icons.check_rounded : Icons.more_horiz_rounded,
+                    color: Colors.white,
+                  ),
                 );
               },
             ),
@@ -264,14 +269,19 @@ class _HomeViewState extends State<_HomeView> {
                         ),
                         BlocBuilder<DevicesBloc, DevicesState>(
                           buildWhen: (p, c) =>
-                              p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
+                              p.rooms != c.rooms ||
+                              p.selectedRoomId != c.selectedRoomId,
                           builder: (context, st) {
                             return TopTab(
                               rooms: st.rooms,
                               selectedRoomId: st.selectedRoomId,
                               onChanged: (roomId) {
-                                context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
-                                context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
+                                context
+                                    .read<DevicesBloc>()
+                                    .add(DevicesRoomChanged(roomId));
+                                context
+                                    .read<DevicesBloc>()
+                                    .add(WidgetsPollingStarted(roomId: roomId));
                               },
                             );
                           },
@@ -315,8 +325,9 @@ class _HomeViewState extends State<_HomeView> {
                             return HomeWidgetGrid(
                               tiles: vm.tiles,
                               reorderEnabled: st.reorderEnabled,
-                              onToggle: (widgetId) =>
-                                  context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
+                              onToggle: (widgetId) => context
+                                  .read<DevicesBloc>()
+                                  .add(WidgetToggled(widgetId)),
                               onAdjust: (widgetId, value) => context
                                   .read<DevicesBloc>()
                                   .add(WidgetValueChanged(widgetId, value.toDouble())),
@@ -324,18 +335,21 @@ class _HomeViewState extends State<_HomeView> {
                                   .read<DevicesBloc>()
                                   .add(WidgetsOrderChanged(newOrderWidgetIds)),
                               onOpenSensor: (tile) {
-                                final sensorWidget =
-                                    st.widgets.firstWhere((w) => w.widgetId == tile.widgetId);
+                                final sensorWidget = st.widgets
+                                    .firstWhere((w) => w.widgetId == tile.widgetId);
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (_) => SensorDetailPage(sensorWidget: sensorWidget)),
+                                    builder: (_) =>
+                                        SensorDetailPage(sensorWidget: sensorWidget),
+                                  ),
                                 );
                               },
                               onOpenMode: _openModePicker,
                               onOpenText: _openTextDialog,
-                              onPressButton: (widgetId) =>
-                                  context.read<DevicesBloc>().add(WidgetButtonPressed(widgetId)),
+                              onPressButton: (widgetId) => context
+                                  .read<DevicesBloc>()
+                                  .add(WidgetButtonPressed(widgetId)),
                             );
                           },
                         ),
@@ -450,7 +464,11 @@ class _ErrorState extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0B4A7A)),
             ),
             const SizedBox(height: 6),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.blueGrey)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.blueGrey),
+            ),
           ],
         ),
       ),
