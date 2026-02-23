@@ -1,4 +1,11 @@
 // lib/features/home/bloc/devices_event.dart
+//
+// ✅ เพิ่ม event ใหม่: WidgetsVisibilitySaved
+// เพื่อรองรับการบันทึก Include/Exclude แบบ “เลือกใน sheet แล้วกด Save ทีเดียว”
+//
+// โครงสร้างเดิมยังอยู่ (WidgetIncludeToggled, WidgetSelectionSaved)
+// - WidgetIncludeToggled: เหมาะกับกรณี UI มี toggle ต่อ widget แล้วยิงทีละตัว
+// - WidgetsVisibilitySaved: เหมาะกับกรณี picker คืน list แล้วบันทึกทีเดียว (bulk by loop)
 
 sealed class DevicesEvent {
   const DevicesEvent();
@@ -90,7 +97,7 @@ class WidgetsPollingStopped extends DevicesEvent {
 }
 
 /// ------------------------------
-/// include/exclude selection (สำหรับแสดงบนหน้า Home)
+/// include/exclude selection
 /// ------------------------------
 
 /// โหลดรายการเพื่อทำ include/exclude (ใช้ก่อนเปิด picker)
@@ -99,7 +106,7 @@ class WidgetSelectionLoaded extends DevicesEvent {
   const WidgetSelectionLoaded({this.roomId});
 }
 
-/// toggle include/exclude (แสดง/ไม่แสดงบนหน้า Home)
+/// toggle include/exclude (แสดง/ไม่แสดงบนหน้า Home) — ยิงทีละตัว
 class WidgetIncludeToggled extends DevicesEvent {
   final int widgetId;
   final bool included;
@@ -109,8 +116,19 @@ class WidgetIncludeToggled extends DevicesEvent {
   });
 }
 
-/// กดบันทึก include/exclude
+/// กดบันทึก include/exclude (เดิม: ใช้เพื่อ refresh)
 class WidgetSelectionSaved extends DevicesEvent {
   final int? roomId;
   const WidgetSelectionSaved({this.roomId});
+}
+
+/// ✅ NEW: บันทึก include/exclude จาก “picker” แบบครั้งเดียว
+class WidgetsVisibilitySaved extends DevicesEvent {
+  final int? roomId; // null = All
+  final List<int> includedWidgetIds;
+
+  const WidgetsVisibilitySaved({
+    required this.roomId,
+    required this.includedWidgetIds,
+  });
 }

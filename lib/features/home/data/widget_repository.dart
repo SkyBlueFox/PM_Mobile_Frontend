@@ -1,3 +1,17 @@
+// lib/features/home/data/widget_repository.dart
+//
+// ✅ เพิ่มเมธอดใหม่: saveRoomWidgetsVisibility()
+// - ใช้ endpoint ที่มีอยู่แล้ว: PATCH /api/widgets/{widgetId}/status
+// - ทำงานแบบ loop ทีละ widgetId เพื่อ set เป็น include/exclude ให้ตรงกับ list ที่ user เลือก
+//
+// เหตุผลที่ทำแบบนี้:
+// - backend ปัจจุบันของคุณมี endpoint เปลี่ยน status ทีละตัวแล้ว (changeWidgetStatus)
+// - ยังไม่มี bulk endpoint -> จึงทำ bulk ใน client แบบ loop (ปลอดภัยสุด)
+//
+// ถ้าอนาคต backend มี bulk endpoint:
+// - เปลี่ยน implementation ภายใน saveRoomWidgetsVisibility() ได้เลย
+// - UI/Bloc ไม่ต้องเปลี่ยน
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -35,11 +49,7 @@ class WidgetRepository {
     // { "data": [ ... ] } OR { "data": null } OR [ ... ] OR anything else -> []
     final dynamic raw = decoded is Map<String, dynamic> ? decoded['data'] : decoded;
     final List list = raw is List ? raw : const [];
-
-    return list
-        .whereType<Map>()
-        .map((e) => e.cast<String, dynamic>())
-        .toList();
+    return list.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
   }
 
   /// GET /api/widgets
@@ -130,14 +140,33 @@ class WidgetRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // ✅ FIX: เมธอดที่ bloc เรียกอยู่ (fetchSensorHistory) ต้องมีใน repo
+  // ✅ NEW: Save include/exclude ของทั้งห้อง ตามรายการที่ user เลือกใน picker
   //
-  // รูปแบบ query ที่รองรับ: from/to เป็น ISO8601
-  // endpoint ที่พบบ่อย:
-  //  - /api/widgets/{id}/history?from=...&to=...
-  //  - /api/widgets/{id}/logs?from=...&to=...
+  // required:
+  // - roomWidgetIds: widgetId ทั้งหมดที่ "อยู่ในห้องนี้"
+  // - includedWidgetIds: widgetId ที่ user ต้องการ "ให้แสดง"
   //
-  // ถ้า backend ของคุณมีแค่อย่างเดียว ให้ลบอีกอันได้
+  // logic:
+  // - ถ้า id อยู่ใน included => status = include
+  // - ถ้าไม่อยู่ => status = exclude
+  // ---------------------------------------------------------------------------
+  Future<void> saveRoomWidgetsVisibility({
+    required List<int> roomWidgetIds,
+    required List<int> includedWidgetIds,
+  }) async {
+    final includeSet = includedWidgetIds.toSet();
+
+    // กันซ้ำ + ทำให้ deterministic
+    final all = roomWidgetIds.toSet().toList()..sort();
+
+    for (final id in all) {
+      final status = includeSet.contains(id) ? 'include' : 'exclude';
+      await changeWidgetStatus(widgetId: id, widgetStatus: status);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sensor history (เดิม)
   // ---------------------------------------------------------------------------
   Future<List<SensorHistoryPoint>> fetchSensorHistory({
     required int widgetId,
@@ -145,8 +174,7 @@ class WidgetRepository {
     required DateTime to,
     int limit = 500,
   }) async {
-    Future<http.Response> _get(Uri uri) =>
-        _client.get(uri).timeout(const Duration(seconds: 15));
+    Future<http.Response> _get(Uri uri) => _client.get(uri).timeout(const Duration(seconds: 15));
 
     final q = <String, String>{
       'from': from.toIso8601String(),
@@ -172,7 +200,6 @@ class WidgetRepository {
     final decoded = _decodeBody(res);
     final maps = _extractListMap(decoded);
 
-    // ให้ใช้ fromJson ของโมเดลจริงในโปรเจกต์คุณ
     final points = maps.map(SensorHistoryPoint.fromJson).toList();
 
     // กันข้อมูลสลับลำดับ

@@ -1,14 +1,16 @@
 // lib/features/home/bloc/devices_bloc.dart
 //
-// แก้ “ให้ไม่ error / คอมไพล์ผ่าน / ทำงานปกติ”
+// ✅ FIX: เพิ่มการ save include/exclude จาก "widget picker" ให้ยิง API จริง
 //
-// จุดที่แก้หลัก ๆ (เพื่อความเสถียร):
-// 1) ลบโค้ด serialize/deserialize ที่ทำให้ error แน่ ๆ (toMap/fromMap/toJson/hashCode/==)
-//    เพราะ Repository/Timer ไม่มี toMap/fromMap และโดยปกติ BLoC ไม่ควรถูก serialize
-// 2) ปรับ constructor ให้เรียบง่าย (ไม่รับ pollInFlight/pollTimer จากภายนอก)
-// 3) _pollOnce() ใช้ `emit(...)` ได้โดยตรงภายใน Bloc (ไม่ต้องมี Emitter ใน scope) และกันซ้อนด้วย _pollInFlight
-// 4) commit reorder: กัน selectedRoomId == null (ไม่ crash)
-// 5) ลบ import dart:convert ที่ไม่จำเป็นหลังลบ serialize
+// โดยใช้ flow:
+// HomePage -> showWidgetPickerSheet() -> result(List<int> includeIds)
+// -> dispatch WidgetsVisibilitySaved(roomId, includeIds)
+// -> DevicesBloc handler เรียก widgetRepo.saveRoomWidgetsVisibility()
+// -> refresh widgets + restart polling
+//
+// หมายเหตุ:
+// - ของเดิมยังอยู่: WidgetIncludeToggled ใช้ยิงทีละตัว (ถ้า UI เป็น toggle รายตัว)
+// - ของใหม่: WidgetsVisibilitySaved ใช้บันทึกทีเดียวจาก picker
 
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 
@@ -75,14 +77,21 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     on<WidgetsPollingStarted>(_onWidgetsPollingStarted);
     on<WidgetsPollingStopped>(_onWidgetsPollingStopped);
 
-    // include/exclude selection
+    // include/exclude selection (เดิม)
     on<WidgetSelectionLoaded>(_onWidgetSelectionLoaded);
     on<WidgetIncludeToggled>(_onWidgetIncludeToggled);
     on<WidgetSelectionSaved>(_onWidgetSelectionSaved);
+
+    // ✅ NEW: save include/exclude จาก picker (bulk by loop)
+    on<WidgetsVisibilitySaved>(_onWidgetsVisibilitySaved);
   }
 
   bool _isInclude(DeviceWidget w) => w.status.trim().toLowerCase() == 'include';
+  bool _isSensor(DeviceWidget w) => w.capability.type == CapabilityType.sensor;
 
+  // ------------------------------
+  // Initial load
+  // ------------------------------
   Future<void> _onStarted(DevicesStarted event, Emitter<DevicesState> emit) async {
     emit(state.copyWith(isLoading: true, error: null));
 
@@ -105,6 +114,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // Room changed
+  // ------------------------------
   Future<void> _onRoomChanged(DevicesRoomChanged event, Emitter<DevicesState> emit) async {
     emit(state.copyWith(
       selectedRoomId: event.roomId,
@@ -129,6 +141,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // Toggle widget
+  // ------------------------------
   Future<void> _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
@@ -167,6 +182,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // Adjust widget
+  // ------------------------------
   Future<void> _onWidgetValueChanged(WidgetValueChanged event, Emitter<DevicesState> emit) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
@@ -203,6 +221,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // Mode/Text/Button
+  // ------------------------------
   Future<void> _onWidgetModeChanged(WidgetModeChanged event, Emitter<DevicesState> emit) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
@@ -293,6 +314,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // Toggle all (optional)
+  // ------------------------------
   void _onAllToggled(DevicesAllToggled event, Emitter<DevicesState> emit) {
     final int turnOnValue = event.turnOn ? 1 : 0;
 
@@ -304,6 +328,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     emit(state.copyWith(widgets: updated, error: null));
   }
 
+  // ------------------------------
+  // Reorder helpers
+  // ------------------------------
   List<int> _currentVisibleIds(List<DeviceWidget> all) {
     final visible = all.where(_isInclude).toList();
     visible.sort((a, b) {
@@ -411,6 +438,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // Devices list
+  // ------------------------------
   Future<void> _onDevicesRequested(
     DevicesRequested event,
     Emitter<DevicesState> emit,
@@ -424,13 +454,15 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // Polling
+  // ------------------------------
   Future<void> _onWidgetsPollingStarted(
     WidgetsPollingStarted event,
     Emitter<DevicesState> emit,
   ) async {
     _pollRoomId = event.roomId;
 
-    // choose intervals (you can pass from UI too)
     _fullInterval = event.interval; // e.g. 10s
     _sensorInterval = const Duration(seconds: 1);
 
@@ -445,8 +477,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       await _pollFullOnce();
     });
 
-    await _pollFullOnce();     // initial full load
-    await _pollSensorsOnce();  // immediate sensor refresh
+    await _pollFullOnce(); // initial full load
+    await _pollSensorsOnce(); // immediate sensor refresh
   }
 
   Future<void> _onWidgetsPollingStopped(
@@ -461,31 +493,31 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   }
 
   Future<void> _pollFullOnce() async {
-  if (_fullPollInFlight) return;
-  _fullPollInFlight = true;
+    if (_fullPollInFlight) return;
+    _fullPollInFlight = true;
 
-  try {
-    if (state.reorderEnabled || state.reorderSaving) return;
+    try {
+      if (state.reorderEnabled || state.reorderSaving) return;
 
-    _cleanupExpiredPending();
+      _cleanupExpiredPending();
 
-    final serverWidgets = (_pollRoomId == null)
-        ? await widgetRepo.fetchWidgets()
-        : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
+      final serverWidgets = (_pollRoomId == null)
+          ? await widgetRepo.fetchWidgets()
+          : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
 
-    // Merge pending values ON TOP of server
-    final merged = serverWidgets.map((sw) {
-      final pending = _pendingValueByWidgetId[sw.widgetId];
-      return pending != null ? sw.copyWith(value: pending) : sw;
-    }).toList(growable: false);
+      // Merge pending values ON TOP of server
+      final merged = serverWidgets.map((sw) {
+        final pending = _pendingValueByWidgetId[sw.widgetId];
+        return pending != null ? sw.copyWith(value: pending) : sw;
+      }).toList(growable: false);
 
-    emit(state.copyWith(widgets: merged, error: null));
-  } catch (e) {
-    // emit(state.copyWith(error: e.toString()));
-  } finally {
-    _fullPollInFlight = false;
+      emit(state.copyWith(widgets: merged, error: null));
+    } catch (e) {
+      // optional: don't spam UI
+    } finally {
+      _fullPollInFlight = false;
+    }
   }
-}
 
   Future<void> _pollSensorsOnce() async {
     if (_sensorPollInFlight) return;
@@ -538,8 +570,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         emit(state.copyWith(widgets: updated, error: null));
       }
     } catch (e) {
-      // optional: don't spam UI with sensor polling errors
-      // emit(state.copyWith(error: e.toString()));
+      // optional: don't spam UI
     } finally {
       _sensorPollInFlight = false;
     }
@@ -556,9 +587,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   }
 
   // ------------------------------
-  // include/exclude selection
+  // include/exclude selection (เดิม)
   // ------------------------------
-
   Future<void> _onWidgetSelectionLoaded(
     WidgetSelectionLoaded event,
     Emitter<DevicesState> emit,
@@ -609,7 +639,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     WidgetSelectionSaved event,
     Emitter<DevicesState> emit,
   ) async {
-    // ถ้าคุณยิง backend ทีละตัวแล้ว อันนี้แค่ refresh ให้ชัวร์
+    // เดิม: ถ้าคุณยิง backend ทีละตัวแล้ว อันนี้แค่ refresh ให้ชัวร์
     emit(state.copyWith(isLoading: true, error: null));
     try {
       final roomId = event.roomId ?? state.selectedRoomId;
@@ -625,6 +655,50 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
+  // ------------------------------
+  // ✅ NEW: Save include/exclude จาก picker (bulk)
+  // ------------------------------
+  Future<void> _onWidgetsVisibilitySaved(
+    WidgetsVisibilitySaved event,
+    Emitter<DevicesState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, error: null));
+
+    try {
+      final roomId = event.roomId ?? state.selectedRoomId;
+
+      // โหลด widgets ของ room นี้ เพื่อให้ได้ "widgetId ทั้งหมดใน room"
+      final roomWidgets = roomId == null
+          ? await widgetRepo.fetchWidgets()
+          : await roomRepo.fetchWidgetsByRoomId(roomId);
+
+      final roomWidgetIds = roomWidgets.map((w) => w.widgetId).toList(growable: false);
+
+      // ✅ ยิง PATCH status ให้ครบทุกตัว ตาม included list
+      await widgetRepo.saveRoomWidgetsVisibility(
+        roomWidgetIds: roomWidgetIds,
+        includedWidgetIds: event.includedWidgetIds,
+      );
+
+      // refresh state หลัง save
+      final refreshed = roomId == null
+          ? await widgetRepo.fetchWidgets()
+          : await roomRepo.fetchWidgetsByRoomId(roomId);
+
+      emit(state.copyWith(isLoading: false, widgets: refreshed, error: null));
+
+      // restart polling เพื่อ sync UI
+      add(DevicesRoomChanged(roomId));
+      add(WidgetsPollingStarted(roomId: roomId));
+    } catch (e, st) {
+      debugPrint('[DevicesBloc] visibility save failed: $e\n$st');
+      emit(state.copyWith(isLoading: false, error: _msgSaveFailed));
+    }
+  }
+
+  // ------------------------------
+  // close
+  // ------------------------------
   @override
   Future<void> close() {
     _sensorPollTimer?.cancel();
@@ -635,7 +709,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   // pending helpers
   // ------------------------------
-
   void _markPending(int widgetId, String value) {
     _pendingValueByWidgetId[widgetId] = value;
     _pendingAtByWidgetId[widgetId] = DateTime.now();
@@ -657,7 +730,4 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       _clearPending(id);
     }
   }
-
-  bool _isSensor(DeviceWidget w) =>
-    w.capability.type == CapabilityType.sensor;
 }

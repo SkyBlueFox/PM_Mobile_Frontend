@@ -1,4 +1,13 @@
 // lib/features/home/ui/pages/home_page.dart
+//
+// ✅ FIX: หน้าเลือก Add/Delete widget (Widget Picker) "ขาดส่ง API ไป save"
+// - เดิม: เปิด sheet แล้วได้ result (List<int> included ids) แต่ไม่ส่งไปบันทึก
+// - ใหม่: ส่ง event WidgetsVisibilitySaved ไปที่ DevicesBloc เพื่อให้ Bloc เรียก repo ยิง API save
+//
+// หมายเหตุ:
+// - widget_picker_sheet.dart ยังเป็น UI ล้วน (คืนค่า ids) ไม่ผูก API
+// - การยิง API/save อยู่ใน Bloc + Repository (clean architecture)
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -113,6 +122,7 @@ class _HomeViewState extends State<_HomeView> {
     final roomId = st.selectedRoomId;
     final vm = HomeViewModel.fromState(st);
 
+    // ✅ เปิด picker แล้วได้ "widgetIds ที่อยู่ใน Include" หลัง user กด Save
     final result = await showWidgetPickerSheet(
       context: context,
       title: 'Add/Delete widget',
@@ -126,14 +136,24 @@ class _HomeViewState extends State<_HomeView> {
 
     if (!mounted || result == null) return;
 
-    context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
-    context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
+    // ✅ FIX: ส่งไปบันทึก include/exclude (ยิง API) ผ่าน Bloc
+    // - roomId เป็น int? (null = All)
+    // - includedWidgetIds คือ ids ที่ user อยากให้แสดง (include)
+    context.read<DevicesBloc>().add(
+          WidgetsVisibilitySaved(
+            roomId: roomId,
+            includedWidgetIds: result,
+          ),
+        );
+
+    // ❗ไม่ต้องสั่ง refresh/polling ตรงนี้แล้วก็ได้
+    // เพราะ bloc handler จะ refresh + restart polling ให้เอง
+    // (ถ้าคุณไม่อยากให้ bloc ทำ ก็ย้ายกลับมาที่นี่ได้)
   }
 
   Future<void> _openModePicker(HomeWidgetTileVM tile) async {
-    final options = tile.modeOptions.isEmpty
-        ? const ['auto', 'cool', 'dry', 'fan', 'heat']
-        : tile.modeOptions;
+    final options =
+        tile.modeOptions.isEmpty ? const ['auto', 'cool', 'dry', 'fan', 'heat'] : tile.modeOptions;
 
     final selected = await showModePickerSheet(
       context: context,
@@ -202,7 +222,8 @@ class _HomeViewState extends State<_HomeView> {
                   onPressed: enabled
                       ? () => context.read<DevicesBloc>().add(const CommitReorderPressed())
                       : () => _openActionsSheet(st),
-                  child: Icon(enabled ? Icons.check_rounded : Icons.more_horiz_rounded, color: Colors.white),
+                  child: Icon(enabled ? Icons.check_rounded : Icons.more_horiz_rounded,
+                      color: Colors.white),
                 );
               },
             ),
@@ -242,7 +263,8 @@ class _HomeViewState extends State<_HomeView> {
                           ],
                         ),
                         BlocBuilder<DevicesBloc, DevicesState>(
-                          buildWhen: (p, c) => p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
+                          buildWhen: (p, c) =>
+                              p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
                           builder: (context, st) {
                             return TopTab(
                               rooms: st.rooms,
@@ -257,7 +279,6 @@ class _HomeViewState extends State<_HomeView> {
                       ],
                     ),
                   ),
-
                   Expanded(
                     child: Container(
                       width: double.infinity,
@@ -296,15 +317,19 @@ class _HomeViewState extends State<_HomeView> {
                               reorderEnabled: st.reorderEnabled,
                               onToggle: (widgetId) =>
                                   context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
-                              onAdjust: (widgetId, value) =>
-                                  context.read<DevicesBloc>().add(WidgetValueChanged(widgetId, value.toDouble())),
-                              onOrderChanged: (newOrderWidgetIds) =>
-                                  context.read<DevicesBloc>().add(WidgetsOrderChanged(newOrderWidgetIds)),
+                              onAdjust: (widgetId, value) => context
+                                  .read<DevicesBloc>()
+                                  .add(WidgetValueChanged(widgetId, value.toDouble())),
+                              onOrderChanged: (newOrderWidgetIds) => context
+                                  .read<DevicesBloc>()
+                                  .add(WidgetsOrderChanged(newOrderWidgetIds)),
                               onOpenSensor: (tile) {
-                                final sensorWidget = st.widgets.firstWhere((w) => w.widgetId == tile.widgetId);
+                                final sensorWidget =
+                                    st.widgets.firstWhere((w) => w.widgetId == tile.widgetId);
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => SensorDetailPage(sensorWidget: sensorWidget)),
+                                  MaterialPageRoute(
+                                      builder: (_) => SensorDetailPage(sensorWidget: sensorWidget)),
                                 );
                               },
                               onOpenMode: _openModePicker,
@@ -324,7 +349,6 @@ class _HomeViewState extends State<_HomeView> {
                 roleText: 'Role',
                 photoUrl: user?.photoURL,
                 onManageHome: () async {
-                  // ✅ IMPORTANT: return from ManageHomesPage and refresh rooms in DevicesBloc
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -340,16 +364,12 @@ class _HomeViewState extends State<_HomeView> {
 
                   if (!mounted) return;
 
-                  // ✅ refresh after create/delete/rename
                   context.read<RoomsBloc>().add(const RoomsRefreshRequested());
                   context.read<DevicesBloc>().add(const DevicesStarted());
                 },
-
-                // ✅ IMPLEMENT THIS: go to ManageDevicesPage
                 onManageDevices: () async {
-                  // make sure we have latest data for device->room mapping
                   context.read<DevicesBloc>().add(const DevicesRequested());
-                  context.read<RoomsBloc>().add(const RoomsStarted()); // or RoomsRefreshRequested()
+                  context.read<RoomsBloc>().add(const RoomsStarted());
 
                   await Navigator.push(
                     context,
@@ -366,11 +386,9 @@ class _HomeViewState extends State<_HomeView> {
 
                   if (!mounted) return;
 
-                  // ✅ refresh when coming back (in case setup changed something)
                   context.read<DevicesBloc>().add(const DevicesRequested());
                   context.read<RoomsBloc>().add(const RoomsRefreshRequested());
                 },
-
                 onSecurity: () {},
                 onLogout: _logout,
               ),
