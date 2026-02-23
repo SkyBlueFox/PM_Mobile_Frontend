@@ -166,8 +166,7 @@ class WidgetRepository {
     required DateTime to,
     int limit = 500,
   }) async {
-    Future<http.Response> _get(Uri uri) =>
-        _client.get(uri).timeout(const Duration(seconds: 15));
+    Future<http.Response> _get(Uri uri) => _client.get(uri).timeout(const Duration(seconds: 15));
 
     final q = <String, String>{
       'from': from.toIso8601String(),
@@ -203,8 +202,7 @@ class WidgetRepository {
     required int widgetId,
     required int limit,
   }) async {
-    Future<http.Response> _get(Uri uri) =>
-        _client.get(uri).timeout(const Duration(seconds: 15));
+    Future<http.Response> _get(Uri uri) => _client.get(uri).timeout(const Duration(seconds: 15));
 
     final q = <String, String>{'limit': '$limit'};
 

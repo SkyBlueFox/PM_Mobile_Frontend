@@ -3,10 +3,6 @@
 // ✅ devices_event.dart (ครบทั้งไฟล์)
 // - รวม event เดิมทั้งหมด
 // - ✅ เพิ่ม WidgetsVisibilitySaved สำหรับบันทึก include/exclude จาก widget picker (bulk)
-//
-// หมายเหตุ:
-// - WidgetSelectionLoaded / WidgetIncludeToggled / WidgetSelectionSaved = เดิม (ยิงทีละตัว/โหลดหน้าเลือก)
-// - WidgetsVisibilitySaved = ใหม่ (ยิงทีเดียวหลังปิด picker)
 
 sealed class DevicesEvent {
   const DevicesEvent();
@@ -107,7 +103,7 @@ class WidgetsPollingStopped extends DevicesEvent {
 }
 
 /// ------------------------------
-/// include/exclude selection (เดิม: ใช้ยิงทีละตัว / โหลดข้อมูลก่อนเปิดหน้า)
+/// include/exclude selection (เดิม)
 /// ------------------------------
 
 /// โหลดรายการเพื่อทำ include/exclude (ใช้ก่อนเปิด picker)
@@ -135,9 +131,6 @@ class WidgetSelectionSaved extends DevicesEvent {
 /// ------------------------------
 /// ✅ NEW: Save include/exclude จาก widget picker (bulk)
 /// ------------------------------
-/// HomePage -> showWidgetPickerSheet() -> result(List<int> includeIds)
-/// -> dispatch WidgetsVisibilitySaved(roomId, includeIds)
-/// -> DevicesBloc: widgetRepo.saveRoomWidgetsVisibility(...)
 class WidgetsVisibilitySaved extends DevicesEvent {
   final int? roomId;
 

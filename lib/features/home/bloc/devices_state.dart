@@ -1,3 +1,10 @@
+// lib/features/home/bloc/devices_state.dart
+//
+// ✅ devices_state.dart (ครบทั้งไฟล์)
+// - คงโครงเดิม
+// - เพิ่ม helper visibleWidgets / drawerWidgets (ใช้ status include/exclude)
+// - ปลอดภัยกับ copyWith และ reorder flags
+
 import '../models/device_widget.dart';
 import '../models/room.dart';
 import '../models/device.dart';
@@ -59,10 +66,13 @@ class DevicesState {
       devices: devices ?? this.devices,
       reorderEnabled: reorderEnabled ?? this.reorderEnabled,
       reorderSaving: reorderSaving ?? this.reorderSaving,
-      reorderOriginalVisibleIds: reorderOriginalVisibleIds ?? this.reorderOriginalVisibleIds,
-      reorderWorkingVisibleIds: reorderWorkingVisibleIds ?? this.reorderWorkingVisibleIds,
+      reorderOriginalVisibleIds:
+          reorderOriginalVisibleIds ?? this.reorderOriginalVisibleIds,
+      reorderWorkingVisibleIds:
+          reorderWorkingVisibleIds ?? this.reorderWorkingVisibleIds,
       roomActionStatus: roomActionStatus ?? this.roomActionStatus,
-      roomActionError: clearRoomActionError ? null : (roomActionError ?? this.roomActionError),
+      roomActionError:
+          clearRoomActionError ? null : (roomActionError ?? this.roomActionError),
     );
   }
 
@@ -71,13 +81,11 @@ class DevicesState {
   /// widgets ที่ "แสดงบนหน้า home" = include เท่านั้น
   List<DeviceWidget> get visibleWidgets {
     final base = widgets.where(_isInclude).toList();
-
     base.sort((a, b) {
       final byOrder = a.order.compareTo(b.order);
       if (byOrder != 0) return byOrder;
       return a.widgetId.compareTo(b.widgetId);
     });
-
     return base;
   }
 
