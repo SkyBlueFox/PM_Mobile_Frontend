@@ -192,11 +192,14 @@ class _HomeViewState extends State<_HomeView> {
 
   void _startPollingIfHomeTab() {
     final bloc = context.read<DevicesBloc>();
-    if (_bottomIndex == 0) {
+    final roomId = bloc.state.selectedRoomId;
+    if (_bottomIndex == 0 && roomId != null) {
       bloc.add(WidgetsPollingStarted(
-        roomId: bloc.state.selectedRoomId,
+        roomId: roomId,
         interval: const Duration(seconds: 5),
       ));
+    } else {
+      bloc.add(const WidgetsPollingStopped());
     }
   }
 
@@ -282,22 +285,29 @@ class _HomeViewState extends State<_HomeView> {
                             ],
                           ),
                         ),
-                        BlocBuilder<DevicesBloc, DevicesState>(
-                          buildWhen: (p, c) =>
-                              p.rooms != c.rooms ||
-                              p.selectedRoomId != c.selectedRoomId,
-                          builder: (context, st) {
-                            return TopTab(
-                              rooms: st.rooms,
-                              selectedRoomId: st.selectedRoomId,
-                              onChanged: (roomId) {
-                                context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
-                                context
-                                    .read<DevicesBloc>()
-                                    .add(WidgetsPollingStarted(roomId: roomId));
-                              },
-                            );
-                          },
+                         Align(
+                          alignment: Alignment.centerLeft,
+                          child: BlocBuilder<DevicesBloc, DevicesState>(
+                            buildWhen: (p, c) =>
+                                p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
+                            builder: (context, st) {
+                              return Padding(
+                                padding: const EdgeInsetsGeometry.only(left: 16), 
+                                child: TopTab(
+                                  rooms: st.rooms,
+                                  selectedRoomId: st.selectedRoomId,
+                                  onChanged: (roomId) {
+                                    context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
+                                    if (roomId != null) {
+                                      context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
+                                    } else {
+                                      context.read<DevicesBloc>().add(const WidgetsPollingStopped());
+                                    }
+                                  },
+                                )
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),

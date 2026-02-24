@@ -92,11 +92,6 @@ class MyApp extends StatelessWidget {
               roomRepo: ctx.read<RoomRepository>(),
               deviceRepo: ctx.read<DeviceRepository>(),
             )
-              ..add(const DevicesStarted())
-              ..add(const WidgetsPollingStarted(
-                roomId: 1,
-                interval: Duration(seconds: 5),
-              )),
           ),
         ],
         child: MaterialApp(
@@ -106,8 +101,7 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(seedColor: _blue),
             scaffoldBackgroundColor: Colors.white,
-            textTheme: GoogleFonts.dmSansTextTheme(),
-            primaryTextTheme: GoogleFonts.dmSansTextTheme(),
+            fontFamily: 'Sans',
             textSelectionTheme: const TextSelectionThemeData(
               cursorColor: _blue,
               selectionColor: Color(0x553AA7FF),
