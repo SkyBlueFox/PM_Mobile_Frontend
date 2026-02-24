@@ -52,15 +52,11 @@ class _TopTabState extends State<TopTab> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          _TabItem(
-            label: 'ทั้งหมด',
-            isSelected: _selectedRoomId == null,
-            onTap: () => _handleTap(null),
-          ),
           ...widget.rooms.map(
             (r) => Padding(
-              padding: const EdgeInsets.only(left: 18),
+              padding: const EdgeInsets.fromLTRB(0, 0, 18, 0),
               child: _TabItem(
                 label: r.name,
                 isSelected: _selectedRoomId == r.id,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:pm_mobile_frontend/features/home/data/widget_repository.dart';
 
 import 'data/device_repository.dart';
@@ -26,6 +27,7 @@ import 'features/room/bloc/rooms_event.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
@@ -92,7 +94,7 @@ class MyApp extends StatelessWidget {
             )
               ..add(const DevicesStarted())
               ..add(const WidgetsPollingStarted(
-                roomId: null,
+                roomId: 1,
                 interval: Duration(seconds: 5),
               )),
           ),
@@ -104,6 +106,8 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(seedColor: _blue),
             scaffoldBackgroundColor: Colors.white,
+            textTheme: GoogleFonts.dmSansTextTheme(),
+            primaryTextTheme: GoogleFonts.dmSansTextTheme(),
             textSelectionTheme: const TextSelectionThemeData(
               cursorColor: _blue,
               selectionColor: Color(0x553AA7FF),

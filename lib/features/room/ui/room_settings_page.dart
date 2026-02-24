@@ -32,13 +32,20 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   late String _name = widget.roomName;
 
   bool _didPop = false;
-  bool _showDevices = false;
+
   bool _devicesLoading = false;
   String? _devicesError;
   List<Device> _devices = const [];
 
-  // ✅ NEW: track if we already loaded devices once successfully
+  // track if we already loaded devices once successfully
   bool _devicesLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ load devices immediately (no click needed)
+    _loadDevicesInRoom();
+  }
 
   Future<void> _openRename() async {
     final newName = await Navigator.push<String?>(
@@ -74,7 +81,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
       setState(() {
         _devices = list;
         _devicesLoading = false;
-        _devicesLoaded = true; // ✅ important: even if empty, it's a success
+        _devicesLoaded = true; // success even if empty
       });
     } catch (e) {
       if (!mounted) return;
@@ -83,15 +90,6 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
         _devicesError = e.toString();
         _devicesLoaded = false; // allow retry
       });
-    }
-  }
-
-  Future<void> _toggleDevices() async {
-    setState(() => _showDevices = !_showDevices);
-
-    // ✅ fetch only when opening and we haven't loaded yet OR last time had error
-    if (_showDevices && (!_devicesLoaded || _devicesError != null)) {
-      await _loadDevicesInRoom();
     }
   }
 
@@ -174,34 +172,31 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                       title: 'ชื่อห้อง',
                       trailing: _name,
                       onTap: _openRename,
+                      trailingIcon: Icons.chevron_right_rounded,
                     ),
                     const Divider(height: 1),
 
-                    // ✅ Tap to expand list
+                    // ✅ always show devices section (no click)
                     _RowTile(
                       title: 'อุปกรณ์',
-                      trailing:
-                          '${_showDevices ? _devices.length : widget.deviceCount}',
-                      onTap: _toggleDevices,
-                      trailingIcon: _showDevices
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
+                      trailing: _devicesLoaded
+                          ? '${_devices.length}'
+                          : '${widget.deviceCount}',
+                      onTap: null, // disabled
+                      trailingIcon: null, // hide arrow
                     ),
+                    const Divider(height: 1),
 
-                    // ✅ Inline device list
-                    if (_showDevices) ...[
-                      const Divider(height: 1),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                        child: _DevicesSection(
-                          loading: _devicesLoading,
-                          error: _devicesError,
-                          devices: _devices,
-                          onRetry: _loadDevicesInRoom,
-                          onRefresh: _loadDevicesInRoom,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                      child: _DevicesSection(
+                        loading: _devicesLoading,
+                        error: _devicesError,
+                        devices: _devices,
+                        onRetry: _loadDevicesInRoom,
+                        onRefresh: _loadDevicesInRoom,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -276,56 +271,53 @@ class _DevicesSection extends StatelessWidget {
       );
     }
 
-    // ✅ EMPTY STATE (no error)
+    // EMPTY STATE (no fixed height anymore)
     if (devices.isEmpty) {
-      return SizedBox(
-        height: 120,
-        child: RefreshIndicator(
-          onRefresh: onRefresh,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: const [
-              SizedBox(height: 18),
-              Center(
-                child: Text(
-                  'ไม่มีอุปกรณ์ในห้องนี้',
-                  style: TextStyle(color: Colors.black54),
-                ),
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: ListView(
+          shrinkWrap: true,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 18),
+            Center(
+              child: Text(
+                'ไม่มีอุปกรณ์ในห้องนี้',
+                style: TextStyle(color: Colors.black54),
               ),
-            ],
-          ),
+            ),
+            SizedBox(height: 18),
+          ],
         ),
       );
     }
 
-    // ✅ normal list
-    return SizedBox(
-      height: 220, // fixed height for inline list
-      child: RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: devices.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (context, i) {
-            final d = devices[i];
-            return ListTile(
-              dense: true,
-              leading: const Icon(
-                Icons.devices_other_rounded,
-                color: Color(0xFF3AA7FF),
-              ),
-              title: Text(
-                d.name,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              subtitle: Text(
-                d.type,
-                style: const TextStyle(color: Colors.black45),
-              ),
-            );
-          },
-        ),
+    // NORMAL LIST (no blank space below)
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: devices.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (context, i) {
+          final d = devices[i];
+          return ListTile(
+            dense: true,
+            leading: const Icon(
+              Icons.devices_other_rounded,
+              color: Color(0xFF3AA7FF),
+            ),
+            title: Text(
+              d.name,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text(
+              d.type,
+              style: const TextStyle(color: Colors.black45),
+            ),
+          );
+        },
       ),
     );
   }
@@ -350,7 +342,7 @@ class _Card extends StatelessWidget {
 class _RowTile extends StatelessWidget {
   final String title;
   final String trailing;
-  final VoidCallback onTap;
+  final VoidCallback? onTap; // ✅ nullable to allow disabling
   final IconData? trailingIcon;
 
   const _RowTile({
@@ -382,8 +374,8 @@ class _RowTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            Icon(trailingIcon ?? Icons.chevron_right_rounded,
-                color: Colors.black38),
+            if (trailingIcon != null)
+              Icon(trailingIcon!, color: Colors.black38),
           ],
         ),
       ),

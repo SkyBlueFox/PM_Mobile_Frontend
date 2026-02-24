@@ -113,7 +113,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         isLoading: false,
         rooms: rooms,
         widgets: widgets,
-        selectedRoomId: null,
+        selectedRoomId: 1,
         error: null,
         devices: devices,
       ));
@@ -460,7 +460,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final devices = await deviceRepo.fetchDevices();
+      final devices = await deviceRepo.fetchDevices(connected: event.connected);
       emit(state.copyWith(isLoading: false, devices: devices));
     } catch (_) {
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));

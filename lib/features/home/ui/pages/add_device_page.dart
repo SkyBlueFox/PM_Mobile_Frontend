@@ -39,7 +39,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
   Future<void> _pickDevice() async {
     final devicesBloc = context.read<DevicesBloc>();
-    // context.read<DevicesBloc>().add(const DevicesRequested(connectedOnly: true));
+    context.read<DevicesBloc>().add(const DevicesRequested(connected: false));
     final picked = await showModalBottomSheet<Device>(
       context: context,
       showDragHandle: true,
@@ -70,7 +70,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                 if (devices.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(24),
-                    child: Center(child: Text('No devices available')),
+                    child: Center(child: Text('No unconnected devices available')),
                   );
                 }
 

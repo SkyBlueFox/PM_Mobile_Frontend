@@ -30,7 +30,7 @@ Future<HomeAction?> showHomeActionsSheet(BuildContext context) {
             children: [
               _ActionTile(
                 icon: Icons.add_circle_outline_rounded,
-                title: 'Add device/widget',
+                title: 'Pair device',
                 onTap: () => Navigator.pop(context, HomeAction.addDeviceWidget),
               ),
               _ActionTile(

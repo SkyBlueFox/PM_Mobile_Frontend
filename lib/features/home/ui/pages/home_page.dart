@@ -246,10 +246,11 @@ class _HomeViewState extends State<_HomeView> {
       body: SafeArea(
         child: _bottomIndex == 0
             ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                    padding: const EdgeInsets.fromLTRB(0, 10, 16, 12),
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -259,24 +260,27 @@ class _HomeViewState extends State<_HomeView> {
                     ),
                     child: Column(
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.home_rounded, color: blue, size: 24),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'บ้านเกม 1',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF0B4A7A),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.home_rounded, color: blue, size: 24),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'บ้านเกม 1',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF0B4A7A),
+                                ),
                               ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              onPressed: _logout,
-                              icon: const Icon(Icons.logout, color: Colors.black45),
-                            ),
-                          ],
+                              const Spacer(),
+                              IconButton(
+                                onPressed: _logout,
+                                icon: const Icon(Icons.logout, color: Colors.black45),
+                              ),
+                            ],
+                          ),
                         ),
                         BlocBuilder<DevicesBloc, DevicesState>(
                           buildWhen: (p, c) =>

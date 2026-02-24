@@ -171,13 +171,13 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                                             style: const TextStyle(fontWeight: FontWeight.w700),
                                           ),
                                         ),
-                                        Text(
-                                          '${_deviceCountForRoom(devicesState, rooms[i].id)} อุปกรณ์',
-                                          style: const TextStyle(
-                                            color: Colors.black45,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
+                                        // Text(
+                                        //   '${_deviceCountForRoom(devicesState, rooms[i].id)} อุปกรณ์',
+                                        //   style: const TextStyle(
+                                        //     color: Colors.black45,
+                                        //     fontWeight: FontWeight.w700,
+                                        //   ),
+                                        // ),
                                         const SizedBox(width: 6),
                                         const Icon(Icons.chevron_right_rounded, color: Colors.black38),
                                       ],

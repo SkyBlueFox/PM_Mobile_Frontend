@@ -78,7 +78,7 @@ class WidgetRepository {
           uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'actor': "test@gmail.com", // TODO: replace with user.email
+            'actor': "ji.kongsakul@gmail.com", // TODO: replace with user.email
             'value': value,
           }),
         )

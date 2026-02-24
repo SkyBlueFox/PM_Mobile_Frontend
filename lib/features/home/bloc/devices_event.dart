@@ -82,8 +82,8 @@ class CommitReorderPressed extends DevicesEvent {
 // Devices list
 // ------------------------------
 class DevicesRequested extends DevicesEvent {
-  final bool connectedOnly;
-  const DevicesRequested({this.connectedOnly = false});
+  final bool? connected;
+  const DevicesRequested({this.connected});
 }
 
 // ------------------------------

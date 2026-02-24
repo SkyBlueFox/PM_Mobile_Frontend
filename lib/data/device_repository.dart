@@ -19,14 +19,12 @@ class DeviceRepository {
   }) : _client = client ?? http.Client();
 
   Future<List<Device>> fetchDevices({bool? connected}) async {
-    // ถ้าต้องการ query connected ให้เปิดกลับมาได้
-    // final uri = Uri.parse('$baseUrl/api/devices').replace(
-    //   queryParameters: {
-    //     if (connected != null) 'connected': connected.toString(),
-    //   },
-    // );
+    final uri = Uri.parse('$baseUrl/api/devices').replace(
+      queryParameters: {
+        if (connected != null) 'connected': connected.toString(),
+      },
+    );
 
-    final uri = Uri.parse('$baseUrl/api/devices');
     final res = await _client.get(uri);
 
     if (res.statusCode != 200) {
