@@ -51,7 +51,7 @@ class _RenameRoomPageState extends State<RenameRoomPage> {
       listenWhen: (p, c) => p.status != c.status || p.error != c.error,
       listener: (context, st) {
         if (st.status == RoomsStatus.failure) {
-          final msg = st.error ?? 'Rename failed';
+          final msg = st.error ?? 'เปลี่ยนชื่อห้องไม่สำเร็จ';
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
           return;
         }

@@ -1,11 +1,10 @@
 // lib/features/home/ui/pages/home_page.dart
 //
 // ✅ FIX (ครบทั้งไฟล์):
-// 1) หน้าเลือก Add/Delete widget (Widget Picker) "ขาดส่ง API ไป save"
-//    - เพิ่มการ dispatch WidgetsVisibilitySaved ไปที่ DevicesBloc
-// 2) แก้ปัญหา "หน้าเลือก widget ว่าง/ไม่โผล่ให้เลือก"
-//    - ก่อนเปิด picker ให้โหลดรายการสำหรับเลือก (include+exclude) โดย dispatch WidgetSelectionLoaded(roomId)
-//    - รอให้โหลดเสร็จ แล้วค่อยเอา state ล่าสุดไปสร้าง included/excluded list
+// - ปรับพื้นหลังให้ “ไล่สีลงมาทั้งหน้า” (ไม่ใช่เฉพาะส่วนบน)
+//   โดยห่อทั้งหน้า (Scaffold) ด้วย Container ที่มี LinearGradient
+//   และทำให้ Scaffold โปร่งใส
+// - เอาสีพื้นหลังทึบ (pageBg) ที่ทับ gradient ออกในส่วน body หลัก
 //
 // หมายเหตุ:
 // - widget_picker_sheet.dart เป็น UI ล้วน (คืนค่า ids) ไม่ผูก API
@@ -67,7 +66,6 @@ class _HomeViewState extends State<_HomeView> {
   final user = FirebaseAuth.instance.currentUser;
 
   void _logout() {
-    // ✅ stop polling BEFORE logout (optional but recommended)
     context.read<DevicesBloc>().add(const WidgetsPollingStopped());
     context.read<AuthBloc>().add(const AuthLogoutRequested());
   }
@@ -76,7 +74,6 @@ class _HomeViewState extends State<_HomeView> {
   void initState() {
     super.initState();
 
-    // ✅ ensure initial data is loaded (if needed)
     context.read<DevicesBloc>().add(const DevicesStarted());
     context.read<RoomsBloc>().add(const RoomsStarted());
   }
@@ -125,21 +122,18 @@ class _HomeViewState extends State<_HomeView> {
     final bloc = context.read<DevicesBloc>();
     final roomId = st.selectedRoomId;
 
-    // ✅ FIX: โหลดรายการสำหรับเลือก (include+exclude) ก่อนเปิด picker
     bloc.add(WidgetSelectionLoaded(roomId: roomId));
 
-    // รอให้โหลดเสร็จ (กัน picker ว่าง)
     final loadedState = await bloc.stream.firstWhere((s) => !s.isLoading);
 
     if (!mounted) return;
 
     final vm = HomeViewModel.fromState(loadedState);
 
-    // ✅ เปิด picker แล้วได้ "widgetIds ที่อยู่ใน Include" หลัง user กด Save
     final result = await showWidgetPickerSheet(
       context: context,
-      title: 'Add/Delete widget',
-      confirmText: 'Save',
+      title: 'เพิ่ม/ลบ widget',
+      confirmText: 'บันทึก',
       includedItems: vm.activeTiles,
       excludedItems: vm.drawerTiles,
       lockIncluded: false,
@@ -149,16 +143,12 @@ class _HomeViewState extends State<_HomeView> {
 
     if (!mounted || result == null) return;
 
-    // ✅ FIX: ส่งไปบันทึก include/exclude (ยิง API) ผ่าน Bloc
     context.read<DevicesBloc>().add(
           WidgetsVisibilitySaved(
             roomId: roomId,
             includedWidgetIds: result,
           ),
         );
-
-    // ❗ไม่ต้องสั่ง refresh/polling ตรงนี้แล้ว
-    // เพราะ bloc handler จะ refresh + restart polling ให้เอง
   }
 
   Future<void> _openModePicker(HomeWidgetTileVM tile) async {
@@ -182,8 +172,8 @@ class _HomeViewState extends State<_HomeView> {
       context: context,
       title: tile.title,
       initialText: tile.value,
-      hintText: tile.hintText.isEmpty ? 'Enter text' : tile.hintText,
-      confirmText: 'Send',
+      hintText: tile.hintText.isEmpty ? 'ใส่ข้อความ' : tile.hintText,
+      confirmText: 'ส่ง',
     );
 
     if (!mounted || text == null) return;
@@ -205,229 +195,265 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: pageBg,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _bottomIndex,
-        onTap: (i) {
-          setState(() => _bottomIndex = i);
-          if (i == 0) {
-            _startPollingIfHomeTab();
-          } else {
-            context.read<DevicesBloc>().add(const WidgetsPollingStopped());
-          }
-        },
-        selectedItemColor: blue,
-        unselectedItemColor: Colors.blueGrey.withOpacity(0.6),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'บ้าน'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'ฉัน'),
-        ],
+    // ✅ ไล่สีทั้งหน้า (ลงมาถึง body)
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          // ปรับ stops ให้สีฟ้าลงมาลึกขึ้น
+          stops: [0.0, 0.45, 1.0],
+          colors: [
+            sky,
+            Color(0xFFDDF2FF),
+            pageBg,
+          ],
+        ),
       ),
-      floatingActionButton: _bottomIndex != 0
-          ? null
-          : BlocBuilder<DevicesBloc, DevicesState>(
-              buildWhen: (p, c) =>
-                  p.reorderEnabled != c.reorderEnabled ||
-                  p.reorderSaving != c.reorderSaving,
-              builder: (context, st) {
-                final enabled = st.reorderEnabled;
-                return FloatingActionButton(
-                  backgroundColor: blue,
-                  onPressed: enabled
-                      ? () => context
-                          .read<DevicesBloc>()
-                          .add(const CommitReorderPressed())
-                      : () => _openActionsSheet(st),
-                  child: Icon(
-                    enabled ? Icons.check_rounded : Icons.more_horiz_rounded,
-                    color: Colors.white,
-                  ),
-                );
-              },
-            ),
-      body: SafeArea(
-        child: _bottomIndex == 0
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(0, 10, 16, 12),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [sky, Color(0xFFDDF2FF)],
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // สำคัญ: ไม่ให้ทับ gradient
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _bottomIndex,
+          onTap: (i) {
+            setState(() => _bottomIndex = i);
+            if (i == 0) {
+              _startPollingIfHomeTab();
+            } else {
+              context.read<DevicesBloc>().add(const WidgetsPollingStopped());
+            }
+          },
+          selectedItemColor: blue,
+          unselectedItemColor: Colors.blueGrey.withOpacity(0.6),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'บ้าน'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'ฉัน'),
+          ],
+        ),
+        floatingActionButton: _bottomIndex != 0
+            ? null
+            : BlocBuilder<DevicesBloc, DevicesState>(
+                buildWhen: (p, c) =>
+                    p.reorderEnabled != c.reorderEnabled ||
+                    p.reorderSaving != c.reorderSaving,
+                builder: (context, st) {
+                  final enabled = st.reorderEnabled;
+                  return FloatingActionButton(
+                    backgroundColor: blue,
+                    onPressed: enabled
+                        ? () => context
+                            .read<DevicesBloc>()
+                            .add(const CommitReorderPressed())
+                        : () => _openActionsSheet(st),
+                    child: Icon(
+                      enabled ? Icons.check_rounded : Icons.more_horiz_rounded,
+                      color: Colors.white,
+                    ),
+                  );
+                },
+              ),
+        body: SafeArea(
+          child: _bottomIndex == 0
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ✅ ส่วนหัว: ทำให้โปร่งใส/ไม่ทับ gradient ทั้งหน้า
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(0, 10, 16, 12),
+                      // เอา gradient เดิมออกเพื่อให้ใช้ gradient ของทั้งหน้า
+                      color: Colors.transparent,
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 16),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.home_rounded,
+                                    color: blue, size: 24),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  'บ้านเกม 1',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF0B4A7A),
+                                  ),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  onPressed: _logout,
+                                  icon: const Icon(Icons.logout,
+                                      color: Colors.black45),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: BlocBuilder<DevicesBloc, DevicesState>(
+                              buildWhen: (p, c) =>
+                                  p.rooms != c.rooms ||
+                                  p.selectedRoomId != c.selectedRoomId,
+                              builder: (context, st) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 16),
+                                  child: TopTab(
+                                    rooms: st.rooms,
+                                    selectedRoomId: st.selectedRoomId,
+                                    onChanged: (roomId) {
+                                      context
+                                          .read<DevicesBloc>()
+                                          .add(DevicesRoomChanged(roomId));
+                                      if (roomId != null) {
+                                        context.read<DevicesBloc>().add(
+                                            WidgetsPollingStarted(
+                                                roomId: roomId));
+                                      } else {
+                                        context.read<DevicesBloc>().add(
+                                            const WidgetsPollingStopped());
+                                      }
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.home_rounded, color: blue, size: 24),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'บ้านเกม 1',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF0B4A7A),
-                                ),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                onPressed: _logout,
-                                icon: const Icon(Icons.logout, color: Colors.black45),
-                              ),
-                            ],
+
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        // ✅ เดิมสีทึบ pageBg จะทับ gradient -> ทำให้โปร่งใส
+                        decoration: const BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(18),
                           ),
                         ),
-                         Align(
-                          alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                           child: BlocBuilder<DevicesBloc, DevicesState>(
                             buildWhen: (p, c) =>
-                                p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
+                                p.widgets != c.widgets ||
+                                p.isLoading != c.isLoading ||
+                                p.error != c.error ||
+                                p.selectedRoomId != c.selectedRoomId ||
+                                p.reorderEnabled != c.reorderEnabled ||
+                                p.reorderSaving != c.reorderSaving,
                             builder: (context, st) {
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 16), 
-                                child: TopTab(
-                                  rooms: st.rooms,
-                                  selectedRoomId: st.selectedRoomId,
-                                  onChanged: (roomId) {
-                                    context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
-                                    if (roomId != null) {
-                                      context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
-                                    } else {
-                                      context.read<DevicesBloc>().add(const WidgetsPollingStopped());
-                                    }
-                                  },
-                                )
+                              if (st.isLoading && st.widgets.isEmpty) {
+                                return const Center(
+                                    child: CircularProgressIndicator());
+                              }
+                              if (st.error != null && st.widgets.isEmpty) {
+                                return _ErrorState(message: st.error!);
+                              }
+
+                              final vm = HomeViewModel.fromState(st);
+                              if (vm.tiles.isEmpty) {
+                                return const _EmptyState(
+                                  title: 'ไม่มี widget ในห้องนี้',
+                                  subtitle: 'กดปุ่มสีน้ำเงินเพื่อเพิ่ม widget',
+                                );
+                              }
+
+                              return HomeWidgetGrid(
+                                tiles: vm.tiles,
+                                reorderEnabled: st.reorderEnabled,
+                                onToggle: (widgetId) => context
+                                    .read<DevicesBloc>()
+                                    .add(WidgetToggled(widgetId)),
+                                onAdjust: (widgetId, value) => context
+                                    .read<DevicesBloc>()
+                                    .add(WidgetValueChanged(
+                                        widgetId, value.toDouble())),
+                                onOrderChanged: (newOrderWidgetIds) => context
+                                    .read<DevicesBloc>()
+                                    .add(WidgetsOrderChanged(
+                                        newOrderWidgetIds)),
+                                onOpenSensor: (tile) {
+                                  final sensorWidget = st.widgets.firstWhere(
+                                      (w) => w.widgetId == tile.widgetId);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => SensorDetailPage(
+                                          sensorWidget: sensorWidget),
+                                    ),
+                                  );
+                                },
+                                onOpenMode: _openModePicker,
+                                onOpenText: _openTextDialog,
+                                onPressButton: (widgetId) => context
+                                    .read<DevicesBloc>()
+                                    .add(WidgetButtonPressed(widgetId)),
                               );
                             },
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: const BoxDecoration(
-                        color: pageBg,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                        child: BlocBuilder<DevicesBloc, DevicesState>(
-                          buildWhen: (p, c) =>
-                              p.widgets != c.widgets ||
-                              p.isLoading != c.isLoading ||
-                              p.error != c.error ||
-                              p.selectedRoomId != c.selectedRoomId ||
-                              p.reorderEnabled != c.reorderEnabled ||
-                              p.reorderSaving != c.reorderSaving,
-                          builder: (context, st) {
-                            if (st.isLoading && st.widgets.isEmpty) {
-                              return const Center(child: CircularProgressIndicator());
-                            }
-                            if (st.error != null && st.widgets.isEmpty) {
-                              return _ErrorState(message: st.error!);
-                            }
-
-                            final vm = HomeViewModel.fromState(st);
-                            if (vm.tiles.isEmpty) {
-                              return const _EmptyState(
-                                title: 'ไม่มี widget ในห้องนี้',
-                                subtitle: 'กดปุ่มสีน้ำเงินเพื่อเพิ่ม widget',
-                              );
-                            }
-
-                            return HomeWidgetGrid(
-                              tiles: vm.tiles,
-                              reorderEnabled: st.reorderEnabled,
-                              onToggle: (widgetId) =>
-                                  context.read<DevicesBloc>().add(WidgetToggled(widgetId)),
-                              onAdjust: (widgetId, value) => context
-                                  .read<DevicesBloc>()
-                                  .add(WidgetValueChanged(widgetId, value.toDouble())),
-                              onOrderChanged: (newOrderWidgetIds) => context
-                                  .read<DevicesBloc>()
-                                  .add(WidgetsOrderChanged(newOrderWidgetIds)),
-                              onOpenSensor: (tile) {
-                                final sensorWidget = st.widgets
-                                    .firstWhere((w) => w.widgetId == tile.widgetId);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        SensorDetailPage(sensorWidget: sensorWidget),
-                                  ),
-                                );
-                              },
-                              onOpenMode: _openModePicker,
-                              onOpenText: _openTextDialog,
-                              onPressButton: (widgetId) => context
-                                  .read<DevicesBloc>()
-                                  .add(WidgetButtonPressed(widgetId)),
-                            );
-                          },
+                    ),
+                  ],
+                )
+              : MePage(
+                  displayName: user?.displayName ?? 'ไม่มีชื่อ',
+                  roleText: 'Role',
+                  photoUrl: user?.photoURL,
+                  onManageHome: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MultiBlocProvider(
+                          providers: [
+                            BlocProvider.value(
+                                value: context.read<DevicesBloc>()),
+                            BlocProvider.value(
+                                value: context.read<RoomsBloc>()),
+                          ],
+                          child: const ManageHomesPage(),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              )
-            : MePage(
-                displayName: user?.displayName ?? 'No Name',
-                roleText: 'Role',
-                photoUrl: user?.photoURL,
-                onManageHome: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MultiBlocProvider(
-                        providers: [
-                          BlocProvider.value(value: context.read<DevicesBloc>()),
-                          BlocProvider.value(value: context.read<RoomsBloc>()),
-                        ],
-                        child: const ManageHomesPage(),
+                    );
+
+                    if (!mounted) return;
+
+                    context
+                        .read<RoomsBloc>()
+                        .add(const RoomsRefreshRequested());
+                    context.read<DevicesBloc>().add(const DevicesStarted());
+                  },
+                  onManageDevices: () async {
+                    context.read<DevicesBloc>().add(const DevicesRequested());
+                    context.read<RoomsBloc>().add(const RoomsStarted());
+
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MultiBlocProvider(
+                          providers: [
+                            BlocProvider.value(
+                                value: context.read<DevicesBloc>()),
+                            BlocProvider.value(
+                                value: context.read<RoomsBloc>()),
+                          ],
+                          child: const ManageDevicesPage(),
+                        ),
                       ),
-                    ),
-                  );
+                    );
 
-                  if (!mounted) return;
+                    if (!mounted) return;
 
-                  context.read<RoomsBloc>().add(const RoomsRefreshRequested());
-                  context.read<DevicesBloc>().add(const DevicesStarted());
-                },
-                onManageDevices: () async {
-                  context.read<DevicesBloc>().add(const DevicesRequested());
-                  context.read<RoomsBloc>().add(const RoomsStarted());
-
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MultiBlocProvider(
-                        providers: [
-                          BlocProvider.value(value: context.read<DevicesBloc>()),
-                          BlocProvider.value(value: context.read<RoomsBloc>()),
-                        ],
-                        child: const ManageDevicesPage(),
-                      ),
-                    ),
-                  );
-
-                  if (!mounted) return;
-
-                  context.read<DevicesBloc>().add(const DevicesRequested());
-                  context.read<RoomsBloc>().add(const RoomsRefreshRequested());
-                },
-                onSecurity: () {},
-                onLogout: _logout,
-              ),
+                    context.read<DevicesBloc>().add(const DevicesRequested());
+                    context
+                        .read<RoomsBloc>()
+                        .add(const RoomsRefreshRequested());
+                  },
+                  onSecurity: () {},
+                  onLogout: _logout,
+                ),
+        ),
       ),
     );
   }
@@ -452,7 +478,8 @@ class _EmptyState extends StatelessWidget {
             Text(
               'ไม่มี widget ในห้องนี้',
               textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0B4A7A)),
+              style: TextStyle(
+                  fontWeight: FontWeight.w900, color: Color(0xFF0B4A7A)),
             ),
             SizedBox(height: 6),
             Text(
@@ -479,11 +506,13 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 44, color: Color(0xFF3AA7FF)),
+            const Icon(Icons.cloud_off_rounded,
+                size: 44, color: Color(0xFF3AA7FF)),
             const SizedBox(height: 10),
             const Text(
               'โหลดข้อมูลไม่สำเร็จ',
-              style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0B4A7A)),
+              style: TextStyle(
+                  fontWeight: FontWeight.w900, color: Color(0xFF0B4A7A)),
             ),
             const SizedBox(height: 6),
             Text(

@@ -97,7 +97,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Room'),
+        title: const Text('ลบห้อง', style: TextStyle(fontWeight: FontWeight.w800)),
         content: const Text('คุณแน่ใจหรือไม่ว่าต้องการลบห้องนี้?'),
         actions: [
           TextButton(
@@ -216,7 +216,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text(
-                            'Delete Room',
+                            'ลบห้อง',
                             style: TextStyle(
                               color: Color(0xFF3AA7FF),
                               fontWeight: FontWeight.w800,

@@ -46,7 +46,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
       Navigator.pop(context, newName); // return new name
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e')),
+        SnackBar(content: Text('อัปเดตชื่ออุปกรณ์ไม่สำเร็จ: $e')),
       );
     }
   }
@@ -55,7 +55,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Unpair Device'),
+        title: const Text('ยกเลิกการเชื่อมต่ออุปกรณ์', style: TextStyle(fontWeight: FontWeight.w800)),
         content: const Text('ต้องการยกเลิกการเชื่อมต่ออุปกรณ์นี้หรือไม่?'),
         actions: [
           TextButton(
@@ -82,7 +82,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
       Navigator.pop(context, 'unpair');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unpair failed: $e')),
+        SnackBar(content: Text('ยกเลิกการเชื่อมต่ออุปกรณ์ไม่สำเร็จ: $e')),
       );
     }
   }
@@ -121,7 +121,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
             const SizedBox(height: 8),
 
             _InfoCard(
-              left: 'Device’s Name',
+              left: 'ชื่ออุปกรณ์',
               right: widget.device.name,
             ),
 

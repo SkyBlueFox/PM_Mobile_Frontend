@@ -6,8 +6,8 @@ Future<String?> showTextCommandDialog({
   required BuildContext context,
   required String title,
   String initialText = '',
-  String hintText = 'Enter text',
-  String confirmText = 'Send',
+  String hintText = 'ใส่ข้อความ',
+  String confirmText = 'ส่ง',
 }) {
   final controller = TextEditingController(text: initialText);
 
@@ -28,7 +28,7 @@ Future<String?> showTextCommandDialog({
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('Cancel'),
+            child: const Text('ยกเลิก'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text),

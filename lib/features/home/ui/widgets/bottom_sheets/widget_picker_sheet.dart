@@ -408,7 +408,7 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 14),
                     child: Center(
-                      child: Text('No widgets available.', style: TextStyle(color: Color(0xFF5E87A3))),
+                      child: Text('ไม่มี widget ที่สามารถเพิ่มได้', style: TextStyle(color: Color(0xFF5E87A3))),
                     ),
                   ),
                 ],

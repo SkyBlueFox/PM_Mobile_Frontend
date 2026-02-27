@@ -57,7 +57,7 @@ class ManageHomesPage extends StatelessWidget {
                 onPressed: () {
                   // TODO: join home
                 },
-                child: const Text('Join a home'),
+                child: const Text('เข้าร่วมบ้าน', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ),
           ],

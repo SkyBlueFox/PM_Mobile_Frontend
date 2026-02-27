@@ -51,7 +51,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: 'รีเฟรช',
             onPressed: () {
               context.read<DevicesBloc>().add(const DevicesRequested());
             },
@@ -188,7 +188,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
                               );
                     },
                     child: const Text(
-                      'Add Device',
+                      'เพิ่มอุปกรณ์',
                       style: TextStyle(
                         color: Color(0xFF3AA7FF),
                         fontWeight: FontWeight.w800,

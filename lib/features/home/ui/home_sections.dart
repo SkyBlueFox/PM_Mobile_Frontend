@@ -23,7 +23,7 @@ extension HomeSectionX on HomeSection {
       case HomeSection.color:
         return 'Color';
       case HomeSection.brightness:
-        return 'ความสว่าง';
+        return 'Brightness';
       case HomeSection.extra:
         return '';
     }

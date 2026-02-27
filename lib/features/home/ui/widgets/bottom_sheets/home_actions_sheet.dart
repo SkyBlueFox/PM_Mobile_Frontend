@@ -30,17 +30,17 @@ Future<HomeAction?> showHomeActionsSheet(BuildContext context) {
             children: [
               _ActionTile(
                 icon: Icons.add_circle_outline_rounded,
-                title: 'Pair device',
+                title: 'จับคู่อุปกรณ์',
                 onTap: () => Navigator.pop(context, HomeAction.addDeviceWidget),
               ),
               _ActionTile(
                 icon: Icons.reorder_rounded,
-                title: 'Reorder widget',
+                title: 'จัดเรียง widget',
                 onTap: () => Navigator.pop(context, HomeAction.reorderWidgets),
               ),
               _ActionTile(
                 icon: Icons.widgets_outlined,
-                title: 'Add/Delete widget',
+                title: 'เพิ่ม/ลบ widget',
                 onTap: () => Navigator.pop(context, HomeAction.manageWidgets),
               ),
             ],

@@ -89,7 +89,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
           actions: [
             IconButton(
-              tooltip: 'Refresh',
+              tooltip: 'รีเฟรช',
               onPressed: () => _bloc.add(const SensorDetailRefreshRequested()),
               icon: const Icon(Icons.refresh_rounded),
             ),

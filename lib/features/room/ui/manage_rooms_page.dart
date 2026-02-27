@@ -52,7 +52,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Add Room'),
+          title: const Text('เพิ่มห้องใหม่', style: TextStyle(fontWeight: FontWeight.w800)),
           content: TextField(
             controller: controller,
             decoration: const InputDecoration(
@@ -218,7 +218,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                       ),
                       onPressed: savingRoom ? null : _addRoomDialog,
                       child: Text(
-                        savingRoom ? 'กำลังสร้าง...' : 'Add Room',
+                        savingRoom ? 'กำลังสร้าง...' : 'เพิ่มห้องใหม่',
                         style: const TextStyle(
                           color: Color(0xFF3AA7FF),
                           fontWeight: FontWeight.w800,

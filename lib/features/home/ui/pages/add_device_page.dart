@@ -70,7 +70,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                 if (devices.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(24),
-                    child: Center(child: Text('No unconnected devices available')),
+                    child: Center(child: Text('ไม่มีอุปกรณ์ที่ยังไม่ได้เชื่อมต่อ')),
                   );
                 }
 
@@ -138,7 +138,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
               if (rooms.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Center(child: Text('No rooms available')),
+                  child: Center(child: Text('ไม่มีห้องใด ๆ กรุณาสร้างห้องก่อน')),
                 );
               }
 
