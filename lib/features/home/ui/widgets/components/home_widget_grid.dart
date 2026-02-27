@@ -1,4 +1,12 @@
 // lib/features/home/ui/widgets/components/home_widget_grid.dart
+//
+// ✅ FIX UI: ทำให้ widget card "สูงเท่ากันทั้งหมด"
+// - ต่างกันแค่ความกว้าง: half/full
+// - ไม่ไปแตะ business logic / bloc
+// - ใช้ SizedBox(height: kTileHeight) ครอบทุก card
+//
+// หมายเหตุ:
+// - ถ้าภายในการ์ดมี layout สูงเกิน จะถูกบังคับให้ย่อลง/ตัดบรรทัดใน WidgetCard เอง
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -120,6 +128,10 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
   Widget build(BuildContext context) {
     const gap = 14.0;
 
+    // ✅ ความสูงมาตรฐานของทุก widget card
+    // ปรับตัวเลขนี้ได้ตาม UI ที่ต้องการ
+    const double kTileHeight = 86.0;
+
     return LayoutBuilder(
       builder: (context, c) {
         final fullW = c.maxWidth;
@@ -142,8 +154,10 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
                   ? _copyWithValue(t, effectiveValue)
                   : t;
 
+              // ✅ บังคับความสูงเท่ากันทุก card (full/half ต่างกันแค่ width)
               final card = SizedBox(
                 width: width,
+                height: kTileHeight,
                 child: WidgetCard(
                   tile: effectiveTile,
                   showDragHint: widget.reorderEnabled,
@@ -159,7 +173,8 @@ class _HomeWidgetGridState extends State<HomeWidgetGrid> {
                   onOpenSensor: locked ? () {} : () => widget.onOpenSensor(t),
                   onOpenMode: locked ? () {} : () => widget.onOpenMode(t),
                   onOpenText: locked ? () {} : () => widget.onOpenText(t),
-                  onPressButton: locked ? () {} : () => widget.onPressButton(t.widgetId),
+                  onPressButton:
+                      locked ? () {} : () => widget.onPressButton(t.widgetId),
                 ),
               );
 

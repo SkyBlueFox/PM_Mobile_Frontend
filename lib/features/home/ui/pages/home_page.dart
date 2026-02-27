@@ -292,7 +292,7 @@ class _HomeViewState extends State<_HomeView> {
                                 p.rooms != c.rooms || p.selectedRoomId != c.selectedRoomId,
                             builder: (context, st) {
                               return Padding(
-                                padding: const EdgeInsetsGeometry.only(left: 16), 
+                                padding: const EdgeInsets.only(left: 16), 
                                 child: TopTab(
                                   rooms: st.rooms,
                                   selectedRoomId: st.selectedRoomId,

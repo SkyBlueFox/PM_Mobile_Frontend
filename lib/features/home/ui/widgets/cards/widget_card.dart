@@ -1,23 +1,28 @@
 // lib/features/home/ui/widgets/cards/widget_card.dart
+//
+// ✅ UI FIX (ไม่กระทบ logic/Bloc):
+// 1) ทำ layout ให้เหมือนภาพตัวอย่าง
+//    - ซ้าย: ชื่ออุปกรณ์ (title) ด้านบน + ชื่อ cap (subtitle) ด้านล่าง
+//    - ขวา: แสดงค่าของ sensor ให้ “ใหญ่และชัด” + หน่วยตัวเล็ก
+// 2) ทำให้ card “fit” ในความสูงคงที่ที่ถูกกำหนดจาก HomeWidgetGrid
+//    - ทุก kind ใช้ layout แบบ compact (Row-based)
+//    - ลดโอกาส overflow เมื่อบังคับ height เท่ากันหมด
+//
+// หมายเหตุ:
+// - full/half เป็นเรื่องความกว้าง (จัดโดย HomeWidgetGrid)
+// - ไฟล์นี้โฟกัสเฉพาะหน้าตา/การจัดวางภายในการ์ดเท่านั้น
 
 import 'package:flutter/material.dart';
 
 import '../../view_models/home_view_model.dart';
 
-/// Card ต่อ widget 1 ตัว
-/// - sensor: half + tap เข้า detail
-/// - toggle: half
-/// - adjust: full + แสดงตัวเลข + slider + (color bar ตาม tile.showColorBar)
-/// - mode: half + เลือกโหมด
-/// - text: full + ปุ่มส่งข้อความ
-/// - button: half + ปุ่มกดครั้งเดียว
 class WidgetCard extends StatelessWidget {
   final HomeWidgetTileVM tile;
   final bool showDragHint;
 
   // actions
   final VoidCallback onToggle;
-  final ValueChanged<int> onAdjust; // ส่ง int (จำนวนเต็ม)
+  final ValueChanged<int> onAdjust; // int (จำนวนเต็ม)
   final VoidCallback onOpenSensor;
 
   // new kinds
@@ -48,6 +53,7 @@ class WidgetCard extends StatelessWidget {
     final isText = tile.kind == HomeTileKind.text;
     final isButton = tile.kind == HomeTileKind.button;
 
+    // tap behavior: sensor/mode/text เปิดรายละเอียด
     final VoidCallback? tap =
         isSensor ? onOpenSensor : (isMode ? onOpenMode : (isText ? onOpenText : null));
 
@@ -55,7 +61,7 @@ class WidgetCard extends StatelessWidget {
       onTap: tap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -67,238 +73,238 @@ class WidgetCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // ===== Header =====
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    tile.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                  ),
-                ),
-                if (showDragHint)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 6),
-                    child: Icon(Icons.drag_indicator_rounded, color: Colors.black26),
-                  ),
-              ],
+            // ===== Left: title/subtitle (ตาม requirement) =====
+            Expanded(
+              child: _TitleBlock(
+                title: tile.title,
+                subtitle: tile.subtitle,
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(width: 10),
 
-            // ===== Body by type =====
-            if (isSensor) _sensorBody(),
-            if (isToggle) _toggleBody(),
-            if (isAdjust) _adjustBody(),
-            if (isMode) _modeBody(),
-            if (isText) _textBody(),
-            if (isButton) _buttonBody(),
-            if (!isSensor && !isToggle && !isAdjust && !isMode && !isText && !isButton) _unknownBody(),
+            // ===== Right: compact body (fit ในความสูงเท่ากัน) =====
+            if (isSensor) _sensorRight(),
+            if (isToggle) _toggleRight(),
+            if (isAdjust) _adjustRight(),
+            if (isMode) _modeRight(),
+            if (isText) _textRight(),
+            if (isButton) _buttonRight(),
+            if (!isSensor && !isToggle && !isAdjust && !isMode && !isText && !isButton)
+              _unknownRight(),
+
+            if (showDragHint)
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.drag_indicator_rounded, color: Colors.black26),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _sensorBody() {
-    return Row(
-      children: [
-        const Icon(Icons.sensors_rounded, size: 18, color: blue),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2F6FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            '${tile.displayValue}${tile.unit}',
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              color: blue,
-            ),
+  // ------------------------------
+  // Right side widgets (compact)
+  // ------------------------------
+
+  /// ✅ Sensor: แสดงตัวเลขใหญ่ชัด + หน่วยเล็ก (ตามภาพ)
+  Widget _sensorRight() {
+    final v = tile.displayValue.trim();
+    final u = tile.unit.trim();
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 78),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: RichText(
+          textAlign: TextAlign.right,
+          text: TextSpan(
+            style: const TextStyle(color: blue),
+            children: [
+              TextSpan(
+                text: v.isEmpty ? '-' : v,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  height: 1.0,
+                ),
+              ),
+              if (u.isNotEmpty)
+                TextSpan(
+                  text: ' $u',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    height: 1.0,
+                  ),
+                ),
+            ],
           ),
         ),
-        const Spacer(),
+      ),
+    );
+  }
+
+  /// Toggle: ใช้ Switch แบบ compact
+  Widget _toggleRight() {
+    return Switch(
+      value: tile.isOn,
+      onChanged: (_) => onToggle(),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
+  /// Adjust: compact slider + ค่า (เพื่อไม่ให้ล้นความสูง)
+  Widget _adjustRight() {
+    final min = tile.min.toDouble();
+    final max = tile.max.toDouble();
+
+    final raw = double.tryParse(tile.displayValue) ?? min;
+    final sliderValue = raw.clamp(min, max);
+
+    final valueText = tile.unit.isEmpty ? tile.displayValue : '${tile.displayValue}${tile.unit}';
+
+    // ความกว้างควบคุมให้พอดีทั้ง full/half
+    return SizedBox(
+      width: 150,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            valueText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w900, color: blue),
+          ),
+          const SizedBox(height: 4),
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+            ),
+            child: Slider(
+              value: sliderValue,
+              min: min,
+              max: max,
+              onChanged: (v) => onAdjust(v.round()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mode: แสดงค่า + chevron (tap เข้า sheet)
+  Widget _modeRight() {
+    final current = tile.displayValue.trim();
+    final label = current.isEmpty ? '-' : current.toUpperCase();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w900, color: blue),
+        ),
+        const SizedBox(width: 6),
         const Icon(Icons.chevron_right_rounded, color: Colors.black26),
       ],
     );
   }
 
-  Widget _toggleBody() {
-    return Row(
-      children: [
-        const Text('Power', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
-        const Spacer(),
-        Switch(
-          value: tile.isOn,
-          onChanged: (_) => onToggle(),
-        ),
-      ],
-    );
-  }
-
-  Widget _adjustBody() {
-    final isColor = tile.showColorBar;
-
-    final min = tile.min.toDouble();
-    final max = tile.max.toDouble();
-
-    final valueText = tile.unit.isEmpty ? '${tile.displayValue}' : '${tile.displayValue}${tile.unit}';
-
-    final raw = double.tryParse(tile.displayValue) ?? min;
-    final sliderValue = raw.clamp(min, max);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('Adjust', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
-            const Spacer(),
-            Text(
-              valueText,
-              style: const TextStyle(fontWeight: FontWeight.w900, color: blue),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (isColor) ...[
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF00A3FF),
-                  Color(0xFF00E5FF),
-                  Color(0xFFFFD600),
-                  Color(0xFFFF6D00),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        Slider(
-          value: sliderValue,
-          min: min,
-          max: max,
-          onChanged: (v) => onAdjust(v.round()),
-        ),
-      ],
-    );
-  }
-
-  Widget _modeBody() {
-    final current = (tile.displayValue).trim();
-    final label = current.isEmpty ? 'Select mode' : current.toUpperCase();
-
-    return Row(
-      children: [
-        const Icon(Icons.ac_unit_rounded, size: 18, color: blue),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w900, color: blue),
-          ),
-        ),
-        const SizedBox(width: 8),
-        OutlinedButton(
-          onPressed: onOpenMode,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFBFE6FF)),
-            foregroundColor: blue,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text('Change', style: TextStyle(fontWeight: FontWeight.w800)),
-        ),
-      ],
-    );
-  }
-
-  Widget _textBody() {
+  /// Text: preview สั้น ๆ (tap เข้า dialog/sheet)
+  Widget _textRight() {
     final preview = tile.displayValue.trim();
-    final shown = preview.isEmpty ? 'No text' : preview;
+    final shown = preview.isEmpty ? '-' : preview;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.edit_note_rounded, size: 18, color: blue),
-            const SizedBox(width: 8),
-            const Text('Text', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
-            const Spacer(),
-            OutlinedButton(
-              onPressed: onOpenText,
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFFBFE6FF)),
-                foregroundColor: blue,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Send', style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ],
+    return SizedBox(
+      width: 120,
+      child: Text(
+        shown,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.right,
+        style: const TextStyle(
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF0B4A7A),
         ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2F6FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            shown,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0B4A7A)),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buttonBody() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Button', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black54)),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: onPressButton,
-            icon: const Icon(Icons.notifications_active_rounded),
-            label: Text(
-              tile.buttonLabel.isEmpty ? 'Press' : tile.buttonLabel,
-              style: const TextStyle(fontWeight: FontWeight.w900),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: blue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              elevation: 0,
-            ),
-          ),
-        ),
-      ],
+  /// Button: ปุ่ม compact
+  Widget _buttonRight() {
+    return ElevatedButton(
+      onPressed: onPressButton,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: blue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        tile.buttonLabel.isEmpty ? 'Press' : tile.buttonLabel,
+        style: const TextStyle(fontWeight: FontWeight.w900),
+      ),
     );
   }
 
-  Widget _unknownBody() {
+  Widget _unknownRight() {
     return const Text(
-      'Unsupported widget',
-      style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
+      '-',
+      style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w700),
+    );
+  }
+}
+
+/// ซ้าย: ชื่ออุปกรณ์ด้านบน + cap ด้านล่าง (ตาม requirement)
+class _TitleBlock extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _TitleBlock({
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = title.trim().isEmpty ? '-' : title.trim();
+    final s = subtitle.trim().isEmpty ? 'cap' : subtitle.trim();
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            height: 1.05,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          s,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Colors.black45,
+            height: 1.05,
+          ),
+        ),
+      ],
     );
   }
 }

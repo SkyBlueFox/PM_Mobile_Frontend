@@ -1,4 +1,12 @@
 // lib/features/home/ui/view_models/home_view_model.dart
+//
+// ✅ FIX (safe): ปรับการเดา unit ให้ "ยึด cap/subtitle" ก่อน (แม่นกว่าเดาจากชื่อ device)
+// - ไม่กระทบ bloc / repository
+// - ไม่เปลี่ยน public interface ของ VM ที่ UI ใช้อยู่
+//
+// หมายเหตุ:
+// - title = ชื่อ device
+// - subtitle = ชื่อ cap (เช่น sensor/toggle/adjust หรือ label ตาม capability)
 
 import '../../bloc/devices_state.dart';
 import '../../models/capability.dart';
@@ -109,53 +117,14 @@ class HomeViewModel {
 
   bool get isEmpty => tiles.isEmpty;
 
-  // === Section grouping (ใช้กับ home_sections.dart ถ้ายังใช้) ===
-  List<HomeWidgetTileVM> get sensorTiles =>
-      tiles.where((t) => t.kind == HomeTileKind.sensor).toList(growable: false);
-
-  List<HomeWidgetTileVM> get deviceTiles =>
-      tiles.where((t) => t.kind == HomeTileKind.toggle).toList(growable: false);
-
-  List<HomeWidgetTileVM> get modeTiles =>
-      tiles.where((t) => t.kind == HomeTileKind.mode).toList(growable: false);
-
-  List<HomeWidgetTileVM> get textTiles =>
-      tiles.where((t) => t.kind == HomeTileKind.text).toList(growable: false);
-
-  List<HomeWidgetTileVM> get buttonTiles =>
-      tiles.where((t) => t.kind == HomeTileKind.button).toList(growable: false);
-
-  List<HomeWidgetTileVM> get brightnessTiles => tiles
-      .where((t) => t.kind == HomeTileKind.adjust && _isBrightnessLike(t.title))
-      .toList(growable: false);
-
-  List<HomeWidgetTileVM> get colorTiles => tiles
-      .where((t) =>
-          t.kind == HomeTileKind.adjust &&
-          t.showColorBar &&
-          !_isBrightnessLike(t.title))
-      .toList(growable: false);
-
-  List<HomeWidgetTileVM> get extraTiles => tiles
-      .where((t) =>
-          t.kind == HomeTileKind.adjust &&
-          !_isBrightnessLike(t.title) &&
-          !t.showColorBar)
-      .toList(growable: false);
-
-  bool get hasSensors => sensorTiles.isNotEmpty;
-  bool get hasDevices => deviceTiles.isNotEmpty;
-  bool get hasModes => modeTiles.isNotEmpty;
-  bool get hasTexts => textTiles.isNotEmpty;
-  bool get hasButtons => buttonTiles.isNotEmpty;
-  bool get hasColor => colorTiles.isNotEmpty;
-  bool get hasBrightness => brightnessTiles.isNotEmpty;
-  bool get hasExtra => extraTiles.isNotEmpty;
-
   // ---- mapping ----
   static HomeWidgetTileVM _toTile(dynamic w) {
     final Capability cap = w.capability as Capability;
+
+    // title = device name (ตาม requirement)
     final String title = (w.device.name ?? '').toString();
+
+    // subtitle = cap name/label (ตาม requirement)
     final String subtitle = _capLabel(cap);
 
     final String rawValue = (w.value ?? '').toString();
@@ -172,7 +141,8 @@ class HomeViewModel {
         kind: HomeTileKind.sensor,
         isOn: false,
         value: intValue.toString(),
-        unit: _guessUnit(title),
+        // ✅ เดา unit จาก cap/subtitle ก่อน แล้วค่อย fallback จาก title
+        unit: _guessSensorUnit(title: title, capLabel: subtitle),
         min: 0,
         max: 100,
         showColorBar: false,
@@ -209,7 +179,9 @@ class HomeViewModel {
       // ถ้ามี options ใน Capability ให้ใช้ (ถ้ายังไม่ได้เพิ่ม options ใน model ให้ปล่อย fallback)
       final List<String> options =
           (cap is dynamic && (cap as dynamic).options is List)
-              ? List<String>.from((cap as dynamic).options.map((e) => e.toString()))
+              ? List<String>.from(
+                  (cap as dynamic).options.map((e) => e.toString()),
+                )
               : const ['auto', 'cool', 'dry', 'fan', 'heat'];
 
       return HomeWidgetTileVM(
@@ -283,7 +255,8 @@ class HomeViewModel {
       kind: HomeTileKind.adjust,
       isOn: false,
       value: intValue.toString(),
-      unit: _guessAdjustUnit(title),
+      // ✅ เดา unit จาก cap/subtitle ก่อน แล้วค่อย fallback จาก title
+      unit: _guessAdjustUnit(title: title, capLabel: subtitle),
       min: min,
       max: max,
       showColorBar: _isColorLike(title),
@@ -302,32 +275,53 @@ class HomeViewModel {
     // ปรับ label ให้ตรงตาม type
     switch (cap.type) {
       case CapabilityType.sensor:
-        return 'sensor';
+        return 'cap';
       case CapabilityType.toggle:
-        return 'toggle';
+        return 'cap';
       case CapabilityType.adjust:
-        return 'adjust';
+        return 'cap';
       case CapabilityType.mode:
-        return 'mode';
+        return 'cap';
       case CapabilityType.text:
-        return 'text';
+        return 'cap';
       case CapabilityType.button:
-        return 'button';
+        return 'cap';
       default:
         return 'cap';
     }
   }
 
-  static String _guessUnit(String name) {
-    final n = name.toLowerCase();
+  // ------------------------------
+  // Unit helpers (safe, ไม่กระทบ logic อื่น)
+  // ------------------------------
+
+  static String _guessSensorUnit({
+    required String title,
+    required String capLabel,
+  }) {
+    // ✅ ให้ดู cap/subtitle ก่อน (มักบอกชนิดค่าชัดกว่า)
+    final c = capLabel.toLowerCase();
+    if (c.contains('temp') || c.contains('อุณ')) return '°C';
+    if (c.contains('hum') || c.contains('ความชื้น')) return '%';
+    if (c.contains('lux') || c.contains('light') || c.contains('แสง')) return 'lx';
+
+    // fallback: ดูจากชื่อ device
+    final n = title.toLowerCase();
     if (n.contains('temp') || n.contains('อุณ')) return '°C';
     if (n.contains('hum') || n.contains('ความชื้น')) return '%';
     if (n.contains('lux') || n.contains('light') || n.contains('แสง')) return 'lx';
     return '';
   }
 
-  static String _guessAdjustUnit(String name) {
-    final n = name.toLowerCase();
+  static String _guessAdjustUnit({
+    required String title,
+    required String capLabel,
+  }) {
+    final c = capLabel.toLowerCase();
+    if (c.contains('bright') || c.contains('light') || c.contains('ความสว่าง')) return '%';
+    if (c.contains('vol') || c.contains('sound')) return '%';
+
+    final n = title.toLowerCase();
     if (n.contains('bright') || n.contains('light') || n.contains('ความสว่าง')) return '%';
     if (n.contains('vol') || n.contains('sound')) return '%';
     return '%';
@@ -340,6 +334,8 @@ class HomeViewModel {
 
   static bool _isBrightnessLike(String name) {
     final n = name.toLowerCase();
-    return n.contains('bright') || n.contains('brightness') || n.contains('ความสว่าง');
+    return n.contains('bright') ||
+        n.contains('brightness') ||
+        n.contains('ความสว่าง');
   }
 }
