@@ -1,16 +1,22 @@
 // lib/features/home/ui/widgets/charts/sensor_line_chart.dart
 //
-// กราฟเส้นแบบ “ไม่พึ่ง package ภายนอก” (เสถียรสุด)
-// จุดสำคัญ:
-// - รับ List<SensorHistoryPoint> แล้ววาดด้วย CustomPainter
-// - ทำ normalization แกน X/Y
-// - มี tooltip แบบง่าย (แตะเพื่อเลือกจุด) -> optional
+// ✅ กราฟเส้นแบบไม่พึ่ง package ภายนอก + ปรับตาม requirement
+// - รองรับจำกัดจำนวนจุด (maxPoints) เพื่อให้กราฟสวยขึ้นเมื่อช่วงยาว
+// - แสดงเวลาเป็นไทย/24 ชม. (HH:mm หรือ HH:mm:ss) แทน AM/PM
+// - tooltip: "เวลา • ค่า" (มี unit ได้)
+// - มี empty state เป็นไทยได้
 //
-// ถ้าคุณอยากใช้ fl_chart ภายหลัง ให้เปลี่ยนเฉพาะไฟล์นี้ได้โดยไม่กระทบ page/bloc
+// หมายเหตุ:
+// - widget นี้เป็น UI ล้วน (ไม่ผูก repo/bloc)
 
 import 'package:flutter/material.dart';
 
 import '../../../models/sensor_history.dart';
+
+enum TimeLabelMode {
+  hm24, // HH:mm
+  hms24, // HH:mm:ss
+}
 
 class SensorLineChart extends StatefulWidget {
   final List<SensorHistoryPoint> points;
@@ -18,14 +24,30 @@ class SensorLineChart extends StatefulWidget {
   /// ค่าที่แสดงด้านบน เช่น "24.5°C"
   final String headerValueText;
 
-  /// label ใต้ค่า เช่น "ค่า {CapName} ปัจจุบัน"
+  /// label ใต้ค่า เช่น "ค่าปัจจุบัน"
   final String headerSubtitle;
+
+  /// จำกัดจำนวนจุด (ทำให้กราฟไม่แน่นเมื่อช่วงยาว)
+  final int maxPoints;
+
+  /// รูปแบบเวลาใต้กราฟ/tooltip
+  final TimeLabelMode timeLabelMode;
+
+  /// unit สำหรับ tooltip (ถ้าอยากแสดงค่า+หน่วย)
+  final String tooltipUnit;
+
+  /// ข้อความตอนยังไม่มีข้อมูล
+  final String emptyText;
 
   const SensorLineChart({
     super.key,
     required this.points,
     required this.headerValueText,
     required this.headerSubtitle,
+    this.maxPoints = 160,
+    this.timeLabelMode = TimeLabelMode.hm24,
+    this.tooltipUnit = '',
+    this.emptyText = 'ยังไม่มีข้อมูล',
   });
 
   @override
@@ -37,7 +59,8 @@ class _SensorLineChartState extends State<SensorLineChart> {
 
   @override
   Widget build(BuildContext context) {
-    final pts = widget.points;
+    // ✅ downsample ให้กราฟสวย + ไม่หนัก
+    final pts = _downsampleSorted(widget.points, widget.maxPoints);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -61,34 +84,38 @@ class _SensorLineChartState extends State<SensorLineChart> {
           ),
           const SizedBox(height: 6),
           Text(
-            widget.headerValueText,
+            widget.headerValueText.trim().isEmpty ? '-' : widget.headerValueText,
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
           ),
           const SizedBox(height: 12),
-
           SizedBox(
             height: 170,
             width: double.infinity,
-            child: GestureDetector(
-              onTapDown: (d) {
-                if (pts.isEmpty) return;
-                final box = context.findRenderObject() as RenderBox?;
-                if (box == null) return;
+            child: pts.isEmpty
+                ? Center(
+                    child: Text(
+                      widget.emptyText,
+                      style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w700),
+                    ),
+                  )
+                : GestureDetector(
+                    onTapDown: (d) {
+                      if (pts.isEmpty) return;
+                      final box = context.findRenderObject() as RenderBox?;
+                      if (box == null) return;
 
-                // หา index ที่ใกล้ที่สุดตามแกน X
-                final local = box.globalToLocal(d.globalPosition);
-                final idx = _nearestIndexByX(local.dx, pts, box.size.width);
-                setState(() => _selectedIndex = idx);
-              },
-              child: CustomPaint(
-                painter: _LineChartPainter(
-                  points: pts,
-                  selectedIndex: _selectedIndex,
-                ),
-              ),
-            ),
+                      final local = box.globalToLocal(d.globalPosition);
+                      final idx = _nearestIndexByX(local.dx, pts, box.size.width);
+                      setState(() => _selectedIndex = idx);
+                    },
+                    child: CustomPaint(
+                      painter: _LineChartPainter(
+                        points: pts,
+                        selectedIndex: _selectedIndex,
+                      ),
+                    ),
+                  ),
           ),
-
           if (pts.isNotEmpty) ...[
             const SizedBox(height: 10),
             _axisHintRow(pts, _selectedIndex),
@@ -96,6 +123,28 @@ class _SensorLineChartState extends State<SensorLineChart> {
         ],
       ),
     );
+  }
+
+  List<SensorHistoryPoint> _downsampleSorted(List<SensorHistoryPoint> input, int maxPoints) {
+    if (input.isEmpty) return const [];
+
+    // ensure sorted ascending by time
+    final pts = List<SensorHistoryPoint>.from(input)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    if (maxPoints <= 1 || pts.length <= maxPoints) return pts;
+
+    // เลือกทุก step เพื่อให้เหลือ ~maxPoints
+    final step = (pts.length / maxPoints).ceil();
+    final out = <SensorHistoryPoint>[];
+    for (int i = 0; i < pts.length; i += step) {
+      out.add(pts[i]);
+    }
+    // ให้มีจุดสุดท้ายเสมอ เพื่อสเกลแกนถูก
+    if (out.isNotEmpty && out.last.timestamp != pts.last.timestamp) {
+      out.add(pts.last);
+    }
+    return out;
   }
 
   int _nearestIndexByX(double x, List<SensorHistoryPoint> pts, double width) {
@@ -128,7 +177,10 @@ class _SensorLineChartState extends State<SensorLineChart> {
     String? mid;
     if (selected != null && selected >= 0 && selected < pts.length) {
       final p = pts[selected];
-      mid = '${_fmtTime(p.timestamp)} • ${p.value}';
+      final v = p.value.toString();
+      final u = widget.tooltipUnit.trim();
+      final vu = u.isEmpty ? v : '$v$u';
+      mid = '${_fmtTime(p.timestamp)} • $vu';
     }
 
     return Row(
@@ -153,11 +205,20 @@ class _SensorLineChartState extends State<SensorLineChart> {
     );
   }
 
+  String _two(int n) => n < 10 ? '0$n' : '$n';
+
   String _fmtTime(DateTime dt) {
-    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final m = dt.minute.toString().padLeft(2, '0');
-    final ap = dt.hour >= 12 ? 'PM' : 'AM';
-    return '$h:$m $ap';
+    // ✅ เน้นไทย: แสดงแบบ 24 ชั่วโมง
+    final hh = _two(dt.hour);
+    final mm = _two(dt.minute);
+    final ss = _two(dt.second);
+
+    switch (widget.timeLabelMode) {
+      case TimeLabelMode.hm24:
+        return '$hh:$mm';
+      case TimeLabelMode.hms24:
+        return '$hh:$mm:$ss';
+    }
   }
 }
 
@@ -180,7 +241,7 @@ class _LineChartPainter extends CustomPainter {
 
     if (points.isEmpty) return;
     if (points.length == 1) {
-      _drawSinglePoint(canvas, size, points.first);
+      _drawSinglePoint(canvas, size);
       return;
     }
 
@@ -212,6 +273,17 @@ class _LineChartPainter extends CustomPainter {
       final x = pad + nx * w;
       final y = pad + (1 - ny) * h;
       return Offset(x, y);
+    }
+
+    // grid (เบา ๆ)
+    final paintGrid = Paint()
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke
+      ..color = const Color(0x11000000);
+
+    for (int i = 1; i <= 3; i++) {
+      final y = pad + (h * (i / 4.0));
+      canvas.drawLine(Offset(pad, y), Offset(pad + w, y), paintGrid);
     }
 
     // เส้นกราฟ
@@ -256,7 +328,7 @@ class _LineChartPainter extends CustomPainter {
     }
   }
 
-  void _drawSinglePoint(Canvas canvas, Size size, SensorHistoryPoint p) {
+  void _drawSinglePoint(Canvas canvas, Size size) {
     final dotOuter = Paint()..color = const Color(0xFF3AA7FF);
     final dotInner = Paint()..color = Colors.white;
 

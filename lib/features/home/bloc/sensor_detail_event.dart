@@ -1,7 +1,8 @@
 // lib/features/home/bloc/sensor_detail_event.dart
 //
-// Event สำหรับหน้า Sensor Detail
-// แยกจาก DevicesBloc เพื่อไม่ให้ state ชนกัน
+// ✅ Event สำหรับหน้า Sensor Detail (คงเดิม ไม่กระทบส่วนอื่น)
+// - เลือกช่วงเวลาใช้ SensorRangeChanged(from,to) ได้อยู่แล้ว
+// - refresh manual + polling
 
 sealed class SensorDetailEvent {
   const SensorDetailEvent();

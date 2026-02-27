@@ -1,21 +1,45 @@
 // lib/features/home/ui/widgets/lists/sensor_log_table.dart
 //
-// ตาราง log ของ sensor
-// จุดสำคัญ:
-// - ใช้ DataTable (ไม่ต้องพึ่ง package)
-// - format เวลาให้อ่านง่าย
-// - รองรับ empty state
+// ✅ ตาราง log ของ sensor (ปรับตาม requirement)
+// - แสดง 2 คอลัมน์เท่านั้น: "เวลา" | "ค่า"
+// - ไม่แสดง title/detail/message
+// - เวลาให้สั้น (HH:mm:ss หรือ HH:mm)
+// - รองรับ empty state เป็นไทย
+//
+// หมายเหตุ:
+// - ไม่บังคับ scroll แนวนอน เพราะมีแค่ 2 คอลัมน์
 
 import 'package:flutter/material.dart';
 
 import '../../../models/sensor_log.dart';
 
+enum LogTimeMode {
+  hm24, // HH:mm
+  hms24, // HH:mm:ss
+}
+
 class SensorLogTable extends StatelessWidget {
   final List<SensorLogEntry> logs;
+
+  /// ถ้า log ไม่มี unit ให้ใช้ unitFallback แทน (จาก capability)
+  final String unitFallback;
+
+  /// หัวข้อการ์ด (เช่น "บันทึก (10)")
+  final String title;
+
+  /// ข้อความตอนไม่มี log
+  final String emptyText;
+
+  /// รูปแบบเวลาในตาราง
+  final LogTimeMode timeMode;
 
   const SensorLogTable({
     super.key,
     required this.logs,
+    this.unitFallback = '',
+    this.title = 'บันทึก',
+    this.emptyText = 'ยังไม่มีบันทึก',
+    this.timeMode = LogTimeMode.hms24,
   });
 
   @override
@@ -34,17 +58,20 @@ class SensorLogTable extends StatelessWidget {
             ),
           ],
         ),
-        child: const Center(
+        child: Center(
           child: Text(
-            'No logs',
-            style: TextStyle(color: Color(0xFF5E87A3), fontWeight: FontWeight.w800),
+            emptyText,
+            style: const TextStyle(color: Color(0xFF5E87A3), fontWeight: FontWeight.w800),
           ),
         ),
       );
     }
 
+    // จำกัดจำนวนแถวเพื่อความลื่น (เผื่อ logs ใหญ่)
+    final display = logs.length > 50 ? logs.take(50).toList(growable: false) : logs;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -56,47 +83,63 @@ class SensorLogTable extends StatelessWidget {
           ),
         ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingTextStyle: const TextStyle(
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF8AA9BF),
-          ),
-          dataTextStyle: const TextStyle(
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0E3A5A),
-          ),
-          columns: const [
-            DataColumn(label: Text('DATE')),
-            DataColumn(label: Text('VALUE')),
-          ],
-          rows: logs.map((e) {
-            final dateText = _fmtDateTime(e.timestamp);
-            final valueText = e.unit.trim().isEmpty ? e.value : '${e.value}${e.unit}';
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          DataTable(
+            headingTextStyle: const TextStyle(
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF8AA9BF),
+            ),
+            dataTextStyle: const TextStyle(
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0E3A5A),
+            ),
+            columns: const [
+              DataColumn(label: Text('เวลา')),
+              DataColumn(label: Text('ค่า')),
+            ],
+            rows: display.map((e) {
+              final timeText = _fmtTime(e.timestamp);
+              final valueText = _fmtValue(e);
 
-            return DataRow(
-              cells: [
-                DataCell(Text(dateText)),
-                DataCell(Text(valueText!)),
-              ],
-            );
-          }).toList(growable: false),
-        ),
+              return DataRow(
+                cells: [
+                  DataCell(Text(timeText)),
+                  DataCell(Text(valueText)),
+                ],
+              );
+            }).toList(growable: false),
+          ),
+        ],
       ),
     );
   }
 
-  /// format แบบอ่านง่ายให้คล้าย mock: "5:00 PM"
-  static String _fmtDateTime(DateTime dt) {
-    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final m = dt.minute.toString().padLeft(2, '0');
-    final ap = dt.hour >= 12 ? 'PM' : 'AM';
+  String _fmtValue(SensorLogEntry e) {
+    final rawV = (e.value ?? '').trim();
+    if (rawV.isEmpty) return '-';
 
-    final day = dt.day.toString().padLeft(2, '0');
-    final mon = dt.month.toString().padLeft(2, '0');
-    final yr = dt.year.toString();
+    final u1 = e.unit.trim();
+    final u2 = unitFallback.trim();
+    final u = u1.isNotEmpty ? u1 : u2;
+    return u.isEmpty ? rawV : '$rawV$u';
+  }
 
-    return '$day/$mon/$yr  $h:$m $ap';
+  String _two(int n) => n < 10 ? '0$n' : '$n';
+
+  String _fmtTime(DateTime dt) {
+    final hh = _two(dt.hour);
+    final mm = _two(dt.minute);
+    final ss = _two(dt.second);
+
+    switch (timeMode) {
+      case LogTimeMode.hm24:
+        return '$hh:$mm';
+      case LogTimeMode.hms24:
+        return '$hh:$mm:$ss';
+    }
   }
 }

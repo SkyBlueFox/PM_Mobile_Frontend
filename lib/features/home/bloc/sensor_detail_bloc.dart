@@ -1,14 +1,12 @@
 // lib/features/home/bloc/sensor_detail_bloc.dart
 //
-// ✅ FIX compile + ทำให้ heartbeat เสถียร
-// - แก้ firstWhere(orElse: () => null) ที่ทำให้ error
-// - เอา import device_repository ซ้ำออก
-// - เอา extension แปลก ๆ (on Object? { get id => null; }) ออก
-//
-// แนวทาง heartbeat ที่ปลอดภัย:
-// - fetchDevices() -> List<Device>
-// - หา device ด้วยการวนลูปให้ได้ Device? (nullable) แล้วค่อยใช้
+// ✅ เสถียร + ไม่กระทบส่วนอื่น (คง interface เดิม)
+// - load: history + logs + heartbeat
+// - refresh manual + polling
 // - online priority: d.online (ถ้ามี) > เทียบเวลา lastHeartBeat กับ threshold
+//
+// หมายเหตุ:
+// - ใช้ dynamic สำหรับ device model เพื่อไม่ไปผูก type ชัดเจนในไฟล์นี้ (กันกระทบส่วนอื่น)
 
 import 'dart:async';
 
@@ -172,14 +170,10 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     final did = state.deviceId.trim();
     if (did.isEmpty) return;
 
-    // deviceRepo.fetchDevices() ควร return List<Device>
     final devices = await deviceRepo.fetchDevices();
 
-    // ✅ FIX: หาแบบ nullable โดยไม่ใช้ firstWhere(orElse: null)
-    // ทำให้ไม่ error และอ่านง่าย/เสถียร
-    dynamic found; // ใช้ dynamic ชั่วคราวถ้า model Device ของคุณยังไม่ถูก type ชัดในไฟล์นี้
+    dynamic found;
     for (final d in devices) {
-      // d ต้องมี field id เป็น String
       if (d.id == did) {
         found = d;
         break;
@@ -189,9 +183,6 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
 
     final now = DateTime.now();
 
-    // ต้องมี field:
-    // - DateTime? lastHeartBeat
-    // - bool? online
     final DateTime? last = found.lastHeartBeat;
     final bool? onlineFlag = found.online;
 

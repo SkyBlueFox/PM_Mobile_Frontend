@@ -1,7 +1,8 @@
 // lib/features/home/bloc/sensor_detail_state.dart
 //
-// State สำหรับหน้า Sensor Detail
-// แยกชัดเจนระหว่าง loading ครั้งแรก กับ refreshing
+// ✅ State สำหรับหน้า Sensor Detail
+// - แยกชัดเจนระหว่าง loading ครั้งแรก กับ refreshing
+// - default range ปรับเป็น "1 ชั่วโมง" (ตาม requirement)
 
 import '../models/sensor_history.dart';
 import '../models/sensor_log.dart';
@@ -45,7 +46,8 @@ class SensorDetailState {
   factory SensorDetailState.initial() {
     final now = DateTime.now();
     return SensorDetailState(
-      from: now.subtract(const Duration(hours: 24)),
+      // ✅ จากเดิม 24h -> ปรับเป็น 1 ชั่วโมง
+      from: now.subtract(const Duration(hours: 1)),
       to: now,
     );
   }
