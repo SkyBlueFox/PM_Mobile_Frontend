@@ -88,8 +88,6 @@ class RoomRepository {
 
     final decoded = jsonDecode(res.body);
 
-    // supports:
-    // { "data": [ ... ] } OR [ ... ]
     final List list = decoded is Map<String, dynamic>
         ? (decoded['data'] as List? ?? const [])
         : (decoded as List);

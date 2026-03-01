@@ -106,7 +106,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
     try {
       final rooms = await roomRepo.fetchRooms();
-      final widgets = await widgetRepo.fetchWidgets();
+      final widgets = await roomRepo.fetchWidgetsByRoomId(rooms.first.id);
       final devices = await deviceRepo.fetchDevices();
 
       emit(state.copyWith(
@@ -134,11 +134,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     ));
 
     try {
-      final int? roomId = event.roomId;
+      final int roomId = event.roomId;
 
-      final widgets = roomId == null
-          ? await widgetRepo.fetchWidgets()
-          : await roomRepo.fetchWidgetsByRoomId(roomId);
+      final widgets = await roomRepo.fetchWidgetsByRoomId(roomId);
 
       final merged = _mergePending(widgets);
       emit(state.copyWith(isLoading: false, widgets: merged, error: null));
@@ -600,13 +598,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final roomId = event.roomId ?? state.selectedRoomId;
-
-      // ✅ ใช้ all widgets เป็นหลัก (กัน backend คืนเฉพาะ include)
-      final all = await widgetRepo.fetchWidgets();
-      final filtered = _filterByRoomIfPossible(all, roomId);
-
-      emit(state.copyWith(isLoading: false, widgets: filtered, error: null));
+      final all = await roomRepo.fetchWidgetsByRoomId(event.roomId);
+      
+      emit(state.copyWith(isLoading: false, widgets: all, error: null));
     } catch (e, st) {
       debugPrint('[DevicesBloc] selection load failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
@@ -665,7 +659,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
-      final roomId = event.roomId ?? state.selectedRoomId;
+      final roomId = event.roomId;
 
       // ✅ เอา widgetId ให้ครบ (include+exclude) ของห้องนี้
       final all = await widgetRepo.fetchWidgets();

@@ -14,7 +14,7 @@ enum RoomActionStatus { idle, saving, success, failure }
 class DevicesState {
   final bool isLoading;
   final List<Room> rooms;
-  final int? selectedRoomId;
+  final int selectedRoomId;
   final List<DeviceWidget> widgets;
   final String? error;
   final List<Device>? devices;
@@ -30,7 +30,7 @@ class DevicesState {
   const DevicesState({
     this.isLoading = false,
     this.rooms = const [],
-    this.selectedRoomId,
+    this.selectedRoomId = 1,
     this.widgets = const [],
     this.error,
     this.devices = const [],

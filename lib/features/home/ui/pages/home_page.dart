@@ -84,7 +84,7 @@ class _HomeViewState extends State<_HomeView> {
     super.dispose();
   }
 
-  Future<void> _openActionsSheet(DevicesState st) async {
+  Future<void> _openActionsSheet() async {
     final action = await showHomeActionsSheet(context);
     if (!mounted || action == null) return;
 
@@ -113,22 +113,31 @@ class _HomeViewState extends State<_HomeView> {
         break;
 
       case HomeAction.manageWidgets:
-        await _openManageWidgetsSheet(st);
+        await _openManageWidgetsSheet();
         break;
     }
   }
 
-  Future<void> _openManageWidgetsSheet(DevicesState st) async {
+  Future<void> _openManageWidgetsSheet() async {
     final bloc = context.read<DevicesBloc>();
-    final roomId = st.selectedRoomId;
+    final roomId = bloc.state.selectedRoomId;
+    if (roomId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณาเลือกห้องก่อนจัดการ widget')),
+      );
+      return;
+    }
 
+    // โหลด list สำหรับ picker (ใน Bloc คุณทำให้ดึง all แล้ว filter room ไว้แล้ว)
     bloc.add(WidgetSelectionLoaded(roomId: roomId));
-
     final loadedState = await bloc.stream.firstWhere((s) => !s.isLoading);
 
     if (!mounted) return;
 
     final vm = HomeViewModel.fromState(loadedState);
+
+    // ✅ จำ included เดิมไว้ เพื่อคำนวณ diff ตอนกดบันทึก
+    final beforeIncluded = vm.activeTiles.map((e) => e.widgetId).toSet();
 
     final result = await showWidgetPickerSheet(
       context: context,
@@ -139,16 +148,40 @@ class _HomeViewState extends State<_HomeView> {
       lockIncluded: false,
       headerTitle: 'บ้านเกม 1',
       headerSubtitle: '',
+
+      // ✅ ข้อ A: ให้ sheet เรียก callback นี้ตอนกดบันทึก
+      // sheet จะโชว์ loading + ถ้า error จะไม่ปิดเอง
+      onConfirm: (afterIncludedIds) async {
+        final afterIncluded = afterIncludedIds.toSet();
+
+        final toInclude = afterIncluded.difference(beforeIncluded);
+        final toExclude = beforeIncluded.difference(afterIncluded);
+
+        // ยิงเฉพาะตัวที่เปลี่ยน
+        for (final id in toInclude) {
+          await bloc.widgetRepo.changeWidgetStatus(
+            widgetId: id,
+            widgetStatus: 'include',
+          );
+        }
+        for (final id in toExclude) {
+          await bloc.widgetRepo.changeWidgetStatus(
+            widgetId: id,
+            widgetStatus: 'exclude',
+          );
+        }
+      },
+      confirmErrorText: 'บันทึกไม่สำเร็จ',
     );
 
+    // ถ้า cancel -> ไม่ต้องทำอะไร
     if (!mounted || result == null) return;
 
-    context.read<DevicesBloc>().add(
-          WidgetsVisibilitySaved(
-            roomId: roomId,
-            includedWidgetIds: result,
-          ),
-        );
+    final currentRoomId = bloc.state.selectedRoomId;
+    if (currentRoomId != null) {
+      bloc.add(DevicesRoomChanged(currentRoomId));
+      bloc.add(WidgetsPollingStarted(roomId: currentRoomId));
+    }
   }
 
   Future<void> _openModePicker(HomeWidgetTileVM tile) async {
@@ -243,7 +276,7 @@ class _HomeViewState extends State<_HomeView> {
                         ? () => context
                             .read<DevicesBloc>()
                             .add(const CommitReorderPressed())
-                        : () => _openActionsSheet(st),
+                        : () => _openActionsSheet(),
                     child: Icon(
                       enabled ? Icons.check_rounded : Icons.more_horiz_rounded,
                       color: Colors.white,
@@ -303,16 +336,11 @@ class _HomeViewState extends State<_HomeView> {
                                     onChanged: (roomId) {
                                       context
                                           .read<DevicesBloc>()
-                                          .add(DevicesRoomChanged(roomId));
-                                      if (roomId != null) {
-                                        context.read<DevicesBloc>().add(
-                                            WidgetsPollingStarted(
-                                                roomId: roomId));
-                                      } else {
-                                        context.read<DevicesBloc>().add(
-                                            const WidgetsPollingStopped());
-                                      }
-                                    },
+                                          .add(DevicesRoomChanged(roomId!));
+                                      context.read<DevicesBloc>().add(
+                                          WidgetsPollingStarted(
+                                              roomId: roomId));
+                                                                        },
                                   ),
                                 );
                               },
