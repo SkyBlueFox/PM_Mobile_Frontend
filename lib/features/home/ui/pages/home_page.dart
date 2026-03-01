@@ -121,22 +121,15 @@ class _HomeViewState extends State<_HomeView> {
   Future<void> _openManageWidgetsSheet() async {
     final bloc = context.read<DevicesBloc>();
     final roomId = bloc.state.selectedRoomId;
-    if (roomId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('กรุณาเลือกห้องก่อนจัดการ widget')),
-      );
-      return;
-    }
 
     // โหลด list สำหรับ picker (ใน Bloc คุณทำให้ดึง all แล้ว filter room ไว้แล้ว)
     bloc.add(WidgetSelectionLoaded(roomId: roomId));
     final loadedState = await bloc.stream.firstWhere((s) => !s.isLoading);
 
-    if (!mounted) return;
+    // ทำ state ปลอมที่เอา selectionWidgets ไปใส่ใน widgets
+    final pickerState = loadedState.copyWith(widgets: loadedState.selectionWidgets);
 
-    final vm = HomeViewModel.fromState(loadedState);
-
-    // ✅ จำ included เดิมไว้ เพื่อคำนวณ diff ตอนกดบันทึก
+    final vm = HomeViewModel.fromState(pickerState);
     final beforeIncluded = vm.activeTiles.map((e) => e.widgetId).toSet();
 
     final result = await showWidgetPickerSheet(
@@ -178,11 +171,9 @@ class _HomeViewState extends State<_HomeView> {
     if (!mounted || result == null) return;
 
     final currentRoomId = bloc.state.selectedRoomId;
-    if (currentRoomId != null) {
-      bloc.add(DevicesRoomChanged(currentRoomId));
-      bloc.add(WidgetsPollingStarted(roomId: currentRoomId));
+    bloc.add(DevicesRoomChanged(currentRoomId));
+    bloc.add(WidgetsPollingStarted(roomId: currentRoomId));
     }
-  }
 
   Future<void> _openModePicker(HomeWidgetTileVM tile) async {
     final options = tile.modeOptions.isEmpty
@@ -216,7 +207,7 @@ class _HomeViewState extends State<_HomeView> {
   void _startPollingIfHomeTab() {
     final bloc = context.read<DevicesBloc>();
     final roomId = bloc.state.selectedRoomId;
-    if (_bottomIndex == 0 && roomId != null) {
+    if (_bottomIndex == 0) {
       bloc.add(WidgetsPollingStarted(
         roomId: roomId,
         interval: const Duration(seconds: 5),

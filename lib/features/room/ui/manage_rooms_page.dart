@@ -32,19 +32,6 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
     context.read<RoomsBloc>().add(const RoomsStarted());
   }
 
-  String _roomName(dynamic r) {
-    final id = (r as dynamic).id as int;
-    final override = _nameOverrides[id];
-    if (override != null && override.trim().isNotEmpty) return override;
-
-    return (r as dynamic).name as String? ?? 'ห้อง';
-  }
-
-  int _deviceCountForRoom(DevicesState st, int roomId) {
-    final devices = st.devices ?? const [];
-    return devices.where((d) => d.roomId == roomId).length;
-  }
-
   Future<void> _addRoomDialog() async {
     final controller = TextEditingController();
 
@@ -127,7 +114,6 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                                     final r = rooms[i];
                                     final id = r.id;
 
-                                    final count = _deviceCountForRoom(devicesState, id);
                                     final currentName = _nameOverrides[id] ?? r.name;
 
                                     // ✅ provide BOTH blocs to next route
@@ -142,7 +128,6 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                                           child: RoomSettingsPage(
                                             roomId: id,
                                             roomName: currentName,
-                                            deviceCount: count,
                                           ),
                                         ),
                                       ),

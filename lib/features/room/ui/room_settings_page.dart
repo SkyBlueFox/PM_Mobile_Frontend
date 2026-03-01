@@ -15,13 +15,11 @@ import 'rename_room_page.dart';
 class RoomSettingsPage extends StatefulWidget {
   final int roomId;
   final String roomName;
-  final int deviceCount;
 
   const RoomSettingsPage({
     super.key,
     required this.roomId,
     required this.roomName,
-    required this.deviceCount,
   });
 
   @override
@@ -38,7 +36,6 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   List<Device> _devices = const [];
 
   // track if we already loaded devices once successfully
-  bool _devicesLoaded = false;
 
   @override
   void initState() {
@@ -81,14 +78,14 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
       setState(() {
         _devices = list;
         _devicesLoading = false;
-        _devicesLoaded = true; // success even if empty
+// success even if empty
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _devicesLoading = false;
         _devicesError = e.toString();
-        _devicesLoaded = false; // allow retry
+// allow retry
       });
     }
   }
@@ -179,9 +176,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                     // ✅ always show devices section (no click)
                     _RowTile(
                       title: 'อุปกรณ์',
-                      trailing: _devicesLoaded
-                          ? '${_devices.length}'
-                          : '${widget.deviceCount}',
+                      trailing: '${_devices.length}',
                       onTap: null, // disabled
                       trailingIcon: null, // hide arrow
                     ),

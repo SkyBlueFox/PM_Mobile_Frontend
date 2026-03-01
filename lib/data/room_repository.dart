@@ -69,18 +69,17 @@ class RoomRepository {
     return list
         .map(
           (e) => Device(
-            id: e['device_id'] as String,
-            name: e['device_name'] as String,
-            type: e['device_type'] as String,
-            roomId: roomId,                  //(e['room_id'] as num).toInt(),
-            lastHeartBeat: DateTime.parse(e['device_last_heartbeat'] as String),
+            id: e['id'] as String,
+            name: e['name'] as String,
+            type: e['type'] as String,
+            lastHeartBeat: DateTime.parse(e['lastHeartBearAt'] as String),
           ),
         )
         .toList();
   }
 
-  Future<List<DeviceWidget>> fetchWidgetsByRoomId(int roomId) async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/rooms/$roomId/widgets'));
+  Future<List<DeviceWidget>> fetchWidgetsByRoomId(int roomId, String status) async {
+    final res = await _client.get(Uri.parse('$baseUrl/api/rooms/$roomId/widgets?status=$status'));
 
     if (res.statusCode != 200) {
       throw Exception('Failed to load widgets for room $roomId');
@@ -94,7 +93,7 @@ class RoomRepository {
 
     return list
         .map((e) => DeviceWidget.fromJson(e as Map<String, dynamic>))
-        .toList();
+        .toList();  
   }
 
   Future<void> addDeviceToRoom({

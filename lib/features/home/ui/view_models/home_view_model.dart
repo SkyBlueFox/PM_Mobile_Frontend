@@ -178,7 +178,7 @@ class HomeViewModel {
     if (cap.type == CapabilityType.mode) {
       // ถ้ามี options ใน Capability ให้ใช้ (ถ้ายังไม่ได้เพิ่ม options ใน model ให้ปล่อย fallback)
       final List<String> options =
-          (cap is dynamic && (cap as dynamic).options is List)
+          ((cap as dynamic).options is List)
               ? List<String>.from(
                   (cap as dynamic).options.map((e) => e.toString()),
                 )
@@ -332,10 +332,4 @@ class HomeViewModel {
     return n.contains('color') || n.contains('temp') || n.contains('rgb');
   }
 
-  static bool _isBrightnessLike(String name) {
-    final n = name.toLowerCase();
-    return n.contains('bright') ||
-        n.contains('brightness') ||
-        n.contains('ความสว่าง');
-  }
 }

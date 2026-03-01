@@ -6,7 +6,6 @@ import '../home/bloc/devices_bloc.dart';
 import '../home/bloc/devices_event.dart';
 import '../home/bloc/devices_state.dart';
 
-// ✅ CHANGE THIS import to your actual device setup page path
 import '../home/ui/pages/add_device_page.dart';
 import 'device_setup_page.dart';
 
@@ -30,7 +29,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
   void initState() {
     super.initState();
     // Load devices
-    context.read<DevicesBloc>().add(const DevicesRequested());
+    context.read<DevicesBloc>().add(const DevicesRequested(connected: true));
   }
 
   @override
@@ -53,7 +52,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
           IconButton(
             tooltip: 'รีเฟรช',
             onPressed: () {
-              context.read<DevicesBloc>().add(const DevicesRequested());
+              context.read<DevicesBloc>().add(const DevicesRequested(connected: true));
             },
             icon: const Icon(Icons.refresh_rounded, color: Colors.black54),
           ),
@@ -67,10 +66,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
         builder: (context, st) {
           final all = st.devices ?? const <Device>[];
 
-          final devices = widget.roomId == null
-              ? all
-              : all.where((d) => d.roomId == widget.roomId).toList();
-
+          final devices = all;
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(

@@ -106,7 +106,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
     try {
       final rooms = await roomRepo.fetchRooms();
-      final widgets = await roomRepo.fetchWidgetsByRoomId(rooms.first.id);
+      final widgets = await roomRepo.fetchWidgetsByRoomId(rooms.first.id, 'include');
       final devices = await deviceRepo.fetchDevices();
 
       emit(state.copyWith(
@@ -136,7 +136,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     try {
       final int roomId = event.roomId;
 
-      final widgets = await roomRepo.fetchWidgetsByRoomId(roomId);
+      final widgets = await roomRepo.fetchWidgetsByRoomId(roomId, 'include');
 
       final merged = _mergePending(widgets);
       emit(state.copyWith(isLoading: false, widgets: merged, error: null));
@@ -391,13 +391,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
     if (!state.reorderEnabled) return;
 
     final roomId = state.selectedRoomId;
-    if (roomId == null) {
-      emit(state.copyWith(
-        reorderSaving: false,
-        error: 'Please select a room before saving order.',
-      ));
-      return;
-    }
 
     if (!state.reorderDirty) {
       emit(state.copyWith(
@@ -514,7 +507,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
       final serverWidgets = (_pollRoomId == null)
           ? await widgetRepo.fetchWidgets()
-          : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
+          : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!, 'include');
 
       final merged = serverWidgets.map((sw) {
         final pending = _pendingValueByWidgetId[sw.widgetId];
@@ -540,7 +533,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
       final serverWidgets = (_pollRoomId == null)
           ? await widgetRepo.fetchWidgets()
-          : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!);
+          : await roomRepo.fetchWidgetsByRoomId(_pollRoomId!, 'include');
 
       final serverById = {for (final w in serverWidgets) w.widgetId: w};
 
@@ -598,9 +591,18 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final all = await roomRepo.fetchWidgetsByRoomId(event.roomId);
-      
-      emit(state.copyWith(isLoading: false, widgets: all, error: null));
+      final included = await roomRepo.fetchWidgetsByRoomId(event.roomId, 'include');
+      final excluded = await roomRepo.fetchWidgetsByRoomId(event.roomId, 'exclude');
+
+      final byId = <int, DeviceWidget>{};
+      for (final w in excluded) { byId[w.widgetId] = w; }
+      for (final w in included) { byId[w.widgetId] = w; }
+
+      emit(state.copyWith(
+        isLoading: false,
+        selectionWidgets: byId.values.toList(growable: false),
+        error: null,
+      ));
     } catch (e, st) {
       debugPrint('[DevicesBloc] selection load failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
@@ -639,7 +641,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final roomId = event.roomId ?? state.selectedRoomId;
+      final roomId = event.roomId;
       final all = await widgetRepo.fetchWidgets();
       final filtered = _filterByRoomIfPossible(all, roomId);
       emit(state.copyWith(isLoading: false, widgets: filtered, error: null));
