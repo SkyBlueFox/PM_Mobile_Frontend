@@ -15,7 +15,7 @@ class DevicesStarted extends DevicesEvent {
 
 /// select a room (null = All)
 class DevicesRoomChanged extends DevicesEvent {
-  final int? roomId;
+  final int roomId;
   const DevicesRoomChanged(this.roomId);
 }
 
@@ -90,10 +90,10 @@ class DevicesRequested extends DevicesEvent {
 // Polling
 // ------------------------------
 class WidgetsPollingStarted extends DevicesEvent {
-  final int? roomId; // null = all
+  final int roomId;
   final Duration interval;
   const WidgetsPollingStarted({
-    this.roomId,
+    required this.roomId,
     this.interval = const Duration(seconds: 5),
   });
 }
@@ -108,8 +108,8 @@ class WidgetsPollingStopped extends DevicesEvent {
 
 /// โหลดรายการเพื่อทำ include/exclude (ใช้ก่อนเปิด picker)
 class WidgetSelectionLoaded extends DevicesEvent {
-  final int? roomId;
-  const WidgetSelectionLoaded({this.roomId});
+  final int roomId;
+  const WidgetSelectionLoaded({required this.roomId});
 }
 
 /// toggle include/exclude (แสดง/ไม่แสดงบนหน้า Home) - ยิงทีละตัว
@@ -124,21 +124,21 @@ class WidgetIncludeToggled extends DevicesEvent {
 
 /// กดบันทึก include/exclude (เดิม: ใช้ refresh หลังยิงทีละตัว)
 class WidgetSelectionSaved extends DevicesEvent {
-  final int? roomId;
-  const WidgetSelectionSaved({this.roomId});
+  final int roomId;
+  const WidgetSelectionSaved({required this.roomId});
 }
 
 /// ------------------------------
 /// ✅ NEW: Save include/exclude จาก widget picker (bulk)
 /// ------------------------------
 class WidgetsVisibilitySaved extends DevicesEvent {
-  final int? roomId;
+  final int roomId;
 
   /// รายการ widgetId ที่ผู้ใช้เลือกให้ "Include"
   final List<int> includedWidgetIds;
 
   const WidgetsVisibilitySaved({
-    this.roomId,
+    required this.roomId,
     required this.includedWidgetIds,
   });
 }

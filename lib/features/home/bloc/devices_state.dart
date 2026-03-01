@@ -14,8 +14,9 @@ enum RoomActionStatus { idle, saving, success, failure }
 class DevicesState {
   final bool isLoading;
   final List<Room> rooms;
-  final int? selectedRoomId;
+  final int selectedRoomId;
   final List<DeviceWidget> widgets;
+  final List<DeviceWidget> selectionWidgets;
   final String? error;
   final List<Device>? devices;
 
@@ -30,8 +31,9 @@ class DevicesState {
   const DevicesState({
     this.isLoading = false,
     this.rooms = const [],
-    this.selectedRoomId,
+    this.selectedRoomId = 1,
     this.widgets = const [],
+    this.selectionWidgets = const [],
     this.error,
     this.devices = const [],
     this.reorderEnabled = false,
@@ -47,6 +49,7 @@ class DevicesState {
     List<Room>? rooms,
     int? selectedRoomId,
     List<DeviceWidget>? widgets,
+    List<DeviceWidget>? selectionWidgets,
     String? error,
     List<Device>? devices,
     bool? reorderEnabled,
@@ -62,6 +65,7 @@ class DevicesState {
       rooms: rooms ?? this.rooms,
       selectedRoomId: selectedRoomId ?? this.selectedRoomId,
       widgets: widgets ?? this.widgets,
+      selectionWidgets: selectionWidgets ?? this.selectionWidgets,
       error: error,
       devices: devices ?? this.devices,
       reorderEnabled: reorderEnabled ?? this.reorderEnabled,
@@ -102,7 +106,6 @@ class DevicesState {
 
   Room? get selectedRoom {
     final rid = selectedRoomId;
-    if (rid == null) return null;
     for (final r in rooms) {
       if (r.id == rid) return r;
     }
@@ -119,5 +122,26 @@ class DevicesState {
       if (a[i] != b[i]) return true;
     }
     return false;
+  }
+
+   /// สำหรับหน้า widget picker (include/exclude ของ selectionWidgets)
+  List<DeviceWidget> get selectionVisibleWidgets {
+    final base = selectionWidgets.where(_isInclude).toList();
+    base.sort((a, b) {
+      final byOrder = a.order.compareTo(b.order);
+      if (byOrder != 0) return byOrder;
+      return a.widgetId.compareTo(b.widgetId);
+    });
+    return base;
+  }
+
+  List<DeviceWidget> get selectionDrawerWidgets {
+    final base = selectionWidgets.where((w) => !_isInclude(w)).toList();
+    base.sort((a, b) {
+      final byOrder = a.order.compareTo(b.order);
+      if (byOrder != 0) return byOrder;
+      return a.widgetId.compareTo(b.widgetId);
+    });
+    return base;
   }
 }

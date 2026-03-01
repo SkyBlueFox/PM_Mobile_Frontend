@@ -10,7 +10,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:pm_mobile_frontend/features/auth/data/auth_api.dart';
 
 import '../models/device_widget.dart';
 import '../models/sensor_history.dart';
@@ -72,13 +74,13 @@ class WidgetRepository {
     required String value,
   }) async {
     final uri = _u('/api/widgets/$widgetId/command');
-
+    final user = FirebaseAuth.instance.currentUser;
     final res = await _client
         .post(
           uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'actor': "ji.kongsakul@gmail.com", // TODO: replace with user.email
+            'actor': user!.email,
             'value': value,
           }),
         )
@@ -93,7 +95,7 @@ class WidgetRepository {
   /// PATCH /api/widgets/{widgetId}/status
   Future<void> changeWidgetStatus({
     required int widgetId,
-    required String widgetStatus, // 'include' | 'exclude'
+    required String widgetStatus,
   }) async {
     final uri = _u('/api/widgets/$widgetId/status');
 

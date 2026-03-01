@@ -9,14 +9,12 @@ import '../../data/auth_repository.dart';
 import '../../bloc/auth_bloc.dart';
 
 import '../widgets/auth_background.dart';
-import '../widgets/pill_text_field.dart';
 
 
 class SignInPage extends StatelessWidget {
   const SignInPage({super.key});
 
   static const Color _blue = Color(0xFF3AA7FF);
-  static const Color _red = Color(0xFFD32F2F);
 
   @override
   Widget build(BuildContext context) {

@@ -61,12 +61,16 @@ class DeviceWidget {
   factory DeviceWidget.fromJson(Map<String, dynamic> json) {
     final rawValue = json['value'];
 
+    final widgetIdRaw = json['widget_id'] ?? json['widgetId'];
+    final orderRaw = json['widget_order'] ?? json['widgetOrder'];
+    final statusRaw = json['widget_status'] ?? json['widgetStatus'];
+
     return DeviceWidget(
-      widgetId: (json['widget_id'] as num).toInt(),
+      widgetId: (widgetIdRaw as num).toInt(),
       device: Device.fromJson((json['device'] as Map).cast<String, dynamic>()),
       capability: Capability.fromJson((json['capability'] as Map).cast<String, dynamic>()),
-      status: (json['widget_status'] ?? 'exclude').toString(),
-      order: (json['widget_order'] as num?)?.toInt() ?? 0,
+      status: (statusRaw ?? 'exclude').toString(),
+      order: (orderRaw as num?)?.toInt() ?? 0,
       value: rawValue == null ? '' : rawValue.toString(),
     );
   }
