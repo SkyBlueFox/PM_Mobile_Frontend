@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pm_mobile_frontend/features/home/bloc/devices_bloc.dart';
 
-import 'manage_rooms_page.dart';
+// import 'manage_rooms_page.dart';
+import 'manage_home_page.dart';
 
 class ManageHomesPage extends StatelessWidget {
   const ManageHomesPage({super.key});
@@ -32,7 +33,7 @@ class ManageHomesPage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => BlocProvider.value(
                         value: context.read<DevicesBloc>(),
-                        child: const ManageRoomsPage(),
+                        child: const ManageHomePage(),
                       ),
                     ),
                   );
