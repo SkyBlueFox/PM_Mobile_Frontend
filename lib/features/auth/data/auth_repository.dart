@@ -33,18 +33,18 @@ class AuthRepository {
     if (user == null) {
       throw Exception('Firebase user null');
     }
-    
+
     final firebaseIdToken = await user.getIdToken();
 
     if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
       throw Exception('Failed to get Firebase ID token');
     }
 
-    final backendToken = await api.loginWithFirebase(firebaseIdToken);
+    await api.loginWithFirebase(firebaseIdToken);
 
-    await storage.saveToken(backendToken);
+    await storage.saveToken(firebaseIdToken);
 
-    return backendToken;
+    return firebaseIdToken;
   }
 
   Future<String?> getSavedToken() => storage.readToken();

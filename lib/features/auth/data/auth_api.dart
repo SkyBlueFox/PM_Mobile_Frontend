@@ -6,21 +6,19 @@ class AuthApi {
 
   AuthApi({required this.baseUrl});
 
-  Future<String> loginWithFirebase(String firebaseIdToken) async {
+  Future<void> loginWithFirebase(String firebaseIdToken) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/firebase'),
+      Uri.parse('$baseUrl/api/auth/login'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $firebaseIdToken',
       },
+      body: jsonEncode({
+        'token': firebaseIdToken,
+      }),
     );
 
     if (response.statusCode != 200) {
       throw Exception('Backend auth failed (${response.statusCode})');
     }
-
-    final data = jsonDecode(response.body);
-
-    return data['token'];
   }
 }

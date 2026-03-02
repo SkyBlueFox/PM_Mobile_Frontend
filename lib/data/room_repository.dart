@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../features/home/models/device_widget.dart';
 import '../features/home/models/room.dart';
@@ -14,27 +15,46 @@ class RoomRepository {
     http.Client? client,
   }) : _client = client ?? http.Client();
 
-  /// GET /api/rooms
+  /// 🔐 Attach Firebase JWT to every request
+  Future<Map<String, String>> _authHeaders() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    final token = await user.getIdToken(); // auto refresh if needed
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  /// ✅ GET /api/rooms
   Future<List<Room>> fetchRooms() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/rooms'));
+    final res = await _client.get(
+      Uri.parse('$baseUrl/api/rooms'),
+      headers: await _authHeaders(),
+    );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to load rooms');
+      throw Exception(
+          'Failed to load rooms (${res.statusCode}) ${res.body}');
     }
 
     final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final List list = body['data'] as List;
+    final List list = body['data'] as List? ?? const [];
 
-    return list
-        .map(
-          (e) => Room(
-            id: e['room_id'] as int,
-            name: e['room_name'] as String,
-          ),
-        )
-        .toList();
+    return list.map((e) {
+      return Room(
+        id: (e['room_id'] as num).toInt(),
+        name: e['room_name'] as String,
+      );
+    }).toList();
   }
 
+  /// ✅ POST /api/rooms
   Future<void> createRoom({
     required String roomName,
   }) async {
@@ -42,47 +62,58 @@ class RoomRepository {
 
     final res = await _client.post(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await _authHeaders(),
       body: jsonEncode({
         'room_name': roomName,
       }),
     );
-    print("response status: ${res.statusCode}, body: ${res.body}");
+
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('Failed to create room: ${res.statusCode} ${res.body}');
+      throw Exception(
+          'Failed to create room (${res.statusCode}) ${res.body}');
     }
   }
 
-  /// GET /api/rooms/{room_id}/devices
+  /// ✅ GET /api/rooms/{room_id}/devices
   Future<List<Device>> fetchDevicesInRoom(int roomId) async {
-    final res =
-        await _client.get(Uri.parse('$baseUrl/api/rooms/$roomId/devices'));
+    final res = await _client.get(
+      Uri.parse('$baseUrl/api/rooms/$roomId/devices'),
+      headers: await _authHeaders(),
+    );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to load devices for room $roomId');
+      throw Exception(
+          'Failed to load devices ($roomId) ${res.statusCode} ${res.body}');
     }
 
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final List list = body['data'] as List? ?? const [];
-    return list
-        .map(
-          (e) => Device(
-            id: e['id'] as String,
-            name: e['name'] as String,
-            type: e['type'] as String,
-            lastHeartBeat: DateTime.parse(e['lastHeartBearAt'] as String),
-          ),
-        )
-        .toList();
+
+    return list.map((e) {
+      return Device(
+        id: e['id'] as String,
+        name: e['name'] as String,
+        type: e['type'] as String,
+        lastHeartBeat:
+            DateTime.parse(e['lastHeartBeatAt'] as String),
+      );
+    }).toList();
   }
 
-  Future<List<DeviceWidget>> fetchWidgetsByRoomId(int roomId, String status) async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/rooms/$roomId/widgets?status=$status'));
+  /// ✅ GET /api/rooms/{room_id}/widgets?status=...
+  Future<List<DeviceWidget>> fetchWidgetsByRoomId(
+      int roomId, String status) async {
+    final uri = Uri.parse(
+        '$baseUrl/api/rooms/$roomId/widgets?status=$status');
+
+    final res = await _client.get(
+      uri,
+      headers: await _authHeaders(),
+    );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to load widgets for room $roomId');
+      throw Exception(
+          'Failed to load widgets ($roomId) ${res.statusCode} ${res.body}');
     }
 
     final decoded = jsonDecode(res.body);
@@ -92,10 +123,13 @@ class RoomRepository {
         : (decoded as List);
 
     return list
-        .map((e) => DeviceWidget.fromJson(e as Map<String, dynamic>))
-        .toList();  
+        .map((e) => DeviceWidget.fromJson(
+              e as Map<String, dynamic>,
+            ))
+        .toList();
   }
 
+  /// ✅ POST /api/rooms/{room_id}/devices
   Future<void> addDeviceToRoom({
     required int roomId,
     required String deviceId,
@@ -104,17 +138,17 @@ class RoomRepository {
 
     final res = await _client.post(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await _authHeaders(),
       body: jsonEncode({
         'device_id': deviceId,
       }),
     );
-    if (res.statusCode != 200 && res.statusCode != 201 && res.statusCode != 204) {
+
+    if (res.statusCode != 200 &&
+        res.statusCode != 201 &&
+        res.statusCode != 204) {
       throw Exception(
-        'Failed to add device to room: ${res.statusCode} ${res.body}',
-      );
+          'Failed to add device (${res.statusCode}) ${res.body}');
     }
   }
 
@@ -127,22 +161,32 @@ class RoomRepository {
 
     final res = await _client.put(
       uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'room_name': roomName}),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'room_name': roomName,
+      }),
     );
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('Failed to update room: ${res.statusCode} ${res.body}');
+      throw Exception(
+          'Failed to update room (${res.statusCode}) ${res.body}');
     }
   }
 
   /// ✅ DELETE /api/rooms/{room_id}
-  Future<void> deleteRoom({required int roomId}) async {
+  Future<void> deleteRoom({
+    required int roomId,
+  }) async {
     final uri = Uri.parse('$baseUrl/api/rooms/$roomId');
-    final res = await _client.delete(uri);
+
+    final res = await _client.delete(
+      uri,
+      headers: await _authHeaders(),
+    );
 
     if (res.statusCode != 204 && res.statusCode != 200) {
-      throw Exception('Failed to delete room: ${res.statusCode} ${res.body}');
+      throw Exception(
+          'Failed to delete room (${res.statusCode}) ${res.body}');
     }
   }
 

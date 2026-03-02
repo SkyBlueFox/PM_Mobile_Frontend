@@ -9,6 +9,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../features/home/models/device.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 class DeviceRepository {
   final String baseUrl;
   final http.Client _client;
@@ -18,6 +20,23 @@ class DeviceRepository {
     http.Client? client,
   }) : _client = client ?? http.Client();
 
+  /// 🔐 Attach Firebase JWT to every request
+  Future<Map<String, String>> _authHeaders() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    final token = await user.getIdToken(); // auto refresh if needed
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  /// ✅ GET /api/devices?connected=...
   Future<List<Device>> fetchDevices({bool? connected}) async {
     final uri = Uri.parse('$baseUrl/api/devices').replace(
       queryParameters: {
@@ -25,15 +44,21 @@ class DeviceRepository {
       },
     );
 
-    final res = await _client.get(uri);
+    final res = await _client.get(
+      uri,
+      headers: await _authHeaders(),
+    );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to load devices: ${res.statusCode}');
+      throw Exception(
+          'Failed to load devices (${res.statusCode}) ${res.body}');
     }
 
     final decoded = jsonDecode(res.body);
 
-    final dynamic raw = decoded is Map<String, dynamic> ? decoded['data'] : decoded;
+    final dynamic raw =
+        decoded is Map<String, dynamic> ? decoded['data'] : decoded;
+
     final List list = raw is List ? raw : const [];
 
     return list
@@ -42,6 +67,7 @@ class DeviceRepository {
         .toList(growable: false);
   }
 
+  /// ✅ POST /api/devices/{device_id}/pair
   Future<void> pairDevice({
     required String deviceId,
     required String deviceKey,
@@ -50,46 +76,47 @@ class DeviceRepository {
 
     final res = await _client.post(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await _authHeaders(),
       body: jsonEncode({
         'device_key': deviceKey,
       }),
     );
 
     if (res.statusCode != 200 && res.statusCode != 204) {
-      throw Exception('Failed to pair device: ${res.statusCode} ${res.body}');
+      throw Exception(
+          'Failed to pair device (${res.statusCode}) ${res.body}');
     }
   }
 
-  /// PUT /api/devices/{device_id}
+  /// ✅ PUT /api/devices/{device_id}
   Future<void> updateDeviceName({
     required String deviceId,
     required String deviceName,
   }) async {
     final res = await _client.put(
       Uri.parse('$baseUrl/api/devices/$deviceId'),
-      headers: {'Content-Type': 'application/json'},
+      headers: await _authHeaders(),
       body: jsonEncode({
         'device_name': deviceName,
       }),
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to update device name');
+      throw Exception(
+          'Failed to update device name (${res.statusCode}) ${res.body}');
     }
   }
 
-  /// POST /api/devices/{device_id}/unpair
+  /// ✅ POST /api/devices/{device_id}/unpair
   Future<void> unpairDevice(String deviceId) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/api/devices/$deviceId/unpair'),
-      headers: {'Content-Type': 'application/json'},
+      headers: await _authHeaders(),
     );
-    print('Unpair response: ${res.statusCode} ${res.body}'); // debug log
-    if (res.statusCode != 200) {
-      throw Exception('Failed to unpair device');
+
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      throw Exception(
+          'Failed to unpair device (${res.statusCode}) ${res.body}');
     }
   }
 
