@@ -51,16 +51,6 @@ class ManageHomesPage extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () {
-                  // TODO: join home
-                },
-                child: const Text('เข้าร่วมบ้าน', style: TextStyle(fontWeight: FontWeight.w700)),
-              ),
-            ),
           ],
         ),
       ),
