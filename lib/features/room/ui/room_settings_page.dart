@@ -101,10 +101,16 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('ยกเลิก'),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('ลบ'),
+          TextButton(
+          onPressed: () => {
+            context.read<RoomsBloc>().add(const RoomsRefreshRequested()), // refresh to get latest status before delete
+            Navigator.pop(ctx, true)},
+            child: const Text('ลบ', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.red)),
           ),
+          // ElevatedButton(
+          //   onPressed: () => Navigator.pop(ctx, true),
+          //   child: const Text('ลบ'),
+          // ),
         ],
       ),
     );
@@ -213,7 +219,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                         : const Text(
                             'ลบห้อง',
                             style: TextStyle(
-                              color: Color(0xFF3AA7FF),
+                              color: Colors.red,
                               fontWeight: FontWeight.w800,
                             ),
                           ),

@@ -82,7 +82,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
                     padding: const EdgeInsets.only(top: 16),
                     child: _ErrorCard(
                       message: st.error!,
-                      onRetry: () => context.read<DevicesBloc>().add(const DevicesRequested()),
+                      onRetry: () => context.read<DevicesBloc>().add(const DevicesRequested(connected: false)),
                     ),
                   ),
 
@@ -116,7 +116,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
 
                               if (!mounted) return;
                               // refresh in case setup changed something
-                              context.read<DevicesBloc>().add(const DevicesRequested());
+                              context.read<DevicesBloc>().add(const DevicesRequested(connected: false));
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -157,7 +157,6 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
 
                 const SizedBox(height: 14),
 
-                // Optional: Add Device button (if you have this feature)
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
@@ -169,14 +168,12 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
                       ),
                     ),
                     onPressed: () async {
-                      // TODO: navigate to Add Device flow if you have it
                       await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => MultiBlocProvider(
                                     providers: [
                                       BlocProvider.value(value: context.read<DevicesBloc>()),
-                                      // add more blocs if your setup page needs them
                                     ],
                                     child: const AddDevicePage(),
                                   ),

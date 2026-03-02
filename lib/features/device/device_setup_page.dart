@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/device_repository.dart';
+import '../home/bloc/devices_bloc.dart';
+import '../home/bloc/devices_event.dart';
 import '../home/models/device.dart';
 
 class DeviceSetupPage extends StatefulWidget {
@@ -62,11 +64,19 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('ยกเลิก'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('ยกเลิกการเชื่อมต่อ'),
+          TextButton(
+            onPressed: () => {
+              context.read<DevicesBloc>().add(const DevicesRequested(connected: true)),
+              Navigator.pop(ctx, true)
+              },
+            child: const Text('ยกเลิกการเชื่อมต่อ', style: TextStyle(color: Colors.red)),
           ),
+          //TODO: Choose Text or Button for this action? (ถ้าใช้ TextButton ต้องทำสีแดงเอง)
+          // ElevatedButton(
+          //   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          //   onPressed: () => Navigator.pop(ctx, true),
+          //   child: const Text('ยกเลิกการเชื่อมต่อ', style: TextStyle(color: Colors.white)),
+          // ),
         ],
       ),
     );
