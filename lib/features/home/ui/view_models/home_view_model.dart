@@ -275,19 +275,19 @@ class HomeViewModel {
     // ปรับ label ให้ตรงตาม type
     switch (cap.type) {
       case CapabilityType.sensor:
-        return 'cap';
+        return 'Sensor';
       case CapabilityType.toggle:
-        return 'cap';
+        return 'Toggle';
       case CapabilityType.adjust:
-        return 'cap';
+        return 'Adjust';
       case CapabilityType.mode:
-        return 'cap';
+        return 'Mode';
       case CapabilityType.text:
-        return 'cap';
+        return 'Text';
       case CapabilityType.button:
-        return 'cap';
+        return 'Button';
       default:
-        return 'cap';
+        return 'Unknown';
     }
   }
 

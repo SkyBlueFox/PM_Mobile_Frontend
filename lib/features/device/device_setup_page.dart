@@ -139,19 +139,18 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
                 onPressed: _save,
                 child: const Text(
                   'เสร็จสิ้น',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
                 ),
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // 🔴 UNPAIR BUTTON
             SizedBox(
               height: 54,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -160,7 +159,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
                 child: const Text(
                   'ยกเลิกการเชื่อมต่ออุปกรณ์',
                   style: TextStyle(
-                    color: Colors.red,
+                    color: Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),

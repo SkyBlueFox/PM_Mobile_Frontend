@@ -243,9 +243,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
     const blue = Color(0xFF3AA7FF);
     const topBlue = Color(0xFFCBEAFF);
 
-    // ทำให้เหมือน MePage: หัวฟ้าไล่เฉดลงขาว และตัวเนื้อหาอยู่บนสุด
-    const double headerHeight = 260;
-
     // ให้การ์ดไม่เต็มจอ (เหมือนตัวอย่าง UI)
     const double contentMaxWidth = 380;
 
@@ -268,19 +265,16 @@ class _AddDevicePageState extends State<AddDevicePage> {
       ),
       body: Stack(
         children: [
-          // Gradient background (หัวหน้า)
           Container(
-            height: headerHeight,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
                   topBlue,
-                  Color(0xFFEAF7FF),
-                  Colors.white,
+                  Color(0xF5F5F5F5),
                 ],
-                stops: [0.0, 0.70, 1.0],
+                stops: [0.0, 0.35],
               ),
             ),
           ),
@@ -364,10 +358,10 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                             const Text(
                               'รหัสผ่าน',
-                              style: TextStyle(
-                                color: Colors.black45,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              // style: TextStyle(
+                              //   color: Colors.black,
+                              //   fontWeight: FontWeight.w600,
+                              // ),
                             ),
                             const SizedBox(height: 8),
 
@@ -425,7 +419,7 @@ class _InputCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F7FB),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
       ),
       child: child,
@@ -452,7 +446,7 @@ class _RowCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF6F7FB),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(

@@ -299,13 +299,13 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
 
                 // ===== Include =====
                 Text(
-                  'Include (${included.length})',
+                  'โชว์ (${included.length})',
                   style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0E3A5A)),
                 ),
                 const SizedBox(height: 10),
 
                 _Group(
-                  title: 'Devices',
+                  title: 'Toggle',
                   items: onlyKind(included, HomeTileKind.toggle),
                   onTap: (t) {
                     if (widget.lockIncluded) return;
@@ -362,7 +362,7 @@ class _WidgetPickerSheetState extends State<_WidgetPickerSheet> {
 
                 // ===== Exclude =====
                 const Text(
-                  'Exclude',
+                  'ซ่อน',
                   style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0E3A5A)),
                 ),
                 const SizedBox(height: 10),

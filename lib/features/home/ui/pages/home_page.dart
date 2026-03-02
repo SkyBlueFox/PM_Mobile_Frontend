@@ -132,7 +132,7 @@ class _HomeViewState extends State<_HomeView> {
       includedItems: vm.activeTiles,
       excludedItems: vm.drawerTiles,
       lockIncluded: false,
-      headerTitle: 'บ้านเกม 1',
+      headerTitle: 'บ้านของฉัน',
       headerSubtitle: '',
       onConfirm: (afterIncludedIds) async {
         final afterIncluded = afterIncludedIds.toSet();
@@ -207,8 +207,6 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ ทำพื้นหลังเหมือน MePage: ฟ้าด้านบนไล่เฉดลงขาว (เฉพาะส่วนหัว)
-    const double headerHeight = 320;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -257,19 +255,16 @@ class _HomeViewState extends State<_HomeView> {
             ),
       body: Stack(
         children: [
-          // Background gradient only on top area (fade to white)
           Container(
-            height: headerHeight,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
                   topBlue,
-                  Color(0xFFEAF7FF),
-                  Colors.white,
+                  Color(0xF5F5F5F5),
                 ],
-                stops: [0.0, 0.70, 1.0],
+                stops: [0.0, 0.35],
               ),
             ),
           ),
@@ -294,7 +289,7 @@ class _HomeViewState extends State<_HomeView> {
                                       color: blue, size: 24),
                                   SizedBox(width: 10),
                                   Text(
-                                    'บ้านเกม 1',
+                                    'บ้านของฉัน',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w900,
@@ -314,7 +309,7 @@ class _HomeViewState extends State<_HomeView> {
                                     p.selectedRoomId != c.selectedRoomId,
                                 builder: (context, st) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(left: 16),
+                                    padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
                                     child: TopTab(
                                       rooms: st.rooms,
                                       selectedRoomId: st.selectedRoomId,

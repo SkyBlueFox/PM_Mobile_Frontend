@@ -43,7 +43,7 @@ class ManageHomesPage extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text('บ้านเกม 1', style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: Text('บ้านของฉัน', style: TextStyle(fontWeight: FontWeight.w700)),
                       ),
                       Icon(Icons.chevron_right_rounded, color: Colors.black38),
                     ],

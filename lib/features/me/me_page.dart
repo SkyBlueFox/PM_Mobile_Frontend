@@ -51,31 +51,25 @@ class MePage extends StatelessWidget {
     final highResPhoto =
         photoUrl != null && photoUrl!.isNotEmpty ? "${photoUrl!}?sz=200" : null;
 
-    // ให้พื้นหลังหัวหน้า "ไล่เฉดจนขาว" เพื่อไม่ให้ดูแยกชั้น
-    const double headerHeight = 280;
-
     // จำกัดความกว้างการ์ด/แถวให้ไม่เต็มจอเหมือนตัวอย่างด้านขวา
     const double contentMaxWidth = 380;
 
     const Color topBlue = Color(0xFFCBEAFF);
 
     return Scaffold(
-      backgroundColor: Colors.white, // ให้ปลายเฉดจบที่ขาวจริง ๆ
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Gradient จากฟ้า -> ขาว (ไม่มีขอบตัด)
           Container(
-            height: headerHeight,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: const [
                   topBlue,
-                  Color(0xFFEAF7FF), // ช่วงกลางให้จางลง
-                  Colors.white, // ปลายจบที่ขาว
+                  Color(0xF5F5F5F5),
                 ],
-                stops: const [0.0, 0.70, 1.0],
+                stops: const [0.0, 0.35],
               ),
             ),
           ),

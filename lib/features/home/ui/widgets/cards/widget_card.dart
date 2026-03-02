@@ -65,13 +65,6 @@ class WidgetCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 18,
-              offset: Offset(0, 8),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -115,7 +108,7 @@ class WidgetCard extends StatelessWidget {
     final u = tile.unit.trim();
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 78),
+      constraints: const BoxConstraints(minWidth: 64),
       child: Align(
         alignment: Alignment.centerRight,
         child: RichText(
@@ -284,7 +277,7 @@ class _TitleBlock extends StatelessWidget {
       children: [
         Text(
           t,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 15,
@@ -292,7 +285,7 @@ class _TitleBlock extends StatelessWidget {
             height: 1.05,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           s,
           maxLines: 1,

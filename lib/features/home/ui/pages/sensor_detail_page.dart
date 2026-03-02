@@ -81,7 +81,6 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 
     // ✅ เหมือน MePage
     const Color topBlue = Color(0xFFCBEAFF);
-    const double headerHeight = 280;
 
     return BlocProvider.value(
       value: _bloc,
@@ -100,7 +99,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             p.to != c.to,
         builder: (context, st) {
           return Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.transparent,
             extendBodyBehindAppBar: true,
             appBar: AppBar(
               backgroundColor: Colors.transparent,
@@ -136,19 +135,16 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             ),
             body: Stack(
               children: [
-                // ✅ พื้นหลังหัวหน้าฟ้าไล่เฉดลงขาว (เหมือน MePage)
                 Container(
-                  height: headerHeight,
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
                         topBlue,
-                        Color(0xFFEAF7FF),
-                        Colors.white,
+                        Color(0xFFF5F5F5),
                       ],
-                      stops: [0.0, 0.70, 1.0],
+                      stops: [0.0, 0.35],
                     ),
                   ),
                 ),
@@ -212,24 +208,6 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                                                 ),
                                               ),
                                             ],
-                                          ),
-                                          const SizedBox(height: 10),
-                                          const Text(
-                                            'ช่วงเวลาที่แสดงผล',
-                                            style: TextStyle(
-                                              color: Colors.black45,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${_fmtShortThai(st.from)} - ${_fmtShortThai(st.to)}',
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: Colors.black45,
-                                              fontWeight: FontWeight.w700,
-                                            ),
                                           ),
                                         ],
                                       ),
@@ -333,12 +311,6 @@ class _Card extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 14,
-              offset: Offset(0, 6)),
-        ],
       ),
       child: child,
     );
