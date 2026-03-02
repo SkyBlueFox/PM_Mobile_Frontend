@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pm_mobile_frontend/features/home/bloc/devices_event.dart';
+
 import '../../models/device.dart';
 import '../../bloc/devices_bloc.dart';
 import '../../bloc/devices_state.dart';
@@ -17,6 +18,7 @@ class AddDevicePage extends StatefulWidget {
 class _AddDevicePageState extends State<AddDevicePage> {
   final _nicknameCtrl = TextEditingController(text: 'Light_Bulb_01');
   final _passwordCtrl = TextEditingController();
+
   Room? _selectedRoom;
   Device? _selectedDevice;
 
@@ -33,13 +35,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
       map[d.id] = d;
     }
     final list = map.values.toList();
-    list.sort((a, b) => a.name.compareTo(b.name)); // adjust field name if different
+    list.sort((a, b) => a.name.compareTo(b.name));
     return list;
   }
 
   Future<void> _pickDevice() async {
     final devicesBloc = context.read<DevicesBloc>();
     context.read<DevicesBloc>().add(const DevicesRequested(connected: false));
+
     final picked = await showModalBottomSheet<Device>(
       context: context,
       showDragHandle: true,
@@ -49,23 +52,26 @@ class _AddDevicePageState extends State<AddDevicePage> {
           child: SafeArea(
             child: BlocBuilder<DevicesBloc, DevicesState>(
               buildWhen: (p, c) =>
-                  p.widgets != c.widgets || p.isLoading != c.isLoading || p.error != c.error,
+                  p.widgets != c.widgets ||
+                  p.isLoading != c.isLoading ||
+                  p.error != c.error,
               builder: (context, st) {
-                if (st.isLoading && st.widgets.isEmpty) {
+                if (st.isLoading && (st.devices == null || st.devices!.isEmpty)) {
                   return const Padding(
                     padding: EdgeInsets.all(24),
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
 
-                if (st.error != null && st.widgets.isEmpty) {
+                if (st.error != null &&
+                    (st.devices == null || st.devices!.isEmpty)) {
                   return Padding(
                     padding: const EdgeInsets.all(24),
                     child: Center(child: Text(st.error!)),
                   );
                 }
 
-                final devices = _uniqueDevices(st.devices!);
+                final devices = _uniqueDevices(st.devices ?? []);
 
                 if (devices.isEmpty) {
                   return const Padding(
@@ -85,11 +91,12 @@ class _AddDevicePageState extends State<AddDevicePage> {
 
                     return ListTile(
                       title: Text(
-                        d.name, // change if your field differs
+                        d.name,
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       trailing: isSelected
-                          ? const Icon(Icons.check_rounded, color: Color(0xFF3AA7FF))
+                          ? const Icon(Icons.check_rounded,
+                              color: Color(0xFF3AA7FF))
                           : null,
                       onTap: () => Navigator.pop(context, d),
                     );
@@ -108,64 +115,66 @@ class _AddDevicePageState extends State<AddDevicePage> {
     }
   }
 
-
   Future<void> _pickRoom() async {
     final devicesBloc = context.read<DevicesBloc>();
+
     final picked = await showModalBottomSheet<Room>(
       context: context,
       showDragHandle: true,
-      builder: (_) {return BlocProvider.value(
-      value: devicesBloc, // ✅ ensures provider exists inside the sheet
-      child: SafeArea(
-        child: BlocBuilder<DevicesBloc, DevicesState>(
-          builder: (context, st) {
-              if (st.isLoading && st.rooms.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              if (st.error != null && st.rooms.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(child: Text(st.error!)),
-                );
-              }
-
-              final rooms = st.rooms;
-
-              if (rooms.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: Text('ไม่มีห้องใด ๆ กรุณาสร้างห้องก่อน')),
-                );
-              }
-
-              return ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
-                itemCount: rooms.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, i) {
-                  final room = rooms[i];
-                  final isSelected = room.id == _selectedRoom?.id;
-
-                  return ListTile(
-                    title: Text(
-                      room.name,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check_rounded, color: Color(0xFF3AA7FF))
-                        : null,
-                    onTap: () => Navigator.pop(context, room),
+      builder: (_) {
+        return BlocProvider.value(
+          value: devicesBloc,
+          child: SafeArea(
+            child: BlocBuilder<DevicesBloc, DevicesState>(
+              builder: (context, st) {
+                if (st.isLoading && st.rooms.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
                   );
-                },
-              );
-            },
+                }
+
+                if (st.error != null && st.rooms.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(child: Text(st.error!)),
+                  );
+                }
+
+                final rooms = st.rooms;
+
+                if (rooms.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: Text('ไม่มีห้องใด ๆ กรุณาสร้างห้องก่อน')),
+                  );
+                }
+
+                return ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+                  itemCount: rooms.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, i) {
+                    final room = rooms[i];
+                    final isSelected = room.id == _selectedRoom?.id;
+
+                    return ListTile(
+                      title: Text(
+                        room.name,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_rounded,
+                              color: Color(0xFF3AA7FF))
+                          : null,
+                      onTap: () => Navigator.pop(context, room),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
         );
       },
     );
@@ -204,14 +213,14 @@ class _AddDevicePageState extends State<AddDevicePage> {
         roomId: _selectedRoom!.id,
         deviceId: _selectedDevice!.id,
       );
+
       if (!mounted) return;
       context.read<DevicesBloc>().add(const DevicesStarted());
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => DeviceSetupPage(
-            device: _selectedDevice!,
-          ),
+          builder: (_) => DeviceSetupPage(device: _selectedDevice!),
         ),
       );
     } catch (e) {
@@ -222,102 +231,185 @@ class _AddDevicePageState extends State<AddDevicePage> {
     }
   }
 
+  // Placeholder: ปุ่มสแกน QR (ต่อยอดทีหลังให้ไปหน้า scan จริง)
+  void _onScanQr() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('สแกน QR (TODO)')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const blue = Color(0xFF3AA7FF);
+    const topBlue = Color(0xFFCBEAFF);
+
+    // ทำให้เหมือน MePage: หัวฟ้าไล่เฉดลงขาว และตัวเนื้อหาอยู่บนสุด
+    const double headerHeight = 260;
+
+    // ให้การ์ดไม่เต็มจอ (เหมือนตัวอย่าง UI)
+    const double contentMaxWidth = 380;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('เพิ่มอุปกรณ์'), centerTitle: true),
-      body: SafeArea(
-        child: BlocBuilder<DevicesBloc, DevicesState>(
-          buildWhen: (p, c) =>
-              p.isLoading != c.isLoading ||
-              p.error != c.error ||
-              p.rooms != c.rooms,
-          builder: (context, st) {
-            // If user opens this before home finished loading
-            if (st.isLoading && st.rooms.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('เพิ่มอุปกรณ์'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'สแกน QR',
+            onPressed: _onScanQr,
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // Gradient background (หัวหน้า)
+          Container(
+            height: headerHeight,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  topBlue,
+                  Color(0xFFEAF7FF),
+                  Colors.white,
+                ],
+                stops: [0.0, 0.70, 1.0],
+              ),
+            ),
+          ),
 
-            if (st.error != null && st.rooms.isEmpty) {
-              return Center(child: Text(st.error!, style: const TextStyle(color: Colors.red)));
-            }
+          SafeArea(
+            child: BlocBuilder<DevicesBloc, DevicesState>(
+              buildWhen: (p, c) =>
+                  p.isLoading != c.isLoading ||
+                  p.error != c.error ||
+                  p.rooms != c.rooms,
+              builder: (context, st) {
+                if (st.isLoading && st.rooms.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
-              children: [
-                _RowCard(
-                  title: 'อุปกรณ์',
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _selectedDevice?.name ?? '*เลือกอุปกรณ์', // adjust field
-                        style: TextStyle(
-                          color: _selectedDevice == null ? Colors.blueGrey : Colors.black87,
-                          fontWeight: FontWeight.w600,
+                if (st.error != null && st.rooms.isEmpty) {
+                  return Center(
+                    child: Text(
+                      st.error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(maxWidth: contentMaxWidth),
+                      child: Padding(
+                        // เว้น top เผื่อ AppBar transparent
+                        padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _RowCard(
+                              title: 'อุปกรณ์',
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedDevice?.name ?? '*เลือกอุปกรณ์',
+                                    style: TextStyle(
+                                      color: _selectedDevice == null
+                                          ? Colors.blueGrey
+                                          : Colors.black87,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.chevron_right_rounded,
+                                      color: Colors.black38),
+                                ],
+                              ),
+                              onTap: _pickDevice,
+                            ),
+                            const SizedBox(height: 14),
+
+                            _RowCard(
+                              title: 'ห้อง',
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedRoom?.name ?? '*เลือกห้อง',
+                                    style: TextStyle(
+                                      color: _selectedRoom == null
+                                          ? Colors.blueGrey
+                                          : Colors.black87,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.chevron_right_rounded,
+                                      color: Colors.black38),
+                                ],
+                              ),
+                              onTap: _pickRoom,
+                            ),
+                            const SizedBox(height: 14),
+
+                            const Text(
+                              'รหัสผ่าน',
+                              style: TextStyle(
+                                color: Colors.black45,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            _InputCard(
+                              child: TextField(
+                                controller: _passwordCtrl,
+                                obscureText: true,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'รหัสผ่าน...',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            SizedBox(
+                              height: 48,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: blue,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed: _register,
+                                child: const Text(
+                                  'ลงทะเบียน',
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.chevron_right_rounded, color: Colors.black38),
-                    ],
-                  ),
-                  onTap: _pickDevice,
-                ),
-                const SizedBox(height: 14),
-
-                _RowCard(
-                  title: 'ห้อง',
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _selectedRoom?.name ?? '*เลือกห้อง',
-                        style: TextStyle(
-                          color: _selectedRoom == null ? Colors.blueGrey : Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.chevron_right_rounded, color: Colors.black38),
-                    ],
-                  ),
-                  onTap: _pickRoom,
-                ),
-                const SizedBox(height: 14),
-
-                const Text('รหัสผ่าน',
-                    style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-
-                _InputCard(
-                  child: TextField(
-                    controller: _passwordCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'รหัสผ่าน...',
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: blue,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onPressed: _register,
-                    child: const Text('ลงทะเบียน', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

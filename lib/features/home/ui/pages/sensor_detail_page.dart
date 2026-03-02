@@ -1,15 +1,11 @@
 // lib/features/home/ui/pages/sensor_detail_page.dart
 //
-// ✅ Refactor + UI ปรับตาม requirement (ไทย / กราฟสวย / log 2 คอลัมน์ / refresh ชัด)
-// - แยกกราฟไปใช้ SensorLineChart (ไฟล์ widgets/charts/sensor_line_chart.dart)
-// - แยก log ไปใช้ SensorLogTable (ไฟล์ widgets/lists/sensor_log_table.dart)
-// - default ช่วงเวลา: 1 ชั่วโมง (กำหนดใน SensorDetailState.initial())
-// - ช่วงเวลาแสดงผลขึ้นบรรทัดใหม่ + ตัดไม่ล้นจอ
-// - ปุ่มรีเฟรชมีเอฟเฟกต์ (สลับไอคอนกับ spinner) + ยังมี pull-to-refresh (RefreshIndicator)
+// ✅ ปรับ “เหมือน MePage”
+// - พื้นหลังหัวหน้าเป็นฟ้าไล่เฉดลงขาว (เฉพาะช่วงบน) แล้วด้านล่างเป็นขาว
+// - Scaffold โปร่งใส + วาง gradient ด้วย Stack
+// - AppBar โปร่งใสเหมือนเดิม
 //
-// หมายเหตุ:
-// - Bloc นี้ไม่พึ่ง polling ของ Home เพื่อกัน state ชนกัน
-// - Repo ดึงจาก DevicesBloc ที่ provide ไว้แล้วใน main.dart
+// NOTE: โค้ด logic/BLoC เดิมคงไว้ทั้งหมด
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -43,7 +39,6 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   void initState() {
     super.initState();
 
-    // ✅ ดึง repo จาก DevicesBloc (มีอยู่แล้วใน main.dart)
     final devicesBloc = context.read<DevicesBloc>();
 
     _bloc = SensorDetailBloc(
@@ -54,14 +49,12 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 
     final dw = widget.sensorWidget;
 
-    // ✅ เริ่มโหลดข้อมูล
     _bloc.add(SensorDetailStarted(
       widgetId: dw.widgetId,
-      deviceId: dw.device.id, // String
-      unit: dw.capability.unit, // ได้จาก Capability getter
+      deviceId: dw.device.id,
+      unit: dw.capability.unit,
     ));
 
-    // ✅ polling เพื่อ refresh history/log/heartbeat
     _bloc.add(const SensorDetailPollingStarted(interval: Duration(seconds: 5)));
   }
 
@@ -74,20 +67,25 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 
   Future<void> _refreshWithIndicator() async {
     _bloc.add(const SensorDetailRefreshRequested());
-    // หน่วงนิดเพื่อให้ผู้ใช้เห็นเอฟเฟกต์ชัด (กันกระพริบเร็วเกิน)
     await Future.delayed(const Duration(milliseconds: 450));
   }
 
   @override
   Widget build(BuildContext context) {
     final dw = widget.sensorWidget;
-    final deviceName = dw.device.name.trim().isEmpty ? 'เซนเซอร์' : dw.device.name.trim();
-    final capName = dw.capability.name.trim().isEmpty ? 'ข้อมูลเซนเซอร์' : dw.capability.name.trim();
+    final deviceName =
+        dw.device.name.trim().isEmpty ? 'เซนเซอร์' : dw.device.name.trim();
+    final capName = dw.capability.name.trim().isEmpty
+        ? 'ข้อมูลเซนเซอร์'
+        : dw.capability.name.trim();
+
+    // ✅ เหมือน MePage
+    const Color topBlue = Color(0xFFCBEAFF);
+    const double headerHeight = 280;
 
     return BlocProvider.value(
       value: _bloc,
       child: BlocBuilder<SensorDetailBloc, SensorDetailState>(
-        // ลด rebuild ที่ไม่จำเป็น
         buildWhen: (p, c) =>
             p.isLoading != c.isLoading ||
             p.isRefreshing != c.isRefreshing ||
@@ -102,16 +100,21 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             p.to != c.to,
         builder: (context, st) {
           return Scaffold(
-            backgroundColor: const Color(0xFFF6F7FB),
+            backgroundColor: Colors.white,
+            extendBodyBehindAppBar: true,
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              title: Text(deviceName, style: const TextStyle(fontWeight: FontWeight.w800)),
+              title: Text(
+                deviceName,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
               actions: [
-                // ✅ เอฟเฟกต์รีเฟรช: กดแล้วเห็น spinner ชัด
                 IconButton(
                   tooltip: 'รีเฟรช',
-                  onPressed: st.isRefreshing ? null : () => _bloc.add(const SensorDetailRefreshRequested()),
+                  onPressed: st.isRefreshing
+                      ? null
+                      : () => _bloc.add(const SensorDetailRefreshRequested()),
                   icon: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 220),
                     switchInCurve: Curves.easeOut,
@@ -123,151 +126,191 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(key: ValueKey('icon'), Icons.refresh_rounded),
+                        : const Icon(
+                            key: ValueKey('icon'),
+                            Icons.refresh_rounded,
+                          ),
                   ),
                 ),
               ],
             ),
-            body: st.isLoading && st.history.isEmpty && st.logs.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _refreshWithIndicator,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
-                      children: [
-                        if (st.error != null) ...[
-                          _ErrorBanner(message: st.error!),
-                          const SizedBox(height: 10),
-                        ],
+            body: Stack(
+              children: [
+                // ✅ พื้นหลังหัวหน้าฟ้าไล่เฉดลงขาว (เหมือน MePage)
+                Container(
+                  height: headerHeight,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        topBlue,
+                        Color(0xFFEAF7FF),
+                        Colors.white,
+                      ],
+                      stops: [0.0, 0.70, 1.0],
+                    ),
+                  ),
+                ),
 
-                        // ===== สรุปค่า + สถานะออนไลน์ =====
-                        _Card(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                SafeArea(
+                  child: st.isLoading && st.history.isEmpty && st.logs.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : RefreshIndicator(
+                          onRefresh: _refreshWithIndicator,
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
                             children: [
-                              // LEFT: ชื่อ + ค่า + ช่วงเวลา (ขึ้นบรรทัดใหม่)
-                              Expanded(
-                                child: Column(
+                              if (st.error != null) ...[
+                                _ErrorBanner(message: st.error!),
+                                const SizedBox(height: 10),
+                              ],
+
+                              _Card(
+                                child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      capName,
-                                      style: const TextStyle(
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          st.currentValue.trim().isEmpty ? '-' : st.currentValue,
-                                          style: const TextStyle(
-                                            fontSize: 34,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 6),
-                                          child: Text(
-                                            st.unit.trim().isEmpty ? '' : st.unit,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            capName,
                                             style: const TextStyle(
                                               color: Colors.black54,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                st.currentValue.trim().isEmpty
+                                                    ? '-'
+                                                    : st.currentValue,
+                                                style: const TextStyle(
+                                                  fontSize: 34,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                    bottom: 6),
+                                                child: Text(
+                                                  st.unit.trim().isEmpty
+                                                      ? ''
+                                                      : st.unit,
+                                                  style: const TextStyle(
+                                                    color: Colors.black54,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          const Text(
+                                            'ช่วงเวลาที่แสดงผล',
+                                            style: TextStyle(
+                                              color: Colors.black45,
                                               fontWeight: FontWeight.w800,
                                             ),
                                           ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${_fmtShortThai(st.from)} - ${_fmtShortThai(st.to)}',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: Colors.black45,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        _OnlinePill(isOnline: st.isOnline),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          st.lastHeartbeatAt == null
+                                              ? 'อัปเดตล่าสุด: -'
+                                              : 'อัปเดตล่าสุด: ${_fmtTimeThai(st.lastHeartbeatAt!)}',
+                                          style: const TextStyle(
+                                            color: Colors.black45,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ],
-                                    ),
-                                    const SizedBox(height: 10),
-
-                                    // ✅ ช่วงเวลาแสดงผล: ขึ้นบรรทัดใหม่ + ไม่ล้นจอ
-                                    const Text(
-                                      'ช่วงเวลาที่แสดงผล',
-                                      style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w800),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${_fmtShortThai(st.from)} - ${_fmtShortThai(st.to)}',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w700),
                                     ),
                                   ],
                                 ),
                               ),
 
-                              // RIGHT: สถานะ + เวลา heartbeat ล่าสุด
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  _OnlinePill(isOnline: st.isOnline),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    st.lastHeartbeatAt == null
-                                        ? 'อัปเดตล่าสุด: -'
-                                        : 'อัปเดตล่าสุด: ${_fmtTimeThai(st.lastHeartbeatAt!)}',
-                                    style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w700),
-                                  ),
-                                ],
+                              const SizedBox(height: 12),
+
+                              SensorLineChart(
+                                points: st.history,
+                                headerValueText:
+                                    _valueWithUnit(st.currentValue, st.unit),
+                                headerSubtitle: 'ค่าปัจจุบัน',
+                                maxPoints: 160,
+                                timeLabelMode: TimeLabelMode.hm24,
+                                tooltipUnit: st.unit,
+                                emptyText: 'ยังไม่มีข้อมูลกราฟ',
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              _RangeRow(
+                                from: st.from,
+                                to: st.to,
+                                onPick1h: () {
+                                  final now = DateTime.now();
+                                  _bloc.add(SensorRangeChanged(
+                                      from: now.subtract(
+                                          const Duration(hours: 1)),
+                                      to: now));
+                                },
+                                onPick24h: () {
+                                  final now = DateTime.now();
+                                  _bloc.add(SensorRangeChanged(
+                                      from: now.subtract(
+                                          const Duration(hours: 24)),
+                                      to: now));
+                                },
+                                onPick7d: () {
+                                  final now = DateTime.now();
+                                  _bloc.add(SensorRangeChanged(
+                                      from:
+                                          now.subtract(const Duration(days: 7)),
+                                      to: now));
+                                },
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              SensorLogTable(
+                                logs: st.logs,
+                                unitFallback: st.unit,
+                                title: 'บันทึก (${st.logs.length})',
+                                emptyText: 'ยังไม่มีบันทึก',
+                                timeMode: LogTimeMode.hms24,
                               ),
                             ],
                           ),
                         ),
-
-                        const SizedBox(height: 12),
-
-                        // ===== กราฟ =====
-                        SensorLineChart(
-                          points: st.history,
-                          headerValueText: _valueWithUnit(st.currentValue, st.unit),
-                          headerSubtitle: 'ค่าปัจจุบัน',
-                          // ✅ ให้กราฟสวยขึ้นตอนช่วงยาว (จำกัดจำนวนจุด)
-                          maxPoints: 160,
-                          // ✅ format เวลาเป็นไทย/24 ชม.
-                          timeLabelMode: TimeLabelMode.hm24,
-                          // tooltip แสดง "เวลา • ค่า"
-                          tooltipUnit: st.unit,
-                          emptyText: 'ยังไม่มีข้อมูลกราฟ',
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // ===== ปุ่มเลือกช่วงเวลา (เพิ่ม 1 ชั่วโมง) =====
-                        _RangeRow(
-                          from: st.from,
-                          to: st.to,
-                          onPick1h: () {
-                            final now = DateTime.now();
-                            _bloc.add(SensorRangeChanged(from: now.subtract(const Duration(hours: 1)), to: now));
-                          },
-                          onPick24h: () {
-                            final now = DateTime.now();
-                            _bloc.add(SensorRangeChanged(from: now.subtract(const Duration(hours: 24)), to: now));
-                          },
-                          onPick7d: () {
-                            final now = DateTime.now();
-                            _bloc.add(SensorRangeChanged(from: now.subtract(const Duration(days: 7)), to: now));
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // ===== Log (2 คอลัมน์: เวลา | ค่า) =====
-                        SensorLogTable(
-                          logs: st.logs,
-                          unitFallback: st.unit,
-                          title: 'บันทึก (${st.logs.length})',
-                          emptyText: 'ยังไม่มีบันทึก',
-                          // ให้เวลาในตารางสั้นลง
-                          timeMode: LogTimeMode.hms24,
-                        ),
-                      ],
-                    ),
-                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -276,7 +319,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 }
 
 // ===============================
-// UI Helpers (เดิม) + ปรับข้อความไทย
+// UI Helpers (เดิม)
 // ===============================
 
 class _Card extends StatelessWidget {
@@ -291,7 +334,10 @@ class _Card extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 14,
+              offset: Offset(0, 6)),
         ],
       ),
       child: child,
@@ -319,7 +365,8 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                  color: Colors.redAccent, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -345,7 +392,9 @@ class _OnlinePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: fg.withOpacity(0.2)),
       ),
-      child: Text(text, style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 12)),
+      child: Text(text,
+          style:
+              TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 12)),
     );
   }
 }
@@ -367,7 +416,6 @@ class _RangeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ แสดงช่วงเวลาแยกบรรทัด เพื่อไม่ให้ล้น (ตาม requirement)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -412,7 +460,8 @@ class _ChipButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
+          style: const TextStyle(
+              fontWeight: FontWeight.w900, color: Color(0xFF3AA7FF)),
         ),
       ),
     );
@@ -429,6 +478,8 @@ String _valueWithUnit(String value, String unit) {
 
 String _two(int n) => n < 10 ? '0$n' : '$n';
 
-String _fmtTimeThai(DateTime dt) => '${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}';
+String _fmtTimeThai(DateTime dt) =>
+    '${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}';
 
-String _fmtShortThai(DateTime dt) => '${_two(dt.day)}/${_two(dt.month)}/${dt.year} ${_two(dt.hour)}:${_two(dt.minute)}';
+String _fmtShortThai(DateTime dt) =>
+    '${_two(dt.day)}/${_two(dt.month)}/${dt.year} ${_two(dt.hour)}:${_two(dt.minute)}';

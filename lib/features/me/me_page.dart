@@ -14,7 +14,7 @@ class MePage extends StatelessWidget {
 
   final VoidCallback onManageHome;
   final VoidCallback? onManageDevices;
-  final VoidCallback onSecurity;
+  final VoidCallback onSecurity; // kept for compatibility (not shown)
   final VoidCallback onLogout;
 
   const MePage({
@@ -51,131 +51,160 @@ class MePage extends StatelessWidget {
     final highResPhoto =
         photoUrl != null && photoUrl!.isNotEmpty ? "${photoUrl!}?sz=200" : null;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFCBEAFF),
-            Color(0xFFF6F7FB),
-          ],
-        ),
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-          child: Column(
-            children: [
-              const SizedBox(height: 18),
+    // ให้พื้นหลังหัวหน้า "ไล่เฉดจนขาว" เพื่อไม่ให้ดูแยกชั้น
+    const double headerHeight = 280;
 
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: highResPhoto != null
-                      ? Image.network(
-                          highResPhoto,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallbackAvatar(),
-                        )
-                      : _fallbackAvatar(),
-                ),
+    // จำกัดความกว้างการ์ด/แถวให้ไม่เต็มจอเหมือนตัวอย่างด้านขวา
+    const double contentMaxWidth = 380;
+
+    const Color topBlue = Color(0xFFCBEAFF);
+
+    return Scaffold(
+      backgroundColor: Colors.white, // ให้ปลายเฉดจบที่ขาวจริง ๆ
+      body: Stack(
+        children: [
+          // Gradient จากฟ้า -> ขาว (ไม่มีขอบตัด)
+          Container(
+            height: headerHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: const [
+                  topBlue,
+                  Color(0xFFEAF7FF), // ช่วงกลางให้จางลง
+                  Colors.white, // ปลายจบที่ขาว
+                ],
+                stops: const [0.0, 0.70, 1.0],
               ),
-
-              const SizedBox(height: 14),
-
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3AA7FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  displayName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 6),
-
-              Text(
-                roleText,
-                style: const TextStyle(
-                  color: Color(0xFF3AA7FF),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
-                  children: [
-                    _MenuRow(
-                      title: 'จัดการบ้าน',
-                      onTap: onManageHome,
-                    ),
-                    const Divider(height: 1),
-                    _MenuRow(
-                      title: 'จัดการอุปกรณ์',
-                      onTap:
-                          onManageDevices ?? () => _goManageDevices(context),
-                    ),
-                    const Divider(height: 1),
-                    _MenuRow(
-                      title: 'บัญชีและความปลอดภัย',
-                      onTap: onSecurity,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: onLogout,
-                  child: const Text(
-                    'ออกจากระบบ',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: contentMaxWidth),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 18),
+
+                        // Avatar
+                        Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: highResPhoto != null
+                                ? Image.network(
+                                    highResPhoto,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _fallbackAvatar(),
+                                  )
+                                : _fallbackAvatar(),
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // Name pill
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3AA7FF),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        // Role
+                        Text(
+                          roleText,
+                          style: const TextStyle(
+                            color: Color(0xFF3AA7FF),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Menu card (ไม่มี Divider และลบ "บัญชีและความปลอดภัย")
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            children: [
+                              _MenuRow(
+                                title: 'จัดการบ้าน',
+                                onTap: onManageHome,
+                              ),
+                              const SizedBox(height: 2),
+                              _MenuRow(
+                                title: 'จัดการอุปกรณ์',
+                                onTap: onManageDevices ??
+                                    () => _goManageDevices(context),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Logout
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: onLogout,
+                            child: const Text(
+                              'ออกจากระบบ',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -216,8 +245,10 @@ class _MenuRow extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: Colors.black38),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.black38,
+            ),
           ],
         ),
       ),
