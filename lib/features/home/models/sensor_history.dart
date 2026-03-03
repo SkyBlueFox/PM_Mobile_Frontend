@@ -19,7 +19,7 @@ class SensorHistoryPoint {
   });
 
   factory SensorHistoryPoint.fromJson(Map<String, dynamic> json) {
-    final ts = _parseDateTime(json['timestamp'] ?? json['time'] ?? json['at']);
+    final ts = _parseDateTime(json['timestamp'] ?? json['time'] ?? json['at'] ?? json['created_at']);
     final v = _parseDouble(json['value']);
 
     return SensorHistoryPoint(

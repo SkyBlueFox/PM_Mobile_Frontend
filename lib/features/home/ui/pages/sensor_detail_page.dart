@@ -235,15 +235,10 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 
                               const SizedBox(height: 12),
 
-                              SensorLineChart(
+                              SensorLineChartFl(
                                 points: st.history,
-                                headerValueText:
-                                    _valueWithUnit(st.currentValue, st.unit),
-                                headerSubtitle: 'ค่าปัจจุบัน',
-                                maxPoints: 160,
-                                timeLabelMode: TimeLabelMode.hm24,
-                                tooltipUnit: st.unit,
-                                emptyText: 'ยังไม่มีข้อมูลกราฟ',
+                                unit: st.unit,
+                                range: st.to.difference(st.from),
                               ),
 
                               const SizedBox(height: 10),

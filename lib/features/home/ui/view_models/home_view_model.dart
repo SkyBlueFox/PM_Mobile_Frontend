@@ -211,7 +211,7 @@ class HomeViewModel {
         span: HomeTileSpan.full,
         kind: HomeTileKind.text,
         isOn: false,
-        value: rawValue, // ข้อความล่าสุด (ถ้ามี)
+        value: rawValue,
         unit: '',
         min: 0,
         max: 0,
@@ -272,7 +272,6 @@ class HomeViewModel {
   }
 
   static String _capLabel(Capability cap) {
-    // ปรับ label ให้ตรงตาม type
     switch (cap.type) {
       case CapabilityType.sensor:
         return 'Sensor';

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -161,13 +160,8 @@ class WidgetRepository {
       'limit': '$limit',
     };
 
-    var uri = _u('/api/widgets/$widgetId/history', q);
+    var uri = _u('/api/widgets/$widgetId/logs', q);
     var res = await _get(uri);
-
-    if (res.statusCode == 404) {
-      uri = _u('/api/widgets/$widgetId/logs', q);
-      res = await _get(uri);
-    }
 
     if (res.statusCode != 200) {
       final decoded = _decodeBody(res);

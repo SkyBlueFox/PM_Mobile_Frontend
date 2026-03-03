@@ -26,12 +26,9 @@ CapabilityType capabilityTypeFromString(String? value) {
       return CapabilityType.sensor;
     case 'mode':
       return CapabilityType.mode;
-
-    case 'text':
     case 'input':
-    case 'message':
+    case 'text':
       return CapabilityType.text;
-
     case 'button':
     case 'momentary':
     case 'press':
