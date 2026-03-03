@@ -35,16 +35,22 @@ class AuthRepository {
     }
 
     final firebaseIdToken = await user.getIdToken();
-
+    
     if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
       throw Exception('Failed to get Firebase ID token');
     }
 
-    await api.loginWithFirebase(firebaseIdToken);
+    try {
+      await api.loginWithFirebase(firebaseIdToken);
+    } on EmailNotWhitelistedException {
+      await FirebaseAuth.instance.signOut();
+      await GoogleSignIn().signOut();
+      rethrow;
+    }
 
-    await storage.saveToken(firebaseIdToken);
+  await storage.saveToken(firebaseIdToken);
 
-    return firebaseIdToken;
+  return firebaseIdToken;
   }
 
   Future<String?> getSavedToken() => storage.readToken();
@@ -54,4 +60,11 @@ class AuthRepository {
     await GoogleSignIn().signOut();
     await storage.clearToken();
   }
+}
+
+class EmailNotWhitelistedException implements Exception {
+  final String message;
+  EmailNotWhitelistedException([this.message = 'Email is not in whitelist']);
+  @override
+  String toString() => message;
 }

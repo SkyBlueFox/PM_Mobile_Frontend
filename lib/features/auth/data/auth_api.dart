@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'auth_repository.dart';
+
 class AuthApi {
   final String baseUrl;
 
@@ -16,7 +18,9 @@ class AuthApi {
         'token': firebaseIdToken,
       }),
     );
-
+    if (response.statusCode == 401) {
+      throw EmailNotWhitelistedException();
+    }
     if (response.statusCode != 200) {
       throw Exception('Backend auth failed (${response.statusCode})');
     }

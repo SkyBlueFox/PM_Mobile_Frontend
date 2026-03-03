@@ -41,6 +41,17 @@ class _SignInView extends StatelessWidget {
             const SnackBar(content: Text('Signed in')),
           );
         }
+        if (st.formError != null && st.formError!.isNotEmpty) {
+          ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(st.formError!),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       },
       child: Scaffold(
         body: AuthBackground(

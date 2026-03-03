@@ -62,6 +62,9 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
   }
 
   String _friendlyErrorMessage(Object err) {
+    if (err is EmailNotWhitelistedException) {
+      return 'Your email is not in whitelist. Please contact admin.';
+    }
     if (err is TimeoutException) return _msgTimeout;
     if (err is SocketException) return _msgNetwork;
 
