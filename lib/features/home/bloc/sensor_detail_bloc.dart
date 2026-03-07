@@ -16,7 +16,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/device_repository.dart';
 import '../data/widget_repository.dart';
 
-import '../models/sensor_history.dart';
 import '../models/sensor_log.dart';
 
 import 'sensor_detail_event.dart';
@@ -38,7 +37,7 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     this.onlineThreshold = const Duration(seconds: 15),
   }) : super(SensorDetailState.initial()) {
     on<SensorDetailStarted>(_onStarted);
-    on<SensorRangeChanged>(_onRangeChanged);
+    on<SensorPeriodChanged>(_onPeriodChanged);
     on<SensorDetailRefreshRequested>(_onRefreshRequested);
     on<SensorDetailPollingStarted>(_onPollingStarted);
     on<SensorDetailPollingStopped>(_onPollingStopped);
@@ -62,13 +61,21 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     }
   }
 
-  Future<void> _onRangeChanged(SensorRangeChanged event, Emitter<SensorDetailState> emit) async {
-    emit(state.copyWith(from: event.from, to: event.to, isRefreshing: true, error: null));
+  Future<void> _onPeriodChanged(
+    SensorPeriodChanged event,
+    Emitter<SensorDetailState> emit,
+  ) async {
+    emit(state.copyWith(
+      period: event.period,
+      isRefreshing: true,
+      error: null,
+    ));
+
     try {
-      await _loadHistory(emit);
-      emit(state.copyWith(isRefreshing: false, error: null));
+      await _loadLogs(emit);
+      emit(state.copyWith(isRefreshing: false));
     } catch (e, st) {
-      debugPrint('[SensorDetailBloc] rangeChanged failed: $e\n$st');
+      debugPrint('[SensorDetailBloc] periodChanged failed: $e\n$st');
       emit(state.copyWith(isRefreshing: false, error: e.toString()));
     }
   }
@@ -124,31 +131,9 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     if (state.widgetId == 0) return;
 
     await Future.wait([
-      _loadHistory(emit),
       _loadLogs(emit),
       _loadHeartbeat(emit),
     ]);
-  }
-
-  Future<void> _loadHistory(Emitter<SensorDetailState> emit) async {
-    final wid = state.widgetId;
-    if (wid == 0) return;
-
-    final List<SensorHistoryPoint> points = await widgetRepo.fetchSensorHistory(
-      widgetId: wid,
-      from: state.from,
-      to: state.to,
-    );
-
-    final sorted = List<SensorHistoryPoint>.from(points)
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-    final latest = sorted.isNotEmpty ? sorted.last.value : null;
-
-    emit(state.copyWith(
-      history: sorted,
-      currentValue: latest == null ? state.currentValue : latest.toString(),
-    ));
   }
 
   Future<void> _loadLogs(Emitter<SensorDetailState> emit) async {
@@ -157,7 +142,7 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
 
     final List<SensorLogEntry> logs = await widgetRepo.fetchSensorLogs(
       widgetId: wid,
-      limit: 50,
+      period: state.period
     );
 
     final sorted = List<SensorLogEntry>.from(logs)

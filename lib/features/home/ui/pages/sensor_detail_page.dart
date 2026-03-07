@@ -93,10 +93,8 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             p.unit != c.unit ||
             p.isOnline != c.isOnline ||
             p.lastHeartbeatAt != c.lastHeartbeatAt ||
-            p.history != c.history ||
             p.logs != c.logs ||
-            p.from != c.from ||
-            p.to != c.to,
+            p.period != c.period,
         builder: (context, st) {
           return Scaffold(
             backgroundColor: Colors.transparent,
@@ -150,7 +148,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                 ),
 
                 SafeArea(
-                  child: st.isLoading && st.history.isEmpty && st.logs.isEmpty
+                  child: st.isLoading && st.logs.isEmpty
                       ? const Center(child: CircularProgressIndicator())
                       : RefreshIndicator(
                           onRefresh: _refreshWithIndicator,
@@ -236,36 +234,23 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                               const SizedBox(height: 12),
 
                               SensorLineChartFl(
-                                points: st.history,
+                                points: st.logs,
                                 unit: st.unit,
-                                range: st.to.difference(st.from),
+                                period: st.period,
                               ),
 
                               const SizedBox(height: 10),
 
                               _RangeRow(
-                                from: st.from,
-                                to: st.to,
+                                period: st.period,
                                 onPick1h: () {
-                                  final now = DateTime.now();
-                                  _bloc.add(SensorRangeChanged(
-                                      from: now.subtract(
-                                          const Duration(hours: 1)),
-                                      to: now));
+                                  _bloc.add(const SensorPeriodChanged('hour'));
                                 },
                                 onPick24h: () {
-                                  final now = DateTime.now();
-                                  _bloc.add(SensorRangeChanged(
-                                      from: now.subtract(
-                                          const Duration(hours: 24)),
-                                      to: now));
+                                  _bloc.add(const SensorPeriodChanged('day'));
                                 },
                                 onPick7d: () {
-                                  final now = DateTime.now();
-                                  _bloc.add(SensorRangeChanged(
-                                      from:
-                                          now.subtract(const Duration(days: 7)),
-                                      to: now));
+                                  _bloc.add(const SensorPeriodChanged('week'));
                                 },
                               ),
 
@@ -367,19 +352,30 @@ class _OnlinePill extends StatelessWidget {
 }
 
 class _RangeRow extends StatelessWidget {
-  final DateTime from;
-  final DateTime to;
+  final String period;
   final VoidCallback onPick1h;
   final VoidCallback onPick24h;
   final VoidCallback onPick7d;
 
   const _RangeRow({
-    required this.from,
-    required this.to,
+    required this.period,
     required this.onPick1h,
     required this.onPick24h,
     required this.onPick7d,
   });
+
+  String _label() {
+    switch (period) {
+      case 'hour':
+        return 'ช่วงเวลา: 1 ชั่วโมง';
+      case 'day':
+        return 'ช่วงเวลา: 24 ชั่วโมง';
+      case 'week':
+        return 'ช่วงเวลา: 7 วัน';
+      default:
+        return 'ช่วงเวลา';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -397,10 +393,11 @@ class _RangeRow extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'ช่วงเวลา: ${_fmtShortThai(from)} - ${_fmtShortThai(to)}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.w700),
+          _label(),
+          style: const TextStyle(
+            color: Colors.black45,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );
@@ -435,18 +432,7 @@ class _ChipButton extends StatelessWidget {
   }
 }
 
-String _valueWithUnit(String value, String unit) {
-  final v = value.trim();
-  final u = unit.trim();
-  if (v.isEmpty) return '-';
-  if (u.isEmpty) return v;
-  return '$v$u';
-}
-
 String _two(int n) => n < 10 ? '0$n' : '$n';
 
 String _fmtTimeThai(DateTime dt) =>
     '${_two(dt.hour)}:${_two(dt.minute)}:${_two(dt.second)}';
-
-String _fmtShortThai(DateTime dt) =>
-    '${_two(dt.day)}/${_two(dt.month)}/${dt.year} ${_two(dt.hour)}:${_two(dt.minute)}';

@@ -1,13 +1,4 @@
 // lib/features/home/ui/widgets/lists/sensor_log_table.dart
-//
-// ✅ ตาราง log ของ sensor (ปรับตาม requirement)
-// - แสดง 2 คอลัมน์เท่านั้น: "เวลา" | "ค่า"
-// - ไม่แสดง title/detail/message
-// - เวลาให้สั้น (HH:mm:ss หรือ HH:mm)
-// - รองรับ empty state เป็นไทย
-//
-// หมายเหตุ:
-// - ไม่บังคับ scroll แนวนอน เพราะมีแค่ 2 คอลัมน์
 
 import 'package:flutter/material.dart';
 
@@ -21,16 +12,12 @@ enum LogTimeMode {
 class SensorLogTable extends StatelessWidget {
   final List<SensorLogEntry> logs;
 
-  /// ถ้า log ไม่มี unit ให้ใช้ unitFallback แทน (จาก capability)
+  /// unit จาก capability
   final String unitFallback;
 
-  /// หัวข้อการ์ด (เช่น "บันทึก (10)")
   final String title;
-
-  /// ข้อความตอนไม่มี log
   final String emptyText;
 
-  /// รูปแบบเวลาในตาราง
   final LogTimeMode timeMode;
 
   const SensorLogTable({
@@ -61,14 +48,17 @@ class SensorLogTable extends StatelessWidget {
         child: Center(
           child: Text(
             emptyText,
-            style: const TextStyle(color: Color(0xFF5E87A3), fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              color: Color(0xFF5E87A3),
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       );
     }
 
-    // จำกัดจำนวนแถวเพื่อความลื่น (เผื่อ logs ใหญ่)
-    final display = logs.length > 50 ? logs.take(50).toList(growable: false) : logs;
+    final display =
+        logs.length > 50 ? logs.take(50).toList(growable: false) : logs;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -103,7 +93,7 @@ class SensorLogTable extends StatelessWidget {
             ],
             rows: display.map((e) {
               final timeText = _fmtTime(e.timestamp);
-              final valueText = _fmtValue(e);
+              final valueText = _fmtValue(e.value);
 
               return DataRow(
                 cells: [
@@ -118,14 +108,11 @@ class SensorLogTable extends StatelessWidget {
     );
   }
 
-  String _fmtValue(SensorLogEntry e) {
-    final rawV = (e.value ?? '').trim();
-    if (rawV.isEmpty) return '-';
+  String _fmtValue(double v) {
+    final unit = unitFallback.trim();
+    final valueStr = v.toStringAsFixed(2);
 
-    final u1 = e.unit.trim();
-    final u2 = unitFallback.trim();
-    final u = u1.isNotEmpty ? u1 : u2;
-    return u.isEmpty ? rawV : '$rawV$u';
+    return unit.isEmpty ? valueStr : '$valueStr$unit';
   }
 
   String _two(int n) => n < 10 ? '0$n' : '$n';

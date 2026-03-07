@@ -1,10 +1,3 @@
-// lib/features/home/bloc/sensor_detail_state.dart
-//
-// ✅ State สำหรับหน้า Sensor Detail
-// - แยกชัดเจนระหว่าง loading ครั้งแรก กับ refreshing
-// - default range ปรับเป็น "1 ชั่วโมง" (ตาม requirement)
-
-import '../models/sensor_history.dart';
 import '../models/sensor_log.dart';
 
 class SensorDetailState {
@@ -18,14 +11,11 @@ class SensorDetailState {
   final String currentValue;
   final String unit;
 
-  final List<SensorHistoryPoint> history;
   final List<SensorLogEntry> logs;
+  final String period;
 
   final DateTime? lastHeartbeatAt;
   final bool isOnline;
-
-  final DateTime from;
-  final DateTime to;
 
   const SensorDetailState({
     this.isLoading = false,
@@ -35,20 +25,15 @@ class SensorDetailState {
     this.deviceId = '',
     this.currentValue = '',
     this.unit = '',
-    this.history = const [],
     this.logs = const [],
+    this.period = '',
     this.lastHeartbeatAt,
     this.isOnline = false,
-    required this.from,
-    required this.to,
   });
 
   factory SensorDetailState.initial() {
-    final now = DateTime.now();
     return SensorDetailState(
-      // ✅ จากเดิม 24h -> ปรับเป็น 1 ชั่วโมง
-      from: now.subtract(const Duration(hours: 1)),
-      to: now,
+      period: 'hour'
     );
   }
 
@@ -60,8 +45,8 @@ class SensorDetailState {
     String? deviceId,
     String? currentValue,
     String? unit,
-    List<SensorHistoryPoint>? history,
     List<SensorLogEntry>? logs,
+    String? period,
     DateTime? lastHeartbeatAt,
     bool? isOnline,
     DateTime? from,
@@ -75,12 +60,10 @@ class SensorDetailState {
       deviceId: deviceId ?? this.deviceId,
       currentValue: currentValue ?? this.currentValue,
       unit: unit ?? this.unit,
-      history: history ?? this.history,
       logs: logs ?? this.logs,
+      period: period ?? this.period,
       lastHeartbeatAt: lastHeartbeatAt ?? this.lastHeartbeatAt,
       isOnline: isOnline ?? this.isOnline,
-      from: from ?? this.from,
-      to: to ?? this.to,
     );
   }
 }

@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/device_widget.dart';
-import '../models/sensor_history.dart';
 import '../models/sensor_log.dart';
 
 class WidgetRepository {
@@ -141,11 +140,9 @@ class WidgetRepository {
     }
   }
 
-  Future<List<SensorHistoryPoint>> fetchSensorHistory({
+  Future<List<SensorLogEntry>> fetchSensorLogs({
     required int widgetId,
-    required DateTime from,
-    required DateTime to,
-    int limit = 500,
+    required String period, // hour | day | week
   }) async {
     Future<http.Response> _get(Uri uri) async {
       return await _client.get(
@@ -155,72 +152,25 @@ class WidgetRepository {
     }
 
     final q = {
-      'from': from.toIso8601String(),
-      'to': to.toIso8601String(),
-      'limit': '$limit',
+      'period': period,
     };
 
-    var uri = _u('/api/widgets/$widgetId/logs', q);
-    var res = await _get(uri);
+    final uri = _u('/api/widgets/$widgetId/logs', q);
+    final res = await _get(uri);
 
     if (res.statusCode != 200) {
       final decoded = _decodeBody(res);
       throw Exception(
-          'Failed to load sensor history: ${res.statusCode} ${decoded ?? res.body}');
+        'Failed to load sensor logs: ${res.statusCode} ${decoded ?? res.body}',
+      );
     }
-
+  
     final decoded = _decodeBody(res);
     final maps = _extractListMap(decoded);
 
-    final points = maps.map(SensorHistoryPoint.fromJson).toList();
-    points.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    return points;
-  }
+    final logs = maps.map(SensorLogEntry.fromJson).toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-  Future<List<SensorLogEntry>> fetchSensorLogs({
-    required int widgetId,
-    required int limit,
-  }) async {
-    Future<http.Response> _get(Uri uri) async {
-        return await _client.get(uri, headers: await _authHeaders())
-            .timeout(const Duration(seconds: 15));
-    }
-    final q = {'limit': '$limit'};
-
-    final candidates = [
-      '/api/widgets/$widgetId/logs',
-      '/api/widgets/$widgetId/log',
-      '/api/widgets/$widgetId/events',
-    ];
-
-    http.Response? res;
-    Uri? used;
-
-    for (final path in candidates) {
-      final uri = _u(path, q);
-      final r = await _get(uri);
-      if (r.statusCode != 404) {
-        res = r;
-        used = uri;
-        break;
-      }
-    }
-
-    if (res == null) {
-      throw Exception('Failed to load sensor logs: endpoint not found (404)');
-    }
-
-    if (res.statusCode != 200) {
-      final decoded = _decodeBody(res);
-      throw Exception(
-          'Failed to load sensor logs: ${res.statusCode} ${decoded ?? res.body} (uri=$used)');
-    }
-
-    final decoded = _decodeBody(res);
-    final maps = _extractListMap(decoded);
-
-    final logs = maps.map(SensorLogEntry.fromJson).toList();
-    logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return logs;
   }
 

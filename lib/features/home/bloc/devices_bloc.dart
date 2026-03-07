@@ -295,7 +295,6 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         capabilityId: w.capability.id,
         value: w.value,
       );
-      _clearPending(event.widgetId);
     } catch (e, st) {
       debugPrint('[DevicesBloc] text send failed: $e\n$st');
       _clearPending(event.widgetId);
@@ -578,7 +577,15 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   List<DeviceWidget> _mergePending(List<DeviceWidget> serverWidgets) {
     return serverWidgets.map((sw) {
       final pending = _pendingValueByWidgetId[sw.widgetId];
-      return pending != null ? sw.copyWith(value: pending) : sw;
+      if (pending == null) return sw;
+
+      final serverValue = sw.value.trim();
+      if (serverValue == pending.trim()) {
+        _clearPending(sw.widgetId);
+        return sw;
+      }
+
+      return sw.copyWith(value: pending);
     }).toList(growable: false);
   }
 

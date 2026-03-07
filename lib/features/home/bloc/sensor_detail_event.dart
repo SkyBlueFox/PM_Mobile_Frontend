@@ -21,15 +21,10 @@ class SensorDetailStarted extends SensorDetailEvent {
   });
 }
 
-/// เปลี่ยนช่วงเวลา (กราฟ)
-class SensorRangeChanged extends SensorDetailEvent {
-  final DateTime from;
-  final DateTime to;
+class SensorPeriodChanged extends SensorDetailEvent {
+  final String period;
 
-  const SensorRangeChanged({
-    required this.from,
-    required this.to,
-  });
+  const SensorPeriodChanged(this.period);
 }
 
 /// refresh manual
