@@ -16,12 +16,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/device_repository.dart';
 import '../../../data/room_repository.dart';
 import '../data/widget_repository.dart';
-import '../models/capability.dart';
-import '../models/device_widget.dart';
-import 'devices_event.dart';
-import 'devices_state.dart';
+import '../../../models/capability.dart';
+import '../../../models/device_widget.dart';
+import 'home_event.dart';
+import 'home_state.dart';
 
-class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
+class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   final WidgetRepository widgetRepo;
   final RoomRepository roomRepo;
   final DeviceRepository deviceRepo;
@@ -45,7 +45,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
   final Map<int, DateTime> _pendingAtByWidgetId = {};
   static const _pendingTtl = Duration(seconds: 10);
 
-  DevicesBloc({
+  HomeBloc({
     required this.widgetRepo,
     required this.roomRepo,
     required this.deviceRepo,
@@ -118,7 +118,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         devices: devices,
       ));
     } catch (e, st) {
-      debugPrint('[DevicesBloc] start failed: $e\n$st');
+      debugPrint('[HomeBloc] start failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
     }
   }
@@ -141,7 +141,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       final merged = _mergePending(widgets);
       emit(state.copyWith(isLoading: false, widgets: merged, error: null));
     } catch (e, st) {
-      debugPrint('[DevicesBloc] roomChanged failed: $e\n$st');
+      debugPrint('[HomeBloc] roomChanged failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
     }
   }
@@ -178,7 +178,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       );
       _clearPending(event.widgetId);
     } catch (e, st) {
-      debugPrint('[DevicesBloc] toggle send failed: $e\n$st');
+      debugPrint('[HomeBloc] toggle send failed: $e\n$st');
       _clearPending(event.widgetId);
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
@@ -219,7 +219,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       );
       _clearPending(event.widgetId);
     } catch (e, st) {
-      debugPrint('[DevicesBloc] adjust send failed: $e\n$st');
+      debugPrint('[HomeBloc] adjust send failed: $e\n$st');
       _clearPending(event.widgetId);
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
@@ -260,7 +260,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       );
       _clearPending(event.widgetId);
     } catch (e, st) {
-      debugPrint('[DevicesBloc] mode send failed: $e\n$st');
+      debugPrint('[HomeBloc] mode send failed: $e\n$st');
       _clearPending(event.widgetId);
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
@@ -296,7 +296,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         value: w.value,
       );
     } catch (e, st) {
-      debugPrint('[DevicesBloc] text send failed: $e\n$st');
+      debugPrint('[HomeBloc] text send failed: $e\n$st');
       _clearPending(event.widgetId);
       emit(state.copyWith(widgets: before, error: _msgCommandFailed));
     }
@@ -321,7 +321,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         value: event.value,
       );
     } catch (e, st) {
-      debugPrint('[DevicesBloc] button press failed: $e\n$st');
+      debugPrint('[HomeBloc] button press failed: $e\n$st');
       emit(state.copyWith(error: _msgCommandFailed));
     }
   }
@@ -433,7 +433,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         error: null,
       ));
     } catch (e, st) {
-      debugPrint('[DevicesBloc] commit reorder failed: $e\n$st');
+      debugPrint('[HomeBloc] commit reorder failed: $e\n$st');
       emit(state.copyWith(
         reorderSaving: false,
         error: _msgSaveFailed,
@@ -611,7 +611,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         error: null,
       ));
     } catch (e, st) {
-      debugPrint('[DevicesBloc] selection load failed: $e\n$st');
+      debugPrint('[HomeBloc] selection load failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
     }
   }
@@ -637,7 +637,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         widgetStatus: newStatus,
       );
     } catch (e, st) {
-      debugPrint('[DevicesBloc] include toggle failed: $e\n$st');
+      debugPrint('[HomeBloc] include toggle failed: $e\n$st');
       emit(state.copyWith(widgets: before, error: _msgSaveFailed));
     }
   }
@@ -653,7 +653,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       final filtered = _filterByRoomIfPossible(all, roomId);
       emit(state.copyWith(isLoading: false, widgets: filtered, error: null));
     } catch (e, st) {
-      debugPrint('[DevicesBloc] selection save(refresh) failed: $e\n$st');
+      debugPrint('[HomeBloc] selection save(refresh) failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
     }
   }
@@ -692,7 +692,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
       add(DevicesRoomChanged(roomId));
       add(WidgetsPollingStarted(roomId: roomId));
     } catch (e, st) {
-      debugPrint('[DevicesBloc] visibility save failed: $e\n$st');
+      debugPrint('[HomeBloc] visibility save failed: $e\n$st');
       emit(state.copyWith(isLoading: false, error: _msgSaveFailed));
     }
   }

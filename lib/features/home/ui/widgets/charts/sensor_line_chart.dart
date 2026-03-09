@@ -2,7 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../models/sensor_log.dart';
+import '../../../../../models/sensor_log.dart';
 
 class SensorLineChartFl extends StatelessWidget {
   final List<SensorLogEntry> points;

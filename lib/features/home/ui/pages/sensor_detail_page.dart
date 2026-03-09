@@ -10,8 +10,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../bloc/devices_bloc.dart';
-import '../../models/device_widget.dart';
+import '../../bloc/home_bloc.dart';
+import '../../../../models/device_widget.dart';
 
 import '../../bloc/sensor_detail_bloc.dart';
 import '../../bloc/sensor_detail_event.dart';
@@ -39,7 +39,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   void initState() {
     super.initState();
 
-    final devicesBloc = context.read<DevicesBloc>();
+    final devicesBloc = context.read<HomeBloc>();
 
     _bloc = SensorDetailBloc(
       widgetRepo: devicesBloc.widgetRepo,

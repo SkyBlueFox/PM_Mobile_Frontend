@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../home/models/device.dart';
-import '../home/bloc/devices_bloc.dart';
-import '../home/bloc/devices_event.dart';
-import '../home/bloc/devices_state.dart';
+import '../../models/device.dart';
+import '../home/bloc/home_bloc.dart';
+import '../home/bloc/home_event.dart';
+import '../home/bloc/home_state.dart';
 
 import '../home/ui/pages/add_device_page.dart';
 import 'device_setup_page.dart';
@@ -29,7 +29,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
   void initState() {
     super.initState();
     // Load devices
-    context.read<DevicesBloc>().add(const DevicesRequested(connected: true));
+    context.read<HomeBloc>().add(const DevicesRequested(connected: true));
   }
 
   @override
@@ -52,13 +52,13 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
           IconButton(
             tooltip: 'รีเฟรช',
             onPressed: () {
-              context.read<DevicesBloc>().add(const DevicesRequested(connected: true));
+              context.read<HomeBloc>().add(const DevicesRequested(connected: true));
             },
             icon: const Icon(Icons.refresh_rounded, color: Colors.black54),
           ),
         ],
       ),
-      body: BlocBuilder<DevicesBloc, DevicesState>(
+      body: BlocBuilder<HomeBloc, DevicesState>(
         buildWhen: (p, c) =>
             p.isLoading != c.isLoading ||
             p.error != c.error ||
@@ -82,7 +82,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
                     padding: const EdgeInsets.only(top: 16),
                     child: _ErrorCard(
                       message: st.error!,
-                      onRetry: () => context.read<DevicesBloc>().add(const DevicesRequested(connected: false)),
+                      onRetry: () => context.read<HomeBloc>().add(const DevicesRequested(connected: false)),
                     ),
                   ),
 
@@ -106,7 +106,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
                                 MaterialPageRoute(
                                   builder: (_) => MultiBlocProvider(
                                     providers: [
-                                      BlocProvider.value(value: context.read<DevicesBloc>()),
+                                      BlocProvider.value(value: context.read<HomeBloc>()),
                                       // add more blocs if your setup page needs them
                                     ],
                                     child: DeviceSetupPage(device: d),
@@ -116,7 +116,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
 
                               if (!mounted) return;
                               // refresh in case setup changed something
-                              context.read<DevicesBloc>().add(const DevicesRequested(connected: false));
+                              context.read<HomeBloc>().add(const DevicesRequested(connected: false));
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -173,7 +173,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
                                 MaterialPageRoute(
                                   builder: (_) => MultiBlocProvider(
                                     providers: [
-                                      BlocProvider.value(value: context.read<DevicesBloc>()),
+                                      BlocProvider.value(value: context.read<HomeBloc>()),
                                     ],
                                     child: const AddDevicePage(),
                                   ),

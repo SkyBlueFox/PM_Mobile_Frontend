@@ -18,8 +18,8 @@ import 'features/auth/data/token_storage.dart';
 import 'features/auth/ui/pages/sign_in_page.dart';
 import 'features/home/ui/pages/home_page.dart';
 
-import 'features/home/bloc/devices_bloc.dart';
-import 'features/home/bloc/devices_event.dart';
+import 'features/home/bloc/home_bloc.dart';
+import 'features/home/bloc/home_event.dart';
 
 import 'features/room/bloc/rooms_bloc.dart';
 import 'features/room/bloc/rooms_event.dart';
@@ -86,8 +86,8 @@ class MyApp extends StatelessWidget {
           ),
 
           // ✅ DevicesBloc available globally
-          BlocProvider<DevicesBloc>(
-            create: (ctx) => DevicesBloc(
+          BlocProvider<HomeBloc>(
+            create: (ctx) => HomeBloc(
               widgetRepo: ctx.read<WidgetRepository>(),
               roomRepo: ctx.read<RoomRepository>(),
               deviceRepo: ctx.read<DeviceRepository>(),

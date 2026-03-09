@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../home/bloc/devices_bloc.dart';
-import '../../home/bloc/devices_event.dart';
+import '../../home/bloc/home_bloc.dart';
+import '../../home/bloc/home_event.dart';
 import '../../../data/room_repository.dart';
-import '../../home/models/device.dart';
+import '../../../models/device.dart';
 
 import '../bloc/rooms_bloc.dart';
 import '../bloc/rooms_event.dart';
@@ -121,7 +121,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     context.read<RoomsBloc>().add(RoomDeleteRequested(widget.roomId));
 
     // keep Home tabs in sync (DevicesBloc uses rooms list)
-    context.read<DevicesBloc>().add(const DevicesStarted());
+    context.read<HomeBloc>().add(const DevicesStarted());
     context.read<RoomsBloc>().add(const RoomsRefreshRequested());
   }
 

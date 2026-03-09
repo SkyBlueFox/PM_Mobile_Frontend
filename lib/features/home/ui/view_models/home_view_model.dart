@@ -8,8 +8,8 @@
 // - title = ชื่อ device
 // - subtitle = ชื่อ cap (เช่น sensor/toggle/adjust หรือ label ตาม capability)
 
-import '../../bloc/devices_state.dart';
-import '../../models/capability.dart';
+import '../../bloc/home_state.dart';
+import '../../../../models/capability.dart';
 
 enum HomeTileSpan { half, full }
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../home/bloc/devices_bloc.dart';
-import '../../home/bloc/devices_event.dart';
-import '../../home/bloc/devices_state.dart';
+import '../../home/bloc/home_bloc.dart';
+import '../../home/bloc/home_event.dart';
+import '../../home/bloc/home_state.dart';
 
 import '../bloc/rooms_bloc.dart';
 import '../bloc/rooms_event.dart';
@@ -26,7 +26,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
     super.initState();
 
     // devices for counting
-    context.read<DevicesBloc>().add(const DevicesRequested());
+    context.read<HomeBloc>().add(const DevicesRequested());
 
     // rooms list (if not already loaded)
     context.read<RoomsBloc>().add(const RoomsStarted());
@@ -102,7 +102,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                 children: [
                   if (rooms.isNotEmpty)
                     _WhiteCard(
-                      child: BlocBuilder<DevicesBloc, DevicesState>(
+                      child: BlocBuilder<HomeBloc, DevicesState>(
                         // rebuild list rows when devices change (counts)
                         buildWhen: (p, c) => p.devices != c.devices,
                         builder: (context, devicesState) {
@@ -123,7 +123,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                                         builder: (_) => MultiBlocProvider(
                                           providers: [
                                             BlocProvider.value(value: context.read<RoomsBloc>()),
-                                            BlocProvider.value(value: context.read<DevicesBloc>()),
+                                            BlocProvider.value(value: context.read<HomeBloc>()),
                                           ],
                                           child: RoomSettingsPage(
                                             roomId: id,
@@ -143,7 +143,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                                     // if delete returns true, refresh devices + rooms
                                     if (result == true) {
                                       context.read<RoomsBloc>().add(const RoomsRefreshRequested());
-                                      context.read<DevicesBloc>().add(const DevicesRequested());
+                                      context.read<HomeBloc>().add(const DevicesRequested());
                                     }
                                   },
                                   child: Padding(

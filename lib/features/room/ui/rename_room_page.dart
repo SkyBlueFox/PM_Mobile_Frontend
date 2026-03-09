@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../home/bloc/devices_bloc.dart';
-import '../../home/bloc/devices_event.dart';
+import '../../home/bloc/home_bloc.dart';
+import '../../home/bloc/home_event.dart';
 import '../bloc/rooms_bloc.dart';
 import '../bloc/rooms_event.dart';
 import '../bloc/rooms_state.dart';
@@ -60,7 +60,7 @@ class _RenameRoomPageState extends State<RenameRoomPage> {
           final trimmed = _controller.text.trim();
 
           // ✅ keep Home tabs in sync (DevicesBloc uses rooms list)
-          context.read<DevicesBloc>().add(const DevicesStarted());
+          context.read<HomeBloc>().add(const DevicesStarted());
           context.read<RoomsBloc>().add(const RoomsRefreshRequested());
           // ✅ return new name so caller updates immediately
           Navigator.pop(context, trimmed);

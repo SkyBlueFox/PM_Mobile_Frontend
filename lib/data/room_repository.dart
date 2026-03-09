@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../features/home/models/device_widget.dart';
-import '../features/home/models/room.dart';
-import '../features/home/models/device.dart';
+import '../models/device_widget.dart';
+import '../models/room.dart';
+import '../models/device.dart';
 
 class RoomRepository {
   final String baseUrl;

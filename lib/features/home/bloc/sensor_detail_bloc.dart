@@ -16,7 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/device_repository.dart';
 import '../data/widget_repository.dart';
 
-import '../models/sensor_log.dart';
+import '../../../models/sensor_log.dart';
 
 import 'sensor_detail_event.dart';
 import 'sensor_detail_state.dart';

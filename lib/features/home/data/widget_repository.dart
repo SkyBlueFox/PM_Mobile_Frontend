@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
-import '../models/device_widget.dart';
-import '../models/sensor_log.dart';
+import '../../../models/device_widget.dart';
+import '../../../models/sensor_log.dart';
 
 class WidgetRepository {
   final String baseUrl;
@@ -164,7 +164,7 @@ class WidgetRepository {
         'Failed to load sensor logs: ${res.statusCode} ${decoded ?? res.body}',
       );
     }
-  
+
     final decoded = _decodeBody(res);
     final maps = _extractListMap(decoded);
 

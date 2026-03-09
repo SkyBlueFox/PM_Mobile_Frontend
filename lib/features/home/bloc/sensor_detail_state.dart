@@ -1,4 +1,4 @@
-import '../models/sensor_log.dart';
+import '../../../models/sensor_log.dart';
 
 class SensorDetailState {
   final bool isLoading;

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../home/models/room.dart';
+import '../../../models/room.dart';
 
 enum RoomsStatus { initial, loading, ready, saving, deleting, failure, success }
 

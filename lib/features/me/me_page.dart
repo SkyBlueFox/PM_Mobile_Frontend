@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../home/bloc/devices_bloc.dart';
-import '../home/bloc/devices_event.dart';
+import '../home/bloc/home_bloc.dart';
+import '../home/bloc/home_event.dart';
 import '../room/bloc/rooms_bloc.dart';
 import '../room/bloc/rooms_event.dart';
 import '../device/manage_devices_page.dart';
@@ -29,7 +29,7 @@ class MePage extends StatelessWidget {
   });
 
   void _goManageDevices(BuildContext context) {
-    context.read<DevicesBloc>().add(const DevicesRequested());
+    context.read<HomeBloc>().add(const DevicesRequested());
     context.read<RoomsBloc>().add(const RoomsStarted());
 
     Navigator.push(
@@ -37,7 +37,7 @@ class MePage extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => MultiBlocProvider(
           providers: [
-            BlocProvider.value(value: context.read<DevicesBloc>()),
+            BlocProvider.value(value: context.read<HomeBloc>()),
             BlocProvider.value(value: context.read<RoomsBloc>()),
           ],
           child: const ManageDevicesPage(),

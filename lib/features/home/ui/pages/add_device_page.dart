@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pm_mobile_frontend/features/home/bloc/devices_event.dart';
+import 'package:pm_mobile_frontend/features/home/bloc/home_event.dart';
 
-import '../../models/device.dart';
-import '../../bloc/devices_bloc.dart';
-import '../../bloc/devices_state.dart';
-import '../../models/room.dart';
+import '../../../../models/device.dart';
+import '../../bloc/home_bloc.dart';
+import '../../bloc/home_state.dart';
+import '../../../../models/room.dart';
 import '../../../device/device_setup_page.dart';
 
 class AddDevicePage extends StatefulWidget {
@@ -40,8 +40,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
   }
 
   Future<void> _pickDevice() async {
-    final devicesBloc = context.read<DevicesBloc>();
-    context.read<DevicesBloc>().add(const DevicesRequested(connected: false));
+    final devicesBloc = context.read<HomeBloc>();
+    context.read<HomeBloc>().add(const DevicesRequested(connected: false));
 
     final picked = await showModalBottomSheet<Device>(
       context: context,
@@ -50,7 +50,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
         return BlocProvider.value(
           value: devicesBloc,
           child: SafeArea(
-            child: BlocBuilder<DevicesBloc, DevicesState>(
+            child: BlocBuilder<HomeBloc, DevicesState>(
               buildWhen: (p, c) =>
                   p.widgets != c.widgets ||
                   p.isLoading != c.isLoading ||
@@ -116,7 +116,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
   }
 
   Future<void> _pickRoom() async {
-    final devicesBloc = context.read<DevicesBloc>();
+    final devicesBloc = context.read<HomeBloc>();
 
     final picked = await showModalBottomSheet<Room>(
       context: context,
@@ -125,7 +125,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
         return BlocProvider.value(
           value: devicesBloc,
           child: SafeArea(
-            child: BlocBuilder<DevicesBloc, DevicesState>(
+            child: BlocBuilder<HomeBloc, DevicesState>(
               builder: (context, st) {
                 if (st.isLoading && st.rooms.isEmpty) {
                   return const Padding(
@@ -201,8 +201,8 @@ class _AddDevicePageState extends State<AddDevicePage> {
     }
 
     try {
-      final deviceRepo = context.read<DevicesBloc>().deviceRepo;
-      final roomRepo = context.read<DevicesBloc>().roomRepo;
+      final deviceRepo = context.read<HomeBloc>().deviceRepo;
+      final roomRepo = context.read<HomeBloc>().roomRepo;
 
       await deviceRepo.pairDevice(
         deviceId: _selectedDevice!.id,
@@ -215,7 +215,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       );
 
       if (!mounted) return;
-      context.read<DevicesBloc>().add(const DevicesStarted());
+      context.read<HomeBloc>().add(const DevicesStarted());
 
       Navigator.pushReplacement(
         context,
@@ -236,7 +236,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
     const blue = Color(0xFF3AA7FF);
     const topBlue = Color(0xFFCBEAFF);
 
-    // ให้การ์ดไม่เต็มจอ (เหมือนตัวอย่าง UI)
     const double contentMaxWidth = 380;
 
     return Scaffold(
@@ -265,7 +264,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
           ),
 
           SafeArea(
-            child: BlocBuilder<DevicesBloc, DevicesState>(
+            child: BlocBuilder<HomeBloc, DevicesState>(
               buildWhen: (p, c) =>
                   p.isLoading != c.isLoading ||
                   p.error != c.error ||

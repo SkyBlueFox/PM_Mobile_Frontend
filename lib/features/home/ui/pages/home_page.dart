@@ -17,9 +17,10 @@ import '../../../device/manage_devices_page.dart';
 import '../../../room/bloc/rooms_bloc.dart';
 import '../../../room/bloc/rooms_event.dart';
 
-import '../../bloc/devices_bloc.dart';
-import '../../bloc/devices_event.dart';
-import '../../bloc/devices_state.dart';
+import '../../../room/ui/manage_home_page.dart';
+import '../../bloc/home_bloc.dart';
+import '../../bloc/home_event.dart';
+import '../../bloc/home_state.dart';
 
 import '../view_models/home_view_model.dart';
 import '../widgets/components/top_tabs.dart';
@@ -31,7 +32,6 @@ import '../widgets/dialogs/text_command_dialog.dart';
 import '../widgets/bottom_sheets/mode_picker_sheet.dart';
 
 import 'add_device_page.dart';
-import '../../../room/ui/manage_homes_page.dart';
 import 'sensor_detail_page.dart';
 import '../../../me/me_page.dart';
 
@@ -61,20 +61,20 @@ class _HomeViewState extends State<_HomeView> {
   final user = FirebaseAuth.instance.currentUser;
 
   void _logout() {
-    context.read<DevicesBloc>().add(const WidgetsPollingStopped());
+    context.read<HomeBloc>().add(const WidgetsPollingStopped());
     context.read<AuthBloc>().add(const AuthLogoutRequested());
   }
 
   @override
   void initState() {
     super.initState();
-    context.read<DevicesBloc>().add(const DevicesStarted());
+    context.read<HomeBloc>().add(const DevicesStarted());
     context.read<RoomsBloc>().add(const RoomsStarted());
   }
 
   @override
   void dispose() {
-    context.read<DevicesBloc>().add(const WidgetsPollingStopped());
+    context.read<HomeBloc>().add(const WidgetsPollingStopped());
     super.dispose();
   }
 
@@ -88,22 +88,22 @@ class _HomeViewState extends State<_HomeView> {
           context,
           MaterialPageRoute(
             builder: (_) => BlocProvider.value(
-              value: context.read<DevicesBloc>(),
+              value: context.read<HomeBloc>(),
               child: const AddDevicePage(),
             ),
           ),
         );
 
         if (!mounted) return;
-        final roomId = context.read<DevicesBloc>().state.selectedRoomId;
+        final roomId = context.read<HomeBloc>().state.selectedRoomId;
 
-        context.read<DevicesBloc>().add(DevicesRoomChanged(roomId));
-        context.read<DevicesBloc>().add(WidgetsPollingStarted(roomId: roomId));
+        context.read<HomeBloc>().add(DevicesRoomChanged(roomId));
+        context.read<HomeBloc>().add(WidgetsPollingStarted(roomId: roomId));
         break;
 
       case HomeAction.reorderWidgets:
-        final enabled = !context.read<DevicesBloc>().state.reorderEnabled;
-        context.read<DevicesBloc>().add(ReorderModeChanged(enabled));
+        final enabled = !context.read<HomeBloc>().state.reorderEnabled;
+        context.read<HomeBloc>().add(ReorderModeChanged(enabled));
         break;
 
       case HomeAction.manageWidgets:
@@ -113,7 +113,7 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   Future<void> _openManageWidgetsSheet() async {
-    final bloc = context.read<DevicesBloc>();
+    final bloc = context.read<HomeBloc>();
     final roomId = bloc.state.selectedRoomId;
 
     bloc.add(WidgetSelectionLoaded(roomId: roomId));
@@ -176,7 +176,7 @@ class _HomeViewState extends State<_HomeView> {
     );
 
     if (!mounted || selected == null) return;
-    context.read<DevicesBloc>().add(WidgetModeChanged(tile.widgetId, selected));
+    context.read<HomeBloc>().add(WidgetModeChanged(tile.widgetId, selected));
   }
 
   Future<void> _openTextDialog(HomeWidgetTileVM tile) async {
@@ -189,11 +189,11 @@ class _HomeViewState extends State<_HomeView> {
     );
 
     if (!mounted || text == null) return;
-    context.read<DevicesBloc>().add(WidgetTextSubmitted(tile.widgetId, text));
+    context.read<HomeBloc>().add(WidgetTextSubmitted(tile.widgetId, text));
   }
 
   void _startPollingIfHomeTab() {
-    final bloc = context.read<DevicesBloc>();
+    final bloc = context.read<HomeBloc>();
     final roomId = bloc.state.selectedRoomId;
     if (_bottomIndex == 0) {
       bloc.add(WidgetsPollingStarted(
@@ -217,7 +217,7 @@ class _HomeViewState extends State<_HomeView> {
           if (i == 0) {
             _startPollingIfHomeTab();
           } else {
-            context.read<DevicesBloc>().add(const WidgetsPollingStopped());
+            context.read<HomeBloc>().add(const WidgetsPollingStopped());
           }
         },
         selectedItemColor: blue,
@@ -230,7 +230,7 @@ class _HomeViewState extends State<_HomeView> {
       ),
       floatingActionButton: _bottomIndex != 0
           ? null
-          : BlocBuilder<DevicesBloc, DevicesState>(
+          : BlocBuilder<HomeBloc, DevicesState>(
               buildWhen: (p, c) =>
                   p.reorderEnabled != c.reorderEnabled ||
                   p.reorderSaving != c.reorderSaving,
@@ -241,7 +241,7 @@ class _HomeViewState extends State<_HomeView> {
                   shape: const CircleBorder(), // ✅ วงกลมตามตัวอย่าง
                   onPressed: enabled
                       ? () => context
-                          .read<DevicesBloc>()
+                          .read<HomeBloc>()
                           .add(const CommitReorderPressed())
                       : () => _openActionsSheet(),
                   child: Icon(
@@ -303,7 +303,7 @@ class _HomeViewState extends State<_HomeView> {
                             ),
                             Align(
                               alignment: Alignment.centerLeft,
-                              child: BlocBuilder<DevicesBloc, DevicesState>(
+                              child: BlocBuilder<HomeBloc, DevicesState>(
                                 buildWhen: (p, c) =>
                                     p.rooms != c.rooms ||
                                     p.selectedRoomId != c.selectedRoomId,
@@ -315,9 +315,9 @@ class _HomeViewState extends State<_HomeView> {
                                       selectedRoomId: st.selectedRoomId,
                                       onChanged: (roomId) {
                                         context
-                                            .read<DevicesBloc>()
+                                            .read<HomeBloc>()
                                             .add(DevicesRoomChanged(roomId!));
-                                        context.read<DevicesBloc>().add(
+                                        context.read<HomeBloc>().add(
                                             WidgetsPollingStarted(
                                                 roomId: roomId));
                                       },
@@ -341,7 +341,7 @@ class _HomeViewState extends State<_HomeView> {
                           ),
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                            child: BlocBuilder<DevicesBloc, DevicesState>(
+                            child: BlocBuilder<HomeBloc, DevicesState>(
                               buildWhen: (p, c) =>
                                   p.widgets != c.widgets ||
                                   p.isLoading != c.isLoading ||
@@ -370,14 +370,14 @@ class _HomeViewState extends State<_HomeView> {
                                   tiles: vm.tiles,
                                   reorderEnabled: st.reorderEnabled,
                                   onToggle: (widgetId) => context
-                                      .read<DevicesBloc>()
+                                      .read<HomeBloc>()
                                       .add(WidgetToggled(widgetId)),
                                   onAdjust: (widgetId, value) => context
-                                      .read<DevicesBloc>()
+                                      .read<HomeBloc>()
                                       .add(WidgetValueChanged(
                                           widgetId, value.toDouble())),
                                   onOrderChanged: (newOrderWidgetIds) => context
-                                      .read<DevicesBloc>()
+                                      .read<HomeBloc>()
                                       .add(WidgetsOrderChanged(
                                           newOrderWidgetIds)),
                                   onOpenSensor: (tile) {
@@ -394,7 +394,7 @@ class _HomeViewState extends State<_HomeView> {
                                   onOpenMode: _openModePicker,
                                   onOpenText: _openTextDialog,
                                   onPressButton: (widgetId) => context
-                                      .read<DevicesBloc>()
+                                      .read<HomeBloc>()
                                       .add(WidgetButtonPressed(widgetId)),
                                 );
                               },
@@ -415,11 +415,11 @@ class _HomeViewState extends State<_HomeView> {
                           builder: (_) => MultiBlocProvider(
                             providers: [
                               BlocProvider.value(
-                                  value: context.read<DevicesBloc>()),
+                                  value: context.read<HomeBloc>()),
                               BlocProvider.value(
                                   value: context.read<RoomsBloc>()),
                             ],
-                            child: const ManageHomesPage(),
+                            child: const ManageHomePage(),
                           ),
                         ),
                       );
@@ -429,10 +429,10 @@ class _HomeViewState extends State<_HomeView> {
                       context
                           .read<RoomsBloc>()
                           .add(const RoomsRefreshRequested());
-                      context.read<DevicesBloc>().add(const DevicesStarted());
+                      context.read<HomeBloc>().add(const DevicesStarted());
                     },
                     onManageDevices: () async {
-                      context.read<DevicesBloc>().add(const DevicesRequested());
+                      context.read<HomeBloc>().add(const DevicesRequested());
                       context.read<RoomsBloc>().add(const RoomsStarted());
 
                       await Navigator.push(
@@ -441,7 +441,7 @@ class _HomeViewState extends State<_HomeView> {
                           builder: (_) => MultiBlocProvider(
                             providers: [
                               BlocProvider.value(
-                                  value: context.read<DevicesBloc>()),
+                                  value: context.read<HomeBloc>()),
                               BlocProvider.value(
                                   value: context.read<RoomsBloc>()),
                             ],
@@ -452,7 +452,7 @@ class _HomeViewState extends State<_HomeView> {
 
                       if (!mounted) return;
 
-                      context.read<DevicesBloc>().add(const DevicesRequested());
+                      context.read<HomeBloc>().add(const DevicesRequested());
                       context
                           .read<RoomsBloc>()
                           .add(const RoomsRefreshRequested());

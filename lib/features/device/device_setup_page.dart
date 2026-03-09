@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/device_repository.dart';
-import '../home/bloc/devices_bloc.dart';
-import '../home/bloc/devices_event.dart';
-import '../home/models/device.dart';
+import '../home/bloc/home_bloc.dart';
+import '../home/bloc/home_event.dart';
+import '../../models/device.dart';
 
 class DeviceSetupPage extends StatefulWidget {
   final Device device;
@@ -66,7 +66,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
           ),
           TextButton(
             onPressed: () => {
-              context.read<DevicesBloc>().add(const DevicesRequested(connected: true)),
+              context.read<HomeBloc>().add(const DevicesRequested(connected: true)),
               Navigator.pop(ctx, true)
               },
             child: const Text('ยกเลิกการเชื่อมต่อ', style: TextStyle(color: Colors.red)),

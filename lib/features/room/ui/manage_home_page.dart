@@ -6,7 +6,7 @@ import 'edit_family_name_page.dart';
 import '../../user/ui/manage_user_page.dart';
 import 'invite_member_page.dart';
 
-import '../../home/bloc/devices_bloc.dart';
+import '../../home/bloc/home_bloc.dart';
 import '../bloc/rooms_bloc.dart';
 import '../bloc/rooms_state.dart';
 import 'manage_rooms_page.dart';
@@ -83,7 +83,7 @@ class _ManageHomePageState extends State<ManageHomePage> {
                               builder: (_) => MultiBlocProvider(
                                 providers: [
                                   BlocProvider.value(value: context.read<RoomsBloc>()),
-                                  BlocProvider.value(value: context.read<DevicesBloc>()),
+                                  BlocProvider.value(value: context.read<HomeBloc>()),
                                 ],
                                 child: const ManageRoomsPage(),
                               ),

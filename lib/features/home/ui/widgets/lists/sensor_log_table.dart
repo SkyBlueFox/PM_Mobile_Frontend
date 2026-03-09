@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../models/sensor_log.dart';
+import '../../../../../models/sensor_log.dart';
 
 enum LogTimeMode {
   hm24, // HH:mm
