@@ -69,7 +69,6 @@ class SensorLineChartFl extends StatelessWidget {
     final chartMaxY = maxY + padding;
     final chartSpanY = chartMaxY - chartMinY;
 
-    // ✅ 5 levels = 4 gaps
     final yInterval = chartSpanY / 4;
 
     return Padding(

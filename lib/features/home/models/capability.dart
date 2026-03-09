@@ -7,6 +7,7 @@
 enum CapabilityType {
   toggle,
   adjust,
+  level,
   sensor,
   mode,
   text,
@@ -22,6 +23,8 @@ CapabilityType capabilityTypeFromString(String? value) {
       return CapabilityType.toggle;
     case 'adjust':
       return CapabilityType.adjust;
+    case 'level':
+      return CapabilityType.level;
     case 'sensor':
       return CapabilityType.sensor;
     case 'mode':

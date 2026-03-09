@@ -231,13 +231,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
     }
   }
 
-  // Placeholder: ปุ่มสแกน QR (ต่อยอดทีหลังให้ไปหน้า scan จริง)
-  void _onScanQr() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('สแกน QR (TODO)')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     const blue = Color(0xFF3AA7FF);
@@ -254,14 +247,6 @@ class _AddDevicePageState extends State<AddDevicePage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'สแกน QR',
-            onPressed: _onScanQr,
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-          ),
-          const SizedBox(width: 6),
-        ],
       ),
       body: Stack(
         children: [

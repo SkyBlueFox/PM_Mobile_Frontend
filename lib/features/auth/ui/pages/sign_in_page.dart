@@ -70,20 +70,22 @@ class _SignInView extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const SizedBox(height: 20),
+                          // const SizedBox(height: 20),
 
-                          const Text(
-                            'Name',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 44,
-                              fontWeight: FontWeight.w700,
-                              color: SignInPage._blue,
-                              height: 1.0,
+                          CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Colors.white,
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/logo.png',
+                                width: 110,
+                                height: 110,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 20),
 
                           const Text(
                             "Let’s Sign in",
@@ -95,7 +97,7 @@ class _SignInView extends StatelessWidget {
                             ),
                           ),
 
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 24),
 
                           SizedBox(
                               height: 56,

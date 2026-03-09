@@ -231,7 +231,7 @@ class HomeViewModel {
         span: HomeTileSpan.half,
         kind: HomeTileKind.button,
         isOn: false,
-        value: '', // ปุ่มกดครั้งเดียว ไม่ต้องโชว์ value
+        value: '',
         unit: '',
         min: 0,
         max: 0,
@@ -241,6 +241,27 @@ class HomeViewModel {
         buttonLabel: 'Press',
       );
     }
+
+    if (cap.type == CapabilityType.level) {
+    final int intValue = _toIntSafe(rawValue);
+
+    return HomeWidgetTileVM(
+      widgetId: w.widgetId,
+      title: title,
+      subtitle: subtitle,
+      span: HomeTileSpan.full,
+      kind: HomeTileKind.adjust,
+      isOn: false,
+      value: intValue.toString(),
+      unit: _guessAdjustUnit(title: title, capLabel: subtitle),
+      min: 0,
+      max: 5,
+      showColorBar: _isColorLike(title),
+      modeOptions: const [],
+      hintText: '',
+      buttonLabel: '',
+    );
+  }
 
     // --- adjust (default) ---
     final int intValue = _toIntSafe(rawValue);
@@ -279,6 +300,8 @@ class HomeViewModel {
         return 'Toggle';
       case CapabilityType.adjust:
         return 'Adjust';
+      case CapabilityType.level:
+        return 'Level';
       case CapabilityType.mode:
         return 'Mode';
       case CapabilityType.text:
