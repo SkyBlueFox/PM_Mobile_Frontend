@@ -1,33 +1,45 @@
+import 'package:equatable/equatable.dart';
 import '../../../models/user.dart';
 
-abstract class UserState {}
+enum UserStatus {
+  initial,
+  loading,
+  ready,
+  saving,
+  deleting,
+  failure,
+  success,
+}
 
-/// Initial
-class UserInitial extends UserState {}
-
-/// Loading state
-class UserLoading extends UserState {}
-
-/// List of users loaded
-class UsersLoaded extends UserState {
+class UserState extends Equatable {
+  final UserStatus status;
   final List<AppUser> users;
+  final AppUser? user;
+  final String? error;
 
-  UsersLoaded(this.users);
-}
+  const UserState({
+    this.status = UserStatus.initial,
+    this.users = const [],
+    this.user,
+    this.error,
+  });
 
-/// Single user loaded
-class UserLoaded extends UserState {
-  final AppUser user;
+  UserState copyWith({
+    UserStatus? status,
+    List<AppUser>? users,
+    AppUser? user,
+    String? error,
+    bool clearUser = false,
+    bool clearError = false,
+  }) {
+    return UserState(
+      status: status ?? this.status,
+      users: users ?? this.users,
+      user: clearUser ? null : (user ?? this.user),
+      error: clearError ? null : (error ?? this.error),
+    );
+  }
 
-  UserLoaded(this.user);
-}
-
-/// Success after create/delete
-class UserActionSuccess extends UserState {}
-
-/// Error
-class UserError extends UserState {
-  final String message;
-
-  UserError(this.message);
+  @override
+  List<Object?> get props => [status, users, user, error];
 }

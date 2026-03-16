@@ -121,7 +121,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     context.read<RoomsBloc>().add(RoomDeleteRequested(widget.roomId));
 
     // keep Home tabs in sync (DevicesBloc uses rooms list)
-    context.read<HomeBloc>().add(const DevicesStarted());
+    context.read<HomeBloc>().add(const HomeStarted());
     context.read<RoomsBloc>().add(const RoomsRefreshRequested());
   }
 

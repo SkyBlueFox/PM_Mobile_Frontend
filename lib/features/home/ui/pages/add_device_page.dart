@@ -50,7 +50,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
         return BlocProvider.value(
           value: devicesBloc,
           child: SafeArea(
-            child: BlocBuilder<HomeBloc, DevicesState>(
+            child: BlocBuilder<HomeBloc, HomeState>(
               buildWhen: (p, c) =>
                   p.widgets != c.widgets ||
                   p.isLoading != c.isLoading ||
@@ -125,7 +125,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
         return BlocProvider.value(
           value: devicesBloc,
           child: SafeArea(
-            child: BlocBuilder<HomeBloc, DevicesState>(
+            child: BlocBuilder<HomeBloc, HomeState>(
               builder: (context, st) {
                 if (st.isLoading && st.rooms.isEmpty) {
                   return const Padding(
@@ -215,7 +215,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
       );
 
       if (!mounted) return;
-      context.read<HomeBloc>().add(const DevicesStarted());
+      context.read<HomeBloc>().add(const HomeStarted());
 
       Navigator.pushReplacement(
         context,
@@ -264,7 +264,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
           ),
 
           SafeArea(
-            child: BlocBuilder<HomeBloc, DevicesState>(
+            child: BlocBuilder<HomeBloc, HomeState>(
               buildWhen: (p, c) =>
                   p.isLoading != c.isLoading ||
                   p.error != c.error ||

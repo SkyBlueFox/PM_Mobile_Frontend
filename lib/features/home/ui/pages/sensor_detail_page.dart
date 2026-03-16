@@ -261,7 +261,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                                 unitFallback: st.unit,
                                 title: 'บันทึก (${st.logs.length})',
                                 emptyText: 'ยังไม่มีบันทึก',
-                                timeMode: LogTimeMode.hms24,
+                                period: st.period,
                               ),
                             ],
                           ),

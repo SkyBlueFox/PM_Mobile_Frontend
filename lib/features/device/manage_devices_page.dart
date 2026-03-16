@@ -58,7 +58,7 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
           ),
         ],
       ),
-      body: BlocBuilder<HomeBloc, DevicesState>(
+      body: BlocBuilder<HomeBloc, HomeState>(
         buildWhen: (p, c) =>
             p.isLoading != c.isLoading ||
             p.error != c.error ||

@@ -21,7 +21,7 @@ import '../../../models/device_widget.dart';
 import 'home_event.dart';
 import 'home_state.dart';
 
-class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
+class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final WidgetRepository widgetRepo;
   final RoomRepository roomRepo;
   final DeviceRepository deviceRepo;
@@ -49,9 +49,9 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
     required this.widgetRepo,
     required this.roomRepo,
     required this.deviceRepo,
-  }) : super(const DevicesState()) {
-    on<DevicesStarted>(_onStarted);
-    on<DevicesRoomChanged>(_onRoomChanged);
+  }) : super(const HomeState()) {
+    on<HomeStarted>(_onStarted);
+    on<TabRoomChanged>(_onRoomChanged);
 
     on<WidgetToggled>(_onWidgetToggled);
     on<WidgetValueChanged>(_onWidgetValueChanged);
@@ -59,8 +59,6 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
     on<WidgetModeChanged>(_onWidgetModeChanged);
     on<WidgetTextSubmitted>(_onWidgetTextSubmitted);
     on<WidgetButtonPressed>(_onWidgetButtonPressed);
-
-    on<DevicesAllToggled>(_onAllToggled);
 
     on<ReorderModeChanged>(_onReorderModeChanged);
     on<WidgetsOrderChanged>(_onWidgetsOrderChanged);
@@ -101,7 +99,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   // Initial load
   // ------------------------------
-  Future<void> _onStarted(DevicesStarted event, Emitter<DevicesState> emit) async {
+  Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
@@ -126,7 +124,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   // Room changed
   // ------------------------------
-  Future<void> _onRoomChanged(DevicesRoomChanged event, Emitter<DevicesState> emit) async {
+  Future<void> _onRoomChanged(TabRoomChanged event, Emitter<HomeState> emit) async {
     emit(state.copyWith(
       selectedRoomId: event.roomId,
       isLoading: true,
@@ -149,7 +147,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   // Toggle widget
   // ------------------------------
-  Future<void> _onWidgetToggled(WidgetToggled event, Emitter<DevicesState> emit) async {
+  Future<void> _onWidgetToggled(WidgetToggled event, Emitter<HomeState> emit) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
 
@@ -189,7 +187,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   Future<void> _onWidgetValueChanged(
     WidgetValueChanged event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
@@ -230,7 +228,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   Future<void> _onWidgetModeChanged(
     WidgetModeChanged event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
@@ -268,7 +266,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
 
   Future<void> _onWidgetTextSubmitted(
     WidgetTextSubmitted event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     if (state.reorderLocked) return;
     final before = state.widgets;
@@ -304,7 +302,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
 
   Future<void> _onWidgetButtonPressed(
     WidgetButtonPressed event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     if (state.reorderLocked) return;
 
@@ -327,20 +325,6 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   }
 
   // ------------------------------
-  // Toggle all (optional)
-  // ------------------------------
-  void _onAllToggled(DevicesAllToggled event, Emitter<DevicesState> emit) {
-    final int turnOnValue = event.turnOn ? 1 : 0;
-
-    final updated = state.widgets.map((w) {
-      if (w.capability.type != CapabilityType.toggle) return w;
-      return w.copyWith(value: turnOnValue.toString());
-    }).toList();
-
-    emit(state.copyWith(widgets: updated, error: null));
-  }
-
-  // ------------------------------
   // Reorder helpers
   // ------------------------------
   List<int> _currentVisibleIds(List<DeviceWidget> all) {
@@ -353,7 +337,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
     return visible.map((e) => e.widgetId).toList();
   }
 
-  void _onReorderModeChanged(ReorderModeChanged event, Emitter<DevicesState> emit) {
+  void _onReorderModeChanged(ReorderModeChanged event, Emitter<HomeState> emit) {
     if (event.enabled) {
       final ids = _currentVisibleIds(state.widgets);
       emit(state.copyWith(
@@ -374,7 +358,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
     }
   }
 
-  void _onWidgetsOrderChanged(WidgetsOrderChanged event, Emitter<DevicesState> emit) {
+  void _onWidgetsOrderChanged(WidgetsOrderChanged event, Emitter<HomeState> emit) {
     if (!state.reorderEnabled || state.reorderSaving) return;
 
     emit(state.copyWith(
@@ -385,7 +369,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
 
   Future<void> _onCommitReorderPressed(
     CommitReorderPressed event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     if (!state.reorderEnabled) return;
 
@@ -446,7 +430,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   Future<void> _onDevicesRequested(
     DevicesRequested event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
@@ -462,7 +446,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   Future<void> _onWidgetsPollingStarted(
     WidgetsPollingStarted event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     _pollRoomId = event.roomId;
 
@@ -486,7 +470,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
 
   Future<void> _onWidgetsPollingStopped(
     WidgetsPollingStopped event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     _sensorPollTimer?.cancel();
     _sensorPollTimer = null;
@@ -594,7 +578,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   Future<void> _onWidgetSelectionLoaded(
     WidgetSelectionLoaded event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
@@ -618,7 +602,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
 
   Future<void> _onWidgetIncludeToggled(
     WidgetIncludeToggled event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     final before = state.widgets;
     final idx = before.indexWhere((w) => w.widgetId == event.widgetId);
@@ -644,7 +628,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
 
   Future<void> _onWidgetSelectionSaved(
     WidgetSelectionSaved event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
@@ -663,7 +647,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
   // ------------------------------
   Future<void> _onWidgetsVisibilitySaved(
     WidgetsVisibilitySaved event,
-    Emitter<DevicesState> emit,
+    Emitter<HomeState> emit,
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
 
@@ -689,7 +673,7 @@ class HomeBloc extends Bloc<DevicesEvent, DevicesState> {
       emit(state.copyWith(isLoading: false, widgets: refreshedRoom, error: null));
 
       // restart polling เพื่อ sync หน้า home
-      add(DevicesRoomChanged(roomId));
+      add(TabRoomChanged(roomId));
       add(WidgetsPollingStarted(roomId: roomId));
     } catch (e, st) {
       debugPrint('[HomeBloc] visibility save failed: $e\n$st');

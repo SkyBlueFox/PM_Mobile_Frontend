@@ -60,7 +60,7 @@ class _RenameRoomPageState extends State<RenameRoomPage> {
           final trimmed = _controller.text.trim();
 
           // ✅ keep Home tabs in sync (DevicesBloc uses rooms list)
-          context.read<HomeBloc>().add(const DevicesStarted());
+          context.read<HomeBloc>().add(const HomeStarted());
           context.read<RoomsBloc>().add(const RoomsRefreshRequested());
           // ✅ return new name so caller updates immediately
           Navigator.pop(context, trimmed);

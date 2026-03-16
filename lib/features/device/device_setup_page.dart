@@ -45,7 +45,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
       );
 
       if (!mounted) return;
-      Navigator.pop(context, newName); // return new name
+      Navigator.pop(context, newName);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('อัปเดตชื่ออุปกรณ์ไม่สำเร็จ: $e')),
@@ -66,17 +66,10 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
           ),
           TextButton(
             onPressed: () => {
-              context.read<HomeBloc>().add(const DevicesRequested(connected: true)),
               Navigator.pop(ctx, true)
               },
             child: const Text('ยกเลิกการเชื่อมต่อ', style: TextStyle(color: Colors.red)),
           ),
-          //TODO: Choose Text or Button for this action? (ถ้าใช้ TextButton ต้องทำสีแดงเอง)
-          // ElevatedButton(
-          //   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          //   onPressed: () => Navigator.pop(ctx, true),
-          //   child: const Text('ยกเลิกการเชื่อมต่อ', style: TextStyle(color: Colors.white)),
-          // ),
         ],
       ),
     );
@@ -87,7 +80,6 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
     try {
       final repo = context.read<DeviceRepository>();
       await repo.unpairDevice(widget.device.id);
-
       if (!mounted) return;
       Navigator.pop(context, 'unpair');
     } catch (e) {
@@ -95,6 +87,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
         SnackBar(content: Text('ยกเลิกการเชื่อมต่ออุปกรณ์ไม่สำเร็จ: $e')),
       );
     }
+    context.read<HomeBloc>().add(const DevicesRequested(connected: true));
   }
 
   @override

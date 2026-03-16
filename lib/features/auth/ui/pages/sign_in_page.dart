@@ -20,8 +20,8 @@ class SignInPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (ctx) => SignInBloc(
-        authRepository: ctx.read<AuthRepository>(), // ✅ ใช้ repo จาก main.dart
-        authBloc: ctx.read<AuthBloc>(),             // ✅ ส่งให้ bloc เพื่อ dispatch AuthLoggedIn
+        authRepository: ctx.read<AuthRepository>(),
+        authBloc: ctx.read<AuthBloc>(),            
       ),
       child: const _SignInView(),
     );
@@ -54,6 +54,7 @@ class _SignInView extends StatelessWidget {
         }
       },
       child: Scaffold(
+        backgroundColor: Colors.blue,
         body: AuthBackground(
           child: SafeArea(
             child: Center(
@@ -70,7 +71,6 @@ class _SignInView extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // const SizedBox(height: 20),
 
                           CircleAvatar(
                             radius: 60,
@@ -93,7 +93,7 @@ class _SignInView extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: SignInPage._blue,
+                              color: Colors.blue,
                             ),
                           ),
 

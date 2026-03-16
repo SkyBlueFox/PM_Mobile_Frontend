@@ -7,6 +7,7 @@ import 'package:pm_mobile_frontend/features/home/data/widget_repository.dart';
 import 'data/device_repository.dart';
 import 'data/room_repository.dart';
 
+import 'data/user_repository.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_event.dart';
 import 'features/auth/bloc/auth_state.dart';
@@ -25,6 +26,8 @@ import 'features/room/bloc/rooms_bloc.dart';
 import 'features/room/bloc/rooms_event.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'features/user/bloc/user_bloc.dart';
+import 'features/user/bloc/user_event.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -69,6 +72,9 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<DeviceRepository>(
           create: (_) => DeviceRepository(baseUrl: baseUrl),
         ),
+        RepositoryProvider<AppUserRepository>(
+          create: (_) => AppUserRepository(baseUrl: baseUrl),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -92,6 +98,13 @@ class MyApp extends StatelessWidget {
               roomRepo: ctx.read<RoomRepository>(),
               deviceRepo: ctx.read<DeviceRepository>(),
             )
+          ),
+
+          // User BLOC
+          BlocProvider<UserBloc>(
+            create: (ctx) => UserBloc(
+              ctx.read<AppUserRepository>(),
+            )..add(FetchUsers()),
           ),
         ],
         child: MaterialApp(

@@ -1,16 +1,13 @@
 abstract class UserEvent {}
 
-/// Load all users
 class FetchUsers extends UserEvent {}
 
-/// Get single user
 class FetchUserById extends UserEvent {
-  final String userId;
+  final int userId;
 
   FetchUserById(this.userId);
 }
 
-/// Create user
 class CreateUser extends UserEvent {
   final String name;
   final String email;
@@ -21,9 +18,8 @@ class CreateUser extends UserEvent {
   });
 }
 
-/// Delete user
 class DeleteUser extends UserEvent {
-  final String userId;
+  final String userEmail;
 
-  DeleteUser(this.userId);
+  DeleteUser(this.userEmail);
 }

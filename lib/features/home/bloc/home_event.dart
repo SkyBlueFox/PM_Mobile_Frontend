@@ -4,84 +4,76 @@
 // - รวม event เดิมทั้งหมด
 // - ✅ เพิ่ม WidgetsVisibilitySaved สำหรับบันทึก include/exclude จาก widget picker (bulk)
 
-sealed class DevicesEvent {
-  const DevicesEvent();
+sealed class HomeEvent {
+  const HomeEvent();
 }
 
 /// initial load rooms + widgets (All)
-class DevicesStarted extends DevicesEvent {
-  const DevicesStarted();
+class HomeStarted extends HomeEvent {
+  const HomeStarted();
 }
 
 /// select a room (null = All)
-class DevicesRoomChanged extends DevicesEvent {
+class TabRoomChanged extends HomeEvent {
   final int roomId;
-  const DevicesRoomChanged(this.roomId);
+  const TabRoomChanged(this.roomId);
 }
 
 /// toggle widget (capability = toggle) = สั่งงานอุปกรณ์
-class WidgetToggled extends DevicesEvent {
+class WidgetToggled extends HomeEvent {
   final int widgetId;
   const WidgetToggled(this.widgetId);
 }
 
 /// slider/adjust change (capability = adjust) = สั่งงานอุปกรณ์
-class WidgetValueChanged extends DevicesEvent {
+class WidgetValueChanged extends HomeEvent {
   final int widgetId;
   final double value;
   const WidgetValueChanged(this.widgetId, this.value);
 }
 
 /// mode change (capability = mode) = สั่งงานอุปกรณ์
-class WidgetModeChanged extends DevicesEvent {
+class WidgetModeChanged extends HomeEvent {
   final int widgetId;
-  final String mode; // e.g. auto/cool/dry/fan/heat
+  final String mode;
   const WidgetModeChanged(this.widgetId, this.mode);
 }
 
 /// text submit (capability = text) = ส่งข้อความไป device
-class WidgetTextSubmitted extends DevicesEvent {
+class WidgetTextSubmitted extends HomeEvent {
   final int widgetId;
   final String text;
   const WidgetTextSubmitted(this.widgetId, this.text);
 }
 
-/// button press (capability = button) = กดครั้งเดียว (กริ่ง/trigger)
-class WidgetButtonPressed extends DevicesEvent {
+class WidgetButtonPressed extends HomeEvent {
   final int widgetId;
 
-  /// เผื่อ backend ต้องการค่าเฉพาะ (เช่น "press"/"1")
   final String value;
   const WidgetButtonPressed(this.widgetId, {this.value = 'press'});
-}
-
-/// optional: toggle all in current room (ถ้าใช้)
-class DevicesAllToggled extends DevicesEvent {
-  final bool turnOn;
-  const DevicesAllToggled(this.turnOn);
 }
 
 // ------------------------------
 // Reorder widgets
 // ------------------------------
-class ReorderModeChanged extends DevicesEvent {
+class ReorderModeChanged extends HomeEvent {
   final bool enabled;
   const ReorderModeChanged(this.enabled);
 }
 
-class WidgetsOrderChanged extends DevicesEvent {
+class WidgetsOrderChanged extends HomeEvent {
   final List<int> orderedWidgetIds;
   const WidgetsOrderChanged(this.orderedWidgetIds);
 }
 
-class CommitReorderPressed extends DevicesEvent {
+class CommitReorderPressed extends HomeEvent {
   const CommitReorderPressed();
 }
 
 // ------------------------------
 // Devices list
 // ------------------------------
-class DevicesRequested extends DevicesEvent {
+class DevicesRequested extends HomeEvent {
   final bool? connected;
   const DevicesRequested({this.connected});
 }
@@ -89,7 +81,7 @@ class DevicesRequested extends DevicesEvent {
 // ------------------------------
 // Polling
 // ------------------------------
-class WidgetsPollingStarted extends DevicesEvent {
+class WidgetsPollingStarted extends HomeEvent {
   final int roomId;
   final Duration interval;
   const WidgetsPollingStarted({
@@ -98,7 +90,7 @@ class WidgetsPollingStarted extends DevicesEvent {
   });
 }
 
-class WidgetsPollingStopped extends DevicesEvent {
+class WidgetsPollingStopped extends HomeEvent {
   const WidgetsPollingStopped();
 }
 
@@ -107,13 +99,13 @@ class WidgetsPollingStopped extends DevicesEvent {
 /// ------------------------------
 
 /// โหลดรายการเพื่อทำ include/exclude (ใช้ก่อนเปิด picker)
-class WidgetSelectionLoaded extends DevicesEvent {
+class WidgetSelectionLoaded extends HomeEvent {
   final int roomId;
   const WidgetSelectionLoaded({required this.roomId});
 }
 
 /// toggle include/exclude (แสดง/ไม่แสดงบนหน้า Home) - ยิงทีละตัว
-class WidgetIncludeToggled extends DevicesEvent {
+class WidgetIncludeToggled extends HomeEvent {
   final int widgetId;
   final bool included;
   const WidgetIncludeToggled({
@@ -123,7 +115,7 @@ class WidgetIncludeToggled extends DevicesEvent {
 }
 
 /// กดบันทึก include/exclude (เดิม: ใช้ refresh หลังยิงทีละตัว)
-class WidgetSelectionSaved extends DevicesEvent {
+class WidgetSelectionSaved extends HomeEvent {
   final int roomId;
   const WidgetSelectionSaved({required this.roomId});
 }
@@ -131,7 +123,7 @@ class WidgetSelectionSaved extends DevicesEvent {
 /// ------------------------------
 /// ✅ NEW: Save include/exclude จาก widget picker (bulk)
 /// ------------------------------
-class WidgetsVisibilitySaved extends DevicesEvent {
+class WidgetsVisibilitySaved extends HomeEvent {
   final int roomId;
 
   /// รายการ widgetId ที่ผู้ใช้เลือกให้ "Include"

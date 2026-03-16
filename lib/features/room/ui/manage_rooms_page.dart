@@ -102,7 +102,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                 children: [
                   if (rooms.isNotEmpty)
                     _WhiteCard(
-                      child: BlocBuilder<HomeBloc, DevicesState>(
+                      child: BlocBuilder<HomeBloc, HomeState>(
                         // rebuild list rows when devices change (counts)
                         buildWhen: (p, c) => p.devices != c.devices,
                         builder: (context, devicesState) {

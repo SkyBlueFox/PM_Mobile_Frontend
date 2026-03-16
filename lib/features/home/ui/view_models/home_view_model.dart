@@ -98,7 +98,7 @@ class HomeViewModel {
     required this.drawerTiles,
   });
 
-  factory HomeViewModel.fromState(DevicesState st) {
+  factory HomeViewModel.fromState(HomeState st) {
     // ✅ ใช้ source ที่ "เรียงแล้ว" จาก DevicesState เพื่อให้ reorder เสถียร
     final visibleWidgets = st.visibleWidgets; // sorted by order then widgetId
     final drawerWidgets = st.drawerWidgets; // inactive only
@@ -122,7 +122,7 @@ class HomeViewModel {
     final Capability cap = w.capability as Capability;
 
     // title = device name (ตาม requirement)
-    final String title = (w.device.name ?? '').toString();
+    final String title = (w.capability.controlType ?? '').toString();
 
     // subtitle = cap name/label (ตาม requirement)
     final String subtitle = _capLabel(cap);

@@ -37,9 +37,9 @@ class AppUserRepository {
     };
   }
 
-  /// ✅ GET /api/Appusers
+  /// ✅ GET /api/users
   Future<List<AppUser>> fetchAppUsers() async {
-    final uri = Uri.parse('$baseUrl/api/Appusers');
+    final uri = Uri.parse('$baseUrl/api/users');
 
     final res = await _client.get(
       uri,
@@ -47,7 +47,7 @@ class AppUserRepository {
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to load Appusers (${res.statusCode}) ${res.body}');
+      throw Exception('Failed to load users (${res.statusCode}) ${res.body}');
     }
 
     final decoded = jsonDecode(res.body);
@@ -56,16 +56,16 @@ class AppUserRepository {
         decoded is Map<String, dynamic> ? decoded['data'] : decoded;
 
     final List list = raw is List ? raw : const [];
-
+    
     return list
         .whereType<Map<String, dynamic>>()
         .map(AppUser.fromJson)
         .toList(growable: false);
   }
 
-  /// ✅ GET /api/Appusers/{Appuser_id}
-  Future<AppUser?> fetchAppUserById(String AppuserId) async {
-    final uri = Uri.parse('$baseUrl/api/Appusers/$AppuserId');
+  /// ✅ GET /api/Appusers/{user_id}
+  Future<AppUser?> fetchAppUserById(int AppuserId) async {
+    final uri = Uri.parse('$baseUrl/api/users/$AppuserId');
 
     final res = await _client.get(
       uri,
@@ -94,12 +94,12 @@ class AppUserRepository {
     return AppUser.fromJson(raw);
   }
 
-  /// ✅ POST /api/Appusers
+  /// ✅ POST /api/users
   Future<AppUser> createAppUser({
     required String name,
     required String email,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/Appusers');
+    final uri = Uri.parse('$baseUrl/api/users');
 
     final res = await _client.post(
       uri,
@@ -128,9 +128,9 @@ class AppUserRepository {
     return AppUser.fromJson(raw);
   }
 
-  /// ✅ DELETE /api/Appusers/{Appuser_id}
-  Future<void> deleteAppUser(String AppuserId) async {
-    final uri = Uri.parse('$baseUrl/api/Appusers/$AppuserId');
+  /// ✅ DELETE /api/Appusers/{user_email}
+  Future<void> deleteAppUser(String email) async {
+    final uri = Uri.parse('$baseUrl/api/users/$email');
 
     final res = await _client.delete(
       uri,

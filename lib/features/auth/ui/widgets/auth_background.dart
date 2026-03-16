@@ -9,11 +9,7 @@ class AuthBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0, -0.7),
-          radius: 1.2,
-          colors: [Colors.white, Color(0xFFF1F1F1)],
-        ),
+        color: Colors.white,
       ),
       child: Stack(
         children: [

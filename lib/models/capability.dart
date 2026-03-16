@@ -46,6 +46,7 @@ CapabilityType capabilityTypeFromString(String? value) {
 class Capability {
   final int id;
   final CapabilityType type;
+  final String controlType;
 
   /// optional: รายการตัวเลือก เช่น mode: ["auto","cool","dry","fan","heat"]
   final List<String> options;
@@ -56,31 +57,24 @@ class Capability {
   const Capability({
     required this.id,
     required this.type,
+    required this.controlType,
     this.options = const [],
     this.meta = const {},
   });
 
-  // ---------------------------------------------------------------------------
-  // ✅ UI-friendly getters
-  // ---------------------------------------------------------------------------
-
-  /// ชื่อ capability ที่ใช้แสดงผลใน UI
-  /// รองรับ key: meta.name / meta.capability_name / meta.title
   String get name {
     final v = meta['name'] ?? meta['capability_name'] ?? meta['title'];
     return (v ?? '').toString();
   }
 
-  /// หน่วยของค่า เช่น °C, %, ppm
-  /// รองรับ key: meta.unit / meta.capability_unit
   String get unit {
     final v = meta['unit'] ?? meta['capability_unit'];
     return (v ?? '').toString();
   }
 
   factory Capability.fromJson(Map<String, dynamic> json) {
-    // id รองรับทั้ง capability_id และ id
     final rawId = json['capability_id'] ?? json['id'] ?? 0;
+    final rawControlType = json['control_type'];
 
     final rawOptions = json['options'] ?? json['capability_options'];
     final optionsList = (rawOptions is List) ? rawOptions : const [];
@@ -90,7 +84,6 @@ class Capability {
         ? rawMeta.cast<String, dynamic>()
         : const <String, dynamic>{};
 
-    // ✅ เติม name/unit เข้า meta ถ้า backend ส่งมาแบบ top-level
     final mergedMeta = Map<String, dynamic>.from(metaMap);
 
     final topName = json['name'] ?? json['capability_name'];
@@ -106,6 +99,7 @@ class Capability {
     return Capability(
       id: (rawId as num).toInt(),
       type: capabilityTypeFromString((json['capability_type'] ?? json['type'])?.toString()),
+      controlType: rawControlType,
       options: optionsList.map((e) => e.toString()).toList(),
       meta: mergedMeta,
     );
@@ -114,6 +108,7 @@ class Capability {
   Map<String, dynamic> toJson() => {
         'capability_id': id,
         'capability_type': type.name,
+        'control_type' : controlType,
         'options': options,
         'meta': meta,
       };

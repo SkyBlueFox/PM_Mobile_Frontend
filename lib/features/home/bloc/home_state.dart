@@ -11,7 +11,7 @@ import '../../../models/device.dart';
 
 enum RoomActionStatus { idle, saving, success, failure }
 
-class DevicesState {
+class HomeState {
   final bool isLoading;
   final List<Room> rooms;
   final int selectedRoomId;
@@ -28,7 +28,7 @@ class DevicesState {
   final RoomActionStatus roomActionStatus;
   final String? roomActionError;
 
-  const DevicesState({
+  const HomeState({
     this.isLoading = false,
     this.rooms = const [],
     this.selectedRoomId = 1,
@@ -44,7 +44,7 @@ class DevicesState {
     this.roomActionError,
   });
 
-  DevicesState copyWith({
+  HomeState copyWith({
     bool? isLoading,
     List<Room>? rooms,
     int? selectedRoomId,
@@ -60,7 +60,7 @@ class DevicesState {
     String? roomActionError,
     bool clearRoomActionError = false,
   }) {
-    return DevicesState(
+    return HomeState(
       isLoading: isLoading ?? this.isLoading,
       rooms: rooms ?? this.rooms,
       selectedRoomId: selectedRoomId ?? this.selectedRoomId,
