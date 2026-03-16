@@ -91,11 +91,11 @@ class RoomRepository {
 
     return list.map((e) {
       return Device(
-        id: e['id'] as String,
-        name: e['name'] as String,
-        type: e['type'] as String,
+        id: e['device_id'] as String,
+        name: e['device_name'] as String,
+        type: e['device_type'] as String,
         lastHeartBeat:
-            DateTime.parse(e['lastHeartBeatAt'] as String),
+            DateTime.parse(e['device_last_heartbeat'] as String),
       );
     }).toList();
   }
