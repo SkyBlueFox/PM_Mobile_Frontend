@@ -164,18 +164,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final updated = List<DeviceWidget>.from(before);
     updated[idx] = target.copyWith(value: newValue.toString());
     
-    if (newValue == 0) {
-      final modeIdx = updated.indexWhere(
-        (w) =>
-            w.device.id == target.device.id &&
-            w.capability.type == CapabilityType.mode,
-      );
-
-      if (modeIdx >= 0) {
-        updated[modeIdx] = updated[modeIdx].copyWith(value: 'off');
-        _markPending(updated[modeIdx].widgetId, 'off');
-      }
-    }
     _markPending(event.widgetId, newValue.toString());
     emit(state.copyWith(widgets: updated, error: null));
 
