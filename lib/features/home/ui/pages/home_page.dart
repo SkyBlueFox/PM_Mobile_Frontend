@@ -168,7 +168,7 @@ class _HomeViewState extends State<_HomeView> {
 
   Future<void> _openModePicker(HomeWidgetTileVM tile) async {
     final options = tile.modeOptions.isEmpty
-        ? const ['auto', 'cool', 'dry', 'fan', 'heat']
+        ? const ['auto', 'off']
         : tile.modeOptions;
 
     final selected = await showModePickerSheet(
