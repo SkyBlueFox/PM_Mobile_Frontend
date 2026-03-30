@@ -110,6 +110,9 @@ class _AddDevicePageState extends State<AddDevicePage> {
     );
 
     if (!mounted) return;
+
+    devicesBloc.add(const DevicesRequested(connected: true));
+    
     if (picked != null) {
       setState(() => _selectedDevice = picked);
     }
@@ -377,6 +380,7 @@ class _AddDevicePageState extends State<AddDevicePage> {
                                   style: TextStyle(fontWeight: FontWeight.w800),
                                 ),
                               ),
+                              //TODO add error message when password is wrong
                             ),
                           ],
                         ),

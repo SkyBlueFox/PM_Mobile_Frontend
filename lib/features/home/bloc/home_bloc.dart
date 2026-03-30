@@ -105,7 +105,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       final rooms = await roomRepo.fetchRooms();
       final widgets = await roomRepo.fetchWidgetsByRoomId(rooms.first.id, 'include');
-      final devices = await deviceRepo.fetchDevices();
+      final devices = await deviceRepo.fetchDevices(connected: true);
 
       emit(state.copyWith(
         isLoading: false,
@@ -432,12 +432,25 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     DevicesRequested event,
     Emitter<HomeState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, error: null));
+    emit(state.copyWith(
+      isLoading: true,
+      error: null,
+      devices: const [],
+    ));
+
     try {
       final devices = await deviceRepo.fetchDevices(connected: event.connected);
-      emit(state.copyWith(isLoading: false, devices: devices));
+      emit(state.copyWith(
+        isLoading: false,
+        error: null,
+        devices: devices,
+      ));
     } catch (_) {
-      emit(state.copyWith(isLoading: false, error: _msgLoadFailed));
+      emit(state.copyWith(
+        isLoading: false,
+        error: _msgLoadFailed,
+        devices: const [],
+      ));
     }
   }
 

@@ -1,17 +1,21 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pm_mobile_frontend/features/user/bloc/user_event.dart';
 import '../bloc/user_bloc.dart';
 import '../bloc/user_state.dart';
+import '../../../models/user.dart';
 
 class ManageUserPage extends StatefulWidget {
   final String userName;
   final String userEmail;
+  final Role myRole;
 
   const ManageUserPage({
     super.key,
     required this.userName,
     required this.userEmail,
+    required this.myRole,
   });
 
   @override
@@ -19,11 +23,13 @@ class ManageUserPage extends StatefulWidget {
 }
 
 class _ManageUserPageState extends State<ManageUserPage> {
+  String? myEmail;
 
   @override
   void initState() {
     super.initState();
     context.read<UserBloc>().add(FetchUsers());
+    myEmail = FirebaseAuth.instance.currentUser?.email;
   }
 
   @override
@@ -62,6 +68,11 @@ class _ManageUserPageState extends State<ManageUserPage> {
           builder: (context, state) {
             final isDeleting = state.status == UserStatus.deleting;
             final isLoading = state.status == UserStatus.loading;
+            final currentUser = state.users.where((u) => u.email == widget.userEmail).isNotEmpty
+                ? state.users.firstWhere((u) => u.email == widget.userEmail)
+                : null;
+
+            final displayName = currentUser?.name ?? widget.userName;
 
             return Stack(
               children: [
@@ -73,11 +84,14 @@ class _ManageUserPageState extends State<ManageUserPage> {
                         child: Column(
                           children: [
                             _buildInfoRow(
-                              label: 'ชื่อ',
-                              value: widget.userName,
-                              showChevron: false,
-                              textColor: Colors.black,
-                            ),
+                            label: 'ชื่อ',
+                            value: displayName,
+                            textColor: Colors.black,
+                            onTap: widget.myRole == Role.admin ? () => _showEditNameDialog(displayName) : null,
+                            trailingWidget: widget.myRole == Role.admin
+                                ? const Icon(Icons.edit, size: 18, color: Colors.black45)
+                                : null,
+                          ),
                           ],
                         ),
                       ),
@@ -88,13 +102,12 @@ class _ManageUserPageState extends State<ManageUserPage> {
                             _buildInfoRow(
                               label: 'บัญชี',
                               value: widget.userEmail,
-                              showChevron: false,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      // if (!isHomeOwner) //TODO implement if there's role
+                    const SizedBox(height: 24),
+                      if (widget.myRole == Role.admin && myEmail != widget.userEmail)
                         _WhiteCard(
                           child: InkWell(
                             onTap: isDeleting ? null : _showDeleteConfirmDialog,
@@ -134,9 +147,9 @@ class _ManageUserPageState extends State<ManageUserPage> {
   Widget _buildInfoRow({
     required String label,
     required String value,
-    bool showChevron = false,
     VoidCallback? onTap,
     Color textColor = Colors.black45,
+    Widget? trailingWidget,
   }) {
     return InkWell(
       onTap: onTap,
@@ -161,12 +174,58 @@ class _ManageUserPageState extends State<ManageUserPage> {
                 fontSize: 15,
               ),
             ),
-            if (showChevron) ...[
+            if (trailingWidget != null) ...[
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: Colors.black26),
+              trailingWidget,
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showEditNameDialog(String currentName) {
+    final controller = TextEditingController(text: currentName);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(
+          'เปลี่ยนชื่อสมาชิก',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'กรอกชื่อใหม่',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isEmpty) return;
+
+              Navigator.pop(dialogContext);
+
+              context.read<UserBloc>().add(
+                UpdateUserName(
+                  email: widget.userEmail,
+                  name: newName,
+                ),
+              );
+              context.read<UserBloc>().add(FetchUsers());
+            },
+            child: const Text(
+              'บันทึก',
+              style: TextStyle(color: Colors.blue),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -194,7 +253,7 @@ class _ManageUserPageState extends State<ManageUserPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              context.read<UserBloc>().add(DeleteUser(widget.userEmail)); //TODO
+              context.read<UserBloc>().add(DeleteUser(widget.userEmail));
               Navigator.pop(context);
             },
             child: const Text(

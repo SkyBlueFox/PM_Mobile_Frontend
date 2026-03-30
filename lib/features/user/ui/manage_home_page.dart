@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pm_mobile_frontend/features/auth/bloc/auth_bloc.dart';
+import 'package:pm_mobile_frontend/features/auth/bloc/auth_event.dart';
 
 import 'manage_user_page.dart';
 import 'invite_member_page.dart';
@@ -11,6 +14,7 @@ import '../bloc/user_state.dart';
 import '../../room/bloc/rooms_bloc.dart';
 import '../../room/bloc/rooms_state.dart';
 import '../../room/ui/manage_rooms_page.dart';
+import '../../../models/user.dart';
 
 class ManageHomePage extends StatefulWidget {
   const ManageHomePage({super.key});
@@ -25,7 +29,14 @@ class _ManageHomePageState extends State<ManageHomePage> {
   @override
   void initState() {
     super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if(user == null) {
+      context.read<AuthBloc>().add(const AuthLogoutRequested());
+      Navigator.pop(context);
+      return;
+    }
     context.read<UserBloc>().add(FetchUsers());
+    context.read<UserBloc>().add(FetchUserByEmail(user.email!));
   }
 
   @override
@@ -159,12 +170,14 @@ class _ManageHomePageState extends State<ManageHomePage> {
                       );
                     }
 
+                    final Role? myRole = state.user?.role;
                     return Column(
                       children: [
                         ...state.users.map(
                           (user) => _buildMemberRow(
                             name: user.name,
                             email: user.email,
+                            myRole: myRole!,
                           ),
                         ),
                         _buildAddMemberButton(),
@@ -218,15 +231,19 @@ class _ManageHomePageState extends State<ManageHomePage> {
   Widget _buildMemberRow({
     required String name,
     required String email,
+    required Role myRole,
   }) {
     return InkWell(
       onTap: () async {
-        final result = await Navigator.push<bool>(
+        //user from Bloc State
+        if (myRole == Role.admin) {
+          final result = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
             builder: (_) => ManageUserPage(
               userName: name,
               userEmail: email,
+              myRole: myRole,
               ),
           ),
         );
@@ -234,16 +251,12 @@ class _ManageHomePageState extends State<ManageHomePage> {
         if (result == true && mounted) {
           context.read<UserBloc>().add(FetchUsers());
         }
+        }
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
           children: [
-            CircleAvatar(
-              backgroundColor: Colors.grey[300],
-              radius: 18,
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 name,
@@ -254,7 +267,8 @@ class _ManageHomePageState extends State<ManageHomePage> {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, color: Colors.black26),
+            if (myRole == Role.admin) 
+              const Icon(Icons.chevron_right_rounded, color: Colors.black26),
           ],
         ),
       ),
@@ -273,7 +287,6 @@ class _ManageHomePageState extends State<ManageHomePage> {
 
         if (result != null) {
           debugPrint('Invite: ${result['name']} <${result['email']}>');
-          // TODO: create/invite member here
           context.read<UserBloc>().add(CreateUser(name: result['name']!, email: result['email']!));
         }
       },

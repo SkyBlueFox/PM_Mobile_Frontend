@@ -2,10 +2,10 @@ abstract class UserEvent {}
 
 class FetchUsers extends UserEvent {}
 
-class FetchUserById extends UserEvent {
-  final int userId;
+class FetchUserByEmail extends UserEvent {
+  final String userEmail;
 
-  FetchUserById(this.userId);
+  FetchUserByEmail(this.userEmail);
 }
 
 class CreateUser extends UserEvent {
@@ -15,6 +15,16 @@ class CreateUser extends UserEvent {
   CreateUser({
     required this.name,
     required this.email,
+  });
+}
+
+class UpdateUserName extends UserEvent {
+  final String email;
+  final String name;
+
+  UpdateUserName({
+    required this.email,
+    required this.name,
   });
 }
 

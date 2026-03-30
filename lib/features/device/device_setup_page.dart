@@ -1,5 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_event.dart';
+import 'package:pm_mobile_frontend/models/user.dart';
 
 import '../../data/device_repository.dart';
 import '../home/bloc/home_bloc.dart';
@@ -24,6 +28,8 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
   @override
   void initState() {
     super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    context.read<UserBloc>().add(FetchUserByEmail(user!.email!));
     _nameCtrl = TextEditingController(text: widget.device.name);
   }
 
@@ -31,6 +37,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
   void dispose() {
     _nameCtrl.dispose();
     super.dispose();
+    context.read<HomeBloc>().add(const DevicesRequested(connected: true));
   }
 
   Future<void> _save() async {
@@ -87,15 +94,17 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
         SnackBar(content: Text('ยกเลิกการเชื่อมต่ออุปกรณ์ไม่สำเร็จ: $e')),
       );
     }
-    context.read<HomeBloc>().add(const DevicesRequested(connected: true));
   }
 
   @override
   Widget build(BuildContext context) {
     const blue = Color(0xFF3AA7FF);
-
+    final userState = context.select((UserBloc b) => b.state);
+    final isAdmin = userState.user?.role == Role.admin;
     return Scaffold(
+      backgroundColor: Color(0xFFF6F7FB),
       appBar: AppBar(
+        backgroundColor: Colors.white,
         title: const Text('ตั้งค่าอุปกรณ์'),
         centerTitle: true,
       ),
@@ -105,7 +114,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
           children: [
             const Text(
               'ชื่ออุปกรณ์',
-              style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             _InputCard(
@@ -113,13 +122,14 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
                 controller: _nameCtrl,
                 textAlign: TextAlign.center,
                 decoration: const InputDecoration(border: InputBorder.none),
+                enabled: isAdmin,
               ),
             ),
             const SizedBox(height: 14),
 
             const Text(
               'รายละเอียด',
-              style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
 
@@ -130,44 +140,45 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> {
 
             const SizedBox(height: 30),
 
-            SizedBox(
-              height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            if(isAdmin)
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: _save,
+                  child: const Text(
+                    'เสร็จสิ้น',
+                    style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
                   ),
                 ),
-                onPressed: _save,
-                child: const Text(
-                  'เสร็จสิ้น',
-                  style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-                ),
               ),
-            ),
 
             const SizedBox(height: 16),
-
-            SizedBox(
-              height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            if(isAdmin)    
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ),
-                onPressed: _confirmUnpair,
-                child: const Text(
-                  'ยกเลิกการเชื่อมต่ออุปกรณ์',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                  onPressed: _confirmUnpair,
+                  child: const Text(
+                    'ยกเลิกการเชื่อมต่ออุปกรณ์',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -186,7 +197,7 @@ class _InputCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F7FB),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
       ),
       child: child,
@@ -205,7 +216,7 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F7FB),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

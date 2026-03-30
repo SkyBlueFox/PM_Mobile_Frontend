@@ -39,6 +39,7 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     on<SensorDetailStarted>(_onStarted);
     on<SensorPeriodChanged>(_onPeriodChanged);
     on<SensorDetailRefreshRequested>(_onRefreshRequested);
+    on<SensorDetailPolled>(_onPolled);
     on<SensorDetailPollingStarted>(_onPollingStarted);
     on<SensorDetailPollingStopped>(_onPollingStopped);
   }
@@ -94,16 +95,31 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     }
   }
 
+  Future<void> _onPolled(
+    SensorDetailPolled event,
+    Emitter<SensorDetailState> emit,
+  ) async {
+    if (_inFlight) return;
+    _inFlight = true;
+    try {
+      await _loadAll(emit);
+    } catch (_) {
+      // polling error: ไม่ทำให้หน้าพัง
+    } finally {
+      _inFlight = false;
+    }
+  }
+
   Future<void> _onPollingStarted(
     SensorDetailPollingStarted event,
     Emitter<SensorDetailState> emit,
   ) async {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(event.interval, (_) async {
-      await _pollOnce(emit);
+    _pollTimer = Timer.periodic(event.interval, (_) {
+      add(const SensorDetailPolled());
     });
 
-    await _pollOnce(emit); // immediate
+    add(const SensorDetailPolled()); // immediate
   }
 
   Future<void> _onPollingStopped(
@@ -112,18 +128,6 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
   ) async {
     _pollTimer?.cancel();
     _pollTimer = null;
-  }
-
-  Future<void> _pollOnce(Emitter<SensorDetailState> emit) async {
-    if (_inFlight) return;
-    _inFlight = true;
-    try {
-      await _loadAll(emit);
-    } catch (_) {
-      // polling error: ไม่ทำให้หน้าพัง (ไม่ set error)
-    } finally {
-      _inFlight = false;
-    }
   }
 
   Future<void> _loadAll(Emitter<SensorDetailState> emit) async {
@@ -146,16 +150,20 @@ class SensorDetailBloc extends Bloc<SensorDetailEvent, SensorDetailState> {
     );
 
     final sorted = List<SensorLogEntry>.from(logs)
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp)); // newest first
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    emit(state.copyWith(logs: sorted));
+    final currentValue = sorted.isNotEmpty
+    ? sorted.first.value.toStringAsFixed(2)
+    : '';
+
+    emit(state.copyWith(logs: sorted, currentValue: currentValue,));
   }
 
   Future<void> _loadHeartbeat(Emitter<SensorDetailState> emit) async {
     final did = state.deviceId.trim();
     if (did.isEmpty) return;
 
-    final devices = await deviceRepo.fetchDevices();
+    final devices = await deviceRepo.fetchDevices(connected: true);
 
     dynamic found;
     for (final d in devices) {

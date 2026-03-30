@@ -9,6 +9,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_event.dart';
+import 'package:pm_mobile_frontend/models/user.dart';
 
 import '../../../auth/bloc/auth_bloc.dart';
 import '../../../auth/bloc/auth_event.dart';
@@ -58,8 +61,6 @@ class _HomeViewState extends State<_HomeView> {
   static const Color blue = Color(0xFF3AA7FF);
   static const Color topBlue = Color(0xFFBFE6FF);
 
-  final user = FirebaseAuth.instance.currentUser;
-
   void _logout() {
     context.read<HomeBloc>().add(const WidgetsPollingStopped());
     context.read<AuthBloc>().add(const AuthLogoutRequested());
@@ -68,6 +69,8 @@ class _HomeViewState extends State<_HomeView> {
   @override
   void initState() {
     super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    context.read<UserBloc>().add(FetchUserByEmail(user!.email!));
     context.read<HomeBloc>().add(const HomeStarted());
     context.read<RoomsBloc>().add(const RoomsStarted());
   }
@@ -207,7 +210,8 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   Widget build(BuildContext context) {
-
+    final userState = context.select((UserBloc b) => b.state);
+    final isAdmin = userState.user?.role == Role.admin;
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: BottomNavigationBar(
@@ -228,7 +232,7 @@ class _HomeViewState extends State<_HomeView> {
               icon: Icon(Icons.person_outline_rounded), label: 'ฉัน'),
         ],
       ),
-      floatingActionButton: _bottomIndex != 0
+      floatingActionButton: _bottomIndex != 0 || !isAdmin
           ? null
           : BlocBuilder<HomeBloc, HomeState>(
               buildWhen: (p, c) =>
@@ -238,7 +242,7 @@ class _HomeViewState extends State<_HomeView> {
                 final enabled = st.reorderEnabled;
                 return FloatingActionButton(
                   backgroundColor: blue,
-                  shape: const CircleBorder(), // ✅ วงกลมตามตัวอย่าง
+                  shape: const CircleBorder(),
                   onPressed: enabled
                       ? () => context
                           .read<HomeBloc>()
@@ -247,7 +251,7 @@ class _HomeViewState extends State<_HomeView> {
                   child: Icon(
                     enabled
                         ? Icons.check_rounded
-                        : Icons.more_vert_rounded, // ✅ 3 จุดแนวตั้ง
+                        : Icons.more_vert_rounded,
                     color: Colors.white,
                   ),
                 );
@@ -405,9 +409,6 @@ class _HomeViewState extends State<_HomeView> {
                     ],
                   )
                 : MePage(
-                    displayName: user?.displayName ?? 'ไม่มีชื่อ',
-                    roleText: 'Role',
-                    photoUrl: user?.photoURL,
                     onManageHome: () async {
                       await Navigator.push(
                         context,
@@ -432,7 +433,7 @@ class _HomeViewState extends State<_HomeView> {
                       context.read<HomeBloc>().add(const HomeStarted());
                     },
                     onManageDevices: () async {
-                      context.read<HomeBloc>().add(const DevicesRequested());
+                      context.read<HomeBloc>().add(const DevicesRequested(connected: true));
                       context.read<RoomsBloc>().add(const RoomsStarted());
 
                       await Navigator.push(
@@ -452,7 +453,7 @@ class _HomeViewState extends State<_HomeView> {
 
                       if (!mounted) return;
 
-                      context.read<HomeBloc>().add(const DevicesRequested());
+                      context.read<HomeBloc>().add(const DevicesRequested(connected: true));
                       context
                           .read<RoomsBloc>()
                           .add(const RoomsRefreshRequested());

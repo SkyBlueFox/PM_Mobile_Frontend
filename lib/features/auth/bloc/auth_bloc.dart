@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../data/auth_repository.dart';
@@ -18,7 +19,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onStarted(AuthStarted event, Emitter<AuthState> emit) async {
     try {
       final saved = await _repo.getSavedToken();
-      if (saved != null && saved.trim().isNotEmpty) {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (saved != null && saved.trim().isNotEmpty && firebaseUser != null) {
         emit(AuthAuthenticated(saved));
       } else {
         emit(const AuthUnauthenticated());

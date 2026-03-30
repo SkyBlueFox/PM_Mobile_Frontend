@@ -1,5 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_event.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_state.dart';
+import 'package:pm_mobile_frontend/models/user.dart';
 
 import '../../home/bloc/home_bloc.dart';
 import '../../home/bloc/home_event.dart';
@@ -40,8 +45,9 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   @override
   void initState() {
     super.initState();
-    // ✅ load devices immediately (no click needed)
     _loadDevicesInRoom();
+    final user = FirebaseAuth.instance.currentUser;
+    context.read<UserBloc>().add(FetchUserByEmail(user!.email!));
   }
 
   Future<void> _openRename() async {
@@ -78,14 +84,12 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
       setState(() {
         _devices = list;
         _devicesLoading = false;
-// success even if empty
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _devicesLoading = false;
         _devicesError = e.toString();
-// allow retry
       });
     }
   }
@@ -103,14 +107,10 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
           ),
           TextButton(
           onPressed: () => {
-            context.read<RoomsBloc>().add(const RoomsRefreshRequested()), // refresh to get latest status before delete
+            context.read<RoomsBloc>().add(const RoomsRefreshRequested()),
             Navigator.pop(ctx, true)},
             child: const Text('ลบ', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.red)),
           ),
-          // ElevatedButton(
-          //   onPressed: () => Navigator.pop(ctx, true),
-          //   child: const Text('ลบ'),
-          // ),
         ],
       ),
     );
@@ -120,7 +120,6 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
 
     context.read<RoomsBloc>().add(RoomDeleteRequested(widget.roomId));
 
-    // keep Home tabs in sync (DevicesBloc uses rooms list)
     context.read<HomeBloc>().add(const HomeStarted());
     context.read<RoomsBloc>().add(const RoomsRefreshRequested());
   }
@@ -133,7 +132,6 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
       listener: (context, st) {
         if (!mounted) return;
 
-        // error
         if (st.status == RoomsStatus.failure &&
             st.error != null &&
             st.error!.isNotEmpty) {
@@ -166,67 +164,73 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
         ),
         body: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            children: [
-              _Card(
-                child: Column(
-                  children: [
-                    _RowTile(
-                      title: 'ชื่อห้อง',
-                      trailing: _name,
-                      onTap: _openRename,
-                      trailingIcon: Icons.chevron_right_rounded,
-                    ),
-                    const Divider(height: 1),
+          child: BlocBuilder<UserBloc, UserState>(
+            builder: (context, userState) {
+              final isAdmin = userState.user?.role == Role.admin;
 
-                    // ✅ always show devices section (no click)
-                    _RowTile(
-                      title: 'อุปกรณ์',
-                      trailing: '${_devices.length}',
-                      onTap: null, // disabled
-                      trailingIcon: null, // hide arrow
-                    ),
-                    const Divider(height: 1),
+              return Column(
+                children: [
+                  _Card(
+                    child: Column(
+                      children: [
+                        _RowTile(
+                          title: 'ชื่อห้อง',
+                          trailing: _name,
+                          onTap: isAdmin ? _openRename : null,
+                          trailingIcon: isAdmin ? Icons.chevron_right_rounded : null,
+                        ),
+                        const Divider(height: 1),
 
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                      child: _DevicesSection(
-                        loading: _devicesLoading,
-                        error: _devicesError,
-                        devices: _devices,
-                        onRetry: _loadDevicesInRoom,
-                        onRefresh: _loadDevicesInRoom,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
+                        _RowTile(
+                          title: 'อุปกรณ์',
+                          trailing: '${_devices.length}',
+                          onTap: null,
+                          trailingIcon: null,
+                        ),
+                        const Divider(height: 1),
 
-              BlocBuilder<RoomsBloc, RoomsState>(
-                buildWhen: (p, c) => p.status != c.status,
-                builder: (context, st) {
-                  final deleting = st.status == RoomsStatus.deleting;
-
-                  return TextButton(
-                    onPressed: deleting ? null : _confirmDelete,
-                    child: deleting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text(
-                            'ลบห้อง',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.w800,
-                            ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                          child: _DevicesSection(
+                            loading: _devicesLoading,
+                            error: _devicesError,
+                            devices: _devices,
+                            onRetry: _loadDevicesInRoom,
+                            onRefresh: _loadDevicesInRoom,
                           ),
-                  );
-                },
-              ),
-            ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  if (isAdmin)
+                    BlocBuilder<RoomsBloc, RoomsState>(
+                      buildWhen: (p, c) => p.status != c.status,
+                      builder: (context, roomState) {
+                        final deleting = roomState.status == RoomsStatus.deleting;
+
+                        return TextButton(
+                          onPressed: deleting ? null : _confirmDelete,
+                          child: deleting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text(
+                                  'ลบห้อง',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                        );
+                      },
+                    ),
+                ],
+              );
+            },
           ),
         ),
       ),

@@ -1,5 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_event.dart';
+import 'package:pm_mobile_frontend/models/user.dart';
 
 import '../../models/device.dart';
 import '../home/bloc/home_bloc.dart';
@@ -28,7 +32,8 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
   @override
   void initState() {
     super.initState();
-    // Load devices
+    final user = FirebaseAuth.instance.currentUser;
+    context.read<UserBloc>().add(FetchUserByEmail(user!.email!));
     context.read<HomeBloc>().add(const DevicesRequested(connected: true));
   }
 
@@ -37,6 +42,9 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
     final title = widget.roomId == null
         ? 'จัดการอุปกรณ์'
         : 'อุปกรณ์ใน ${widget.roomName ?? 'ห้อง'}';
+
+    final userState = context.select((UserBloc b) => b.state);
+    final isAdmin = userState.user?.role == Role.admin;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
@@ -64,135 +72,154 @@ class _ManageDevicesPageState extends State<ManageDevicesPage> {
             p.error != c.error ||
             p.devices != c.devices,
         builder: (context, st) {
-          final all = st.devices ?? const <Device>[];
+  final all = st.devices ?? const <Device>[];
+  final devices = all;
 
-          final devices = all;
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              children: [
-                if (st.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 24),
-                    child: CircularProgressIndicator(),
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+    child: Column(
+      children: [
+        if (st.isLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 24),
+            child: CircularProgressIndicator(),
+          ),
+
+        if (!st.isLoading && st.error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: _ErrorCard(
+              message: st.error!,
+              onRetry: () => context.read<HomeBloc>().add(
+                    const DevicesRequested(connected: true),
                   ),
+            ),
+          ),
 
-                if (!st.isLoading && st.error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: _ErrorCard(
-                      message: st.error!,
-                      onRetry: () => context.read<HomeBloc>().add(const DevicesRequested(connected: false)),
-                    ),
-                  ),
+        if (!st.isLoading && st.error == null && devices.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: 20),
+            child: Text(
+              'ยังไม่มีอุปกรณ์',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
 
-                if (!st.isLoading && st.error == null && devices.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 20),
-                    child: Text('ยังไม่มีอุปกรณ์', style: TextStyle(color: Colors.black54)),
-                  ),
+        if (!st.isLoading && st.error == null && devices.isNotEmpty)
+          Expanded(
+            child: _WhiteCard(
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                itemCount: devices.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, i) {
+                  final d = devices[i];
 
-                if (!st.isLoading && st.error == null && devices.isNotEmpty)
-                  _WhiteCard(
-                    child: Column(
-                      children: [
-                        for (int i = 0; i < devices.length; i++) ...[
-                          InkWell(
-                            onTap: () async {
-                              final d = devices[i];
+                  return InkWell(
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MultiBlocProvider(
+                            providers: [
+                              BlocProvider.value(value: context.read<HomeBloc>()),
+                            ],
+                            child: DeviceSetupPage(device: d),
+                          ),
+                        ),
+                      );
 
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => MultiBlocProvider(
-                                    providers: [
-                                      BlocProvider.value(value: context.read<HomeBloc>()),
-                                      // add more blocs if your setup page needs them
-                                    ],
-                                    child: DeviceSetupPage(device: d),
+                      if (!mounted) return;
+                      context.read<HomeBloc>().add(
+                            const DevicesRequested(connected: true),
+                          );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.devices_other_rounded,
+                            color: Color(0xFF3AA7FF),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  d.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                              );
-
-                              if (!mounted) return;
-                              // refresh in case setup changed something
-                              context.read<HomeBloc>().add(const DevicesRequested(connected: false));
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.devices_other_rounded, color: Color(0xFF3AA7FF)),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          devices[i].name,
-                                          style: const TextStyle(fontWeight: FontWeight.w700),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          devices[i].type,
-                                          style: const TextStyle(
-                                            color: Colors.black45,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  d.type,
+                                  style: const TextStyle(
+                                    color: Colors.black45,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
                                   ),
-                                  const Icon(Icons.chevron_right_rounded, color: Colors.black38),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                          if (i != devices.length - 1) const Divider(height: 1),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.black38,
+                          ),
                         ],
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 14),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () async {
-                      await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => MultiBlocProvider(
-                                    providers: [
-                                      BlocProvider.value(value: context.read<HomeBloc>()),
-                                    ],
-                                    child: const AddDevicePage(),
-                                  ),
-                                ),
-                              );
-                    },
-                    child: const Text(
-                      'เพิ่มอุปกรณ์',
-                      style: TextStyle(
-                        color: Color(0xFF3AA7FF),
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-          );
-        },
+          ),
+
+        if (isAdmin) ...[
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider.value(value: context.read<HomeBloc>()),
+                      ],
+                      child: const AddDevicePage(),
+                    ),
+                  ),
+                );
+              },
+              child: const Text(
+                'เพิ่มอุปกรณ์',
+                style: TextStyle(
+                  color: Color(0xFF3AA7FF),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
       ),
     );
   }

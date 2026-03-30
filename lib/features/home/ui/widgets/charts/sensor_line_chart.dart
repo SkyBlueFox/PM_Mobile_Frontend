@@ -29,7 +29,24 @@ class SensorLineChartFl extends StatelessWidget {
 
     final sorted = [...points]..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-    final baseMs = sorted.first.timestamp.millisecondsSinceEpoch;
+    final endMs = sorted.last.timestamp.millisecondsSinceEpoch;
+
+    double windowSec;
+    switch (period) {
+      case 'hour':
+        windowSec = 3600;
+        break;
+      case 'day':
+        windowSec = 24 * 3600;
+        break;
+      case 'week':
+        windowSec = 7 * 24 * 3600;
+        break;
+      default:
+        windowSec = 3600;
+    }
+
+    final baseMs = endMs - (windowSec * 1000).toInt();
 
     final spots = sorted.map((p) {
       final xSec = (p.timestamp.millisecondsSinceEpoch - baseMs) / 1000.0;
@@ -46,7 +63,7 @@ class SensorLineChartFl extends StatelessWidget {
     }
 
     var minX = 0.0;
-    var maxX = spots.last.x;
+    var maxX = windowSec;
 
     if ((maxX - minX).abs() < 0.000001) {
       maxX = minX + 60;

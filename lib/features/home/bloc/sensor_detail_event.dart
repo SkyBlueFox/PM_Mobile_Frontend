@@ -32,6 +32,10 @@ class SensorDetailRefreshRequested extends SensorDetailEvent {
   const SensorDetailRefreshRequested();
 }
 
+class SensorDetailPolled extends SensorDetailEvent {
+  const SensorDetailPolled();
+}
+
 /// เริ่ม polling
 class SensorDetailPollingStarted extends SensorDetailEvent {
   final Duration interval;

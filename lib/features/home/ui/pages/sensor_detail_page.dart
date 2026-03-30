@@ -55,7 +55,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       unit: dw.capability.unit,
     ));
 
-    _bloc.add(const SensorDetailPollingStarted(interval: Duration(seconds: 5)));
+    _bloc.add(const SensorDetailPollingStarted(interval: Duration(seconds: 1)));
   }
 
   @override

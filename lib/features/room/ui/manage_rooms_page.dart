@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_bloc.dart';
+import 'package:pm_mobile_frontend/features/user/bloc/user_event.dart';
 
 import '../../home/bloc/home_bloc.dart';
 import '../../home/bloc/home_event.dart';
@@ -24,11 +27,9 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
   @override
   void initState() {
     super.initState();
-
-    // devices for counting
-    context.read<HomeBloc>().add(const DevicesRequested());
-
-    // rooms list (if not already loaded)
+    final user = FirebaseAuth.instance.currentUser;
+    context.read<UserBloc>().add(FetchUserByEmail(user!.email!));
+    context.read<HomeBloc>().add(const DevicesRequested(connected: true));
     context.read<RoomsBloc>().add(const RoomsStarted());
   }
 
@@ -103,7 +104,6 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                   if (rooms.isNotEmpty)
                     _WhiteCard(
                       child: BlocBuilder<HomeBloc, HomeState>(
-                        // rebuild list rows when devices change (counts)
                         buildWhen: (p, c) => p.devices != c.devices,
                         builder: (context, devicesState) {
                           return Column(
@@ -143,7 +143,7 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                                     // if delete returns true, refresh devices + rooms
                                     if (result == true) {
                                       context.read<RoomsBloc>().add(const RoomsRefreshRequested());
-                                      context.read<HomeBloc>().add(const DevicesRequested());
+                                      context.read<HomeBloc>().add(const DevicesRequested(connected: true));
                                     }
                                   },
                                   child: Padding(
@@ -156,13 +156,6 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                                             style: const TextStyle(fontWeight: FontWeight.w700),
                                           ),
                                         ),
-                                        // Text(
-                                        //   '${_deviceCountForRoom(devicesState, rooms[i].id)} อุปกรณ์',
-                                        //   style: const TextStyle(
-                                        //     color: Colors.black45,
-                                        //     fontWeight: FontWeight.w700,
-                                        //   ),
-                                        // ),
                                         const SizedBox(width: 6),
                                         const Icon(Icons.chevron_right_rounded, color: Colors.black38),
                                       ],

@@ -28,14 +28,14 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       }
     });
 
-    on<FetchUserById>((event, emit) async {
+    on<FetchUserByEmail>((event, emit) async {
       emit(state.copyWith(
         status: UserStatus.loading,
         clearError: true,
       ));
 
       try {
-        final user = await repository.fetchAppUserById(event.userId);
+        final user = await repository.fetchAppUserById(event.userEmail);
 
         if (user == null) {
           emit(state.copyWith(
@@ -74,6 +74,33 @@ class UserBloc extends Bloc<UserEvent, UserState> {
           status: UserStatus.success,
           clearError: true,
         ));
+
+        final users = await repository.fetchAppUsers();
+        emit(state.copyWith(
+          status: UserStatus.ready,
+          users: users,
+        ));
+      } catch (e) {
+        emit(state.copyWith(
+          status: UserStatus.failure,
+          error: e.toString(),
+        ));
+      }
+    });
+    
+    on<UpdateUserName>((event, emit) async {
+      emit(state.copyWith(
+        status: UserStatus.saving,
+        clearError: true,
+      ));
+
+      try {
+        await repository.updateUserName(
+          email: event.email,
+          name: event.name,
+        );
+
+        emit(state.copyWith(status: UserStatus.success));
 
         final users = await repository.fetchAppUsers();
         emit(state.copyWith(

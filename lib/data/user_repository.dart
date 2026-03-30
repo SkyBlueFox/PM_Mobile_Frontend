@@ -32,7 +32,7 @@ class AppUserRepository {
     final token = await Appuser.getIdToken();
 
     return {
-      'Content-Type': 'lication/json',
+      'Content-Type': 'alication/json',
       'Authorization': 'Bearer $token',
     };
   }
@@ -56,16 +56,16 @@ class AppUserRepository {
         decoded is Map<String, dynamic> ? decoded['data'] : decoded;
 
     final List list = raw is List ? raw : const [];
-    
+
     return list
         .whereType<Map<String, dynamic>>()
         .map(AppUser.fromJson)
         .toList(growable: false);
   }
 
-  /// ✅ GET /api/Appusers/{user_id}
-  Future<AppUser?> fetchAppUserById(int AppuserId) async {
-    final uri = Uri.parse('$baseUrl/api/users/$AppuserId');
+  /// ✅ GET /api/Appusers/{user_email}
+  Future<AppUser?> fetchAppUserById(String AppuserEmail) async {
+    final uri = Uri.parse('$baseUrl/api/users/$AppuserEmail');
 
     final res = await _client.get(
       uri,
@@ -123,6 +123,39 @@ class AppUserRepository {
 
     if (raw is! Map<String, dynamic>) {
       throw Exception('Invalid create Appuser response format');
+    }
+
+    return AppUser.fromJson(raw);
+  }
+
+  /// ✅ PATCH /api/users/{email}
+  Future<AppUser> updateUserName({
+    required String email,
+    required String name,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/users/$email');
+
+    final res = await _client.patch(
+      uri,
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'name': name,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to update user (${res.statusCode}) ${res.body}');
+    }
+
+    final decoded = jsonDecode(res.body);
+
+    final dynamic raw =
+        decoded is Map<String, dynamic> && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+
+    if (raw is! Map<String, dynamic>) {
+      throw Exception('Invalid update user response format');
     }
 
     return AppUser.fromJson(raw);
