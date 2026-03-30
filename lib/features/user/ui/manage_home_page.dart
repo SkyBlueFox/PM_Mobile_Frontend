@@ -24,7 +24,6 @@ class ManageHomePage extends StatefulWidget {
 }
 
 class _ManageHomePageState extends State<ManageHomePage> {
-  String _familyName = 'เก็ต A';
 
   @override
   void initState() {
@@ -41,6 +40,8 @@ class _ManageHomePageState extends State<ManageHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final userState = context.select((UserBloc b) => b.state);
+    final isAdmin = userState.user?.role == Role.admin;
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
@@ -165,7 +166,8 @@ class _ManageHomePageState extends State<ManageHomePage> {
                               ),
                             ),
                           ),
-                          _buildAddMemberButton(),
+                          if (isAdmin)
+                            _buildAddMemberButton(),
                         ],
                       );
                     }
@@ -180,7 +182,8 @@ class _ManageHomePageState extends State<ManageHomePage> {
                             myRole: myRole!,
                           ),
                         ),
-                        _buildAddMemberButton(),
+                        if (isAdmin)
+                          _buildAddMemberButton(),
                       ],
                     );
                   },

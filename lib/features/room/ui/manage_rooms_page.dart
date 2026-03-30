@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pm_mobile_frontend/features/user/bloc/user_bloc.dart';
 import 'package:pm_mobile_frontend/features/user/bloc/user_event.dart';
+import 'package:pm_mobile_frontend/models/user.dart';
 
 import '../../home/bloc/home_bloc.dart';
 import '../../home/bloc/home_event.dart';
@@ -70,7 +71,8 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // listen rooms errors
+    final userState = context.select((UserBloc b) => b.state);
+    final isAdmin = userState.user?.role == Role.admin;
     return BlocListener<RoomsBloc, RoomsState>(
       listenWhen: (p, c) => p.error != c.error && c.error != null,
       listener: (context, st) {
@@ -183,27 +185,28 @@ class _ManageRoomsPageState extends State<ManageRoomsPage> {
                     ),
 
                   const SizedBox(height: 14),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  
+                  if(isAdmin)
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      onPressed: savingRoom ? null : _addRoomDialog,
-                      child: Text(
-                        savingRoom ? 'กำลังสร้าง...' : 'เพิ่มห้องใหม่',
-                        style: const TextStyle(
-                          color: Color(0xFF3AA7FF),
-                          fontWeight: FontWeight.w800,
+                        onPressed: savingRoom ? null : _addRoomDialog,
+                        child: Text(
+                          savingRoom ? 'กำลังสร้าง...' : 'เพิ่มห้องใหม่',
+                          style: const TextStyle(
+                            color: Color(0xFF3AA7FF),
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             );
